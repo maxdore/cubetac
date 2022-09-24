@@ -12,15 +12,15 @@ import Type
 import Solver
 import Examples
 
-runSolve :: SEnv s -> IO (Either String ([Result],SEnv s))
+runSolve :: SEnv s -> IO (Either String ([Term],SEnv s))
 runSolve env = do
   res <- runExceptT $ runStateT solve env
   case res of
     Left err -> do
       putStrLn $ "ERROR: " ++ err
-    Right (rs , _)-> do
+    Right (t , _)-> do
       putStrLn "SUCCESS"
-      -- (ByteC.putStrLn . agdaResult) (rs !! 0)
+      putStrLn $ show t
   return res
 
 

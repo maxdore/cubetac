@@ -54,3 +54,47 @@ below , above :: Vert -> Vert -> Bool
 x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBools y))
 x `above` y = y `below` x
 
+
+
+
+
+type PSubst = Map Vert [Vert]
+newtype PTerm = PTerm { pterm :: (Id , PSubst)}
+  deriving (Eq)
+
+instance Show PTerm where
+  show (PTerm (id , part)) = show id ++ " " ++ show part
+
+-- in list, later vertices are not necessarily below
+-- but all below are later!
+
+createPSubsts :: Int -> Int -> [(Vert , [Vert])]
+createPSubsts k l = map (\v -> (v , createGrid l)) (createGrid k)
+
+filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
+filterRec x v ys = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ])) ys
+
+getSubsts :: [(Vert , [Vert])] -> [[(Vert , Vert)]]
+getSubsts [] = [[]]
+getSubsts ((x , vs) : ys) = [ (x , v) : r | v <- vs , r <- getSubsts (filterRec x v ys) ]
+
+-- getFirstSubst :: PSubst -> Subst
+-- getFirstSubst sigma = Map.fromList (head (getSubsts (Map.toList sigma)))
+
+fstPSubst :: PSubst -> PSubst
+fstPSubst = Map.fromList . fstPSubst' . Map.toList
+  where
+  fstPSubst' :: [(Vert , [Vert])] -> [(Vert , [Vert])]
+  fstPSubst' [] = []
+  fstPSubst' ((x,vs) : yws) = (x , [head vs]) :
+    fstPSubst' (map (\(y , ws) -> (y , filter (\w -> (y `below` x) --> (w `below` head vs)) ws)) yws)
+
+psubst2subst :: PSubst -> Subst
+psubst2subst = Map.map head
+
+createPTerm :: Decl -> Int -> PTerm
+createPTerm (Decl (id , ty)) gdim =
+  let parts = map (\v -> (v , createGrid (dim ty))) (createGrid gdim) in
+  PTerm (id , Map.fromList parts)
+
+

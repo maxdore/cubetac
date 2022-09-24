@@ -13,10 +13,10 @@ import Prel
 
 -- Formulas
 
-type Var = Int
+type IVar = Int
 type Id = String
 
-newtype Conj = Conj {literal :: Var}
+newtype Conj = Conj {literal :: IVar}
   deriving (Eq , Ord)
 
 instance Show Conj where
@@ -64,6 +64,17 @@ instance Show Vert where
   show (Vert [e]) = show e
   show (Vert (e:es)) = show e ++ show (Vert es)
 
+
+vdiff :: Vert -> Vert -> Int
+vdiff (Vert []) (Vert []) = 0
+vdiff (Vert (e:es)) (Vert (e':es')) = (if e == e' then 0 else 1) + vdiff (Vert es) (Vert es')
+
+getPath :: Vert -> Vert -> (IVar , Endpoint)
+getPath (Vert (e:es)) (Vert (e':es')) =
+  if e == e'
+    then (1 , e)
+    else let (i , e'') = getPath (Vert es) (Vert es') in (i + 1 , e'')
+
 type Subst = Map Vert Vert
 
 class Deg a where
@@ -80,39 +91,44 @@ instance Deg Subst where
 
 
 
+
 -- Cubes
 
-newtype Term = Term { term :: (Id , Tele)}
+data Term = Term Id Tele | Comp Box
+  deriving (Eq , Show)
 
-instance Show Term where
-  show (Term (id , r)) = show id ++ " " ++ show r
+data Box = Box [(Term , Term)] Term
+  deriving (Eq , Show)
+
+
+-- instance Show Term where
+--   show (Term id r) = show id ++ " " ++ show r
+--   show (Comp b) = show b -- show sides ++ " " ++ show back
 
 newtype Point = Point { point :: Id }
-  deriving (Eq)
+  deriving (Eq , Show)
 
 emptT :: Id -> Term
-emptT face = Term (face , Tele [])
+emptT face = Term face (Tele [])
 
-idT :: Id -> Var -> Term
-idT face i = Term (face , Tele [Formula [ Disj [Conj i]]])
+idT :: Id -> IVar -> Term
+idT face i = Term face (Tele [Formula [ Disj [Conj i]]])
 
-newtype Type = Type { sides :: [(Term, Term)]}
+newtype Type = Type { faces :: [(Term, Term)]}
 
 instance Show Type where
   show (Type ss) = show ss
 
 dim :: Type -> Int
-dim = length . sides
+dim = length . faces
 
 newtype Decl = Decl { decl :: (Id , Type)}
 
 instance Show Decl where
   show (Decl (id , ty)) = show id ++ " : " ++ show ty
 
-newtype Cube = Cube { faces :: [Decl]}
+newtype Cube = Cube { constr :: [Decl]}
 
 instance Show Cube where
   show (Cube fc) = show fc
 
-
-data Result = Dir Term | Comp Cube
