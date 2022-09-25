@@ -62,8 +62,14 @@ type PSubst = Map Vert [Vert]
 newtype PTerm = PTerm { pterm :: (Id , PSubst)}
   deriving (Eq)
 
+psdim :: PSubst -> Int
+psdim = length . head . Map.toList
+
+
 instance Show PTerm where
   show (PTerm (id , part)) = show id ++ " " ++ show part
+
+
 
 -- in list, later vertices are not necessarily below
 -- but all below are later!
