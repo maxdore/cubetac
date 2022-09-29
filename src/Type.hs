@@ -9,6 +9,8 @@ import Data
 import Deg
 
 
+-- TODO first steps towards type inference for the formula description of
+-- interval substitutions. Not used at the moment.
 
 offset :: IVar -> Tele -> Tele
 offset v (Tele rs) = Tele $ map (\(Formula rs) -> Formula $

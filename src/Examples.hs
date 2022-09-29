@@ -103,6 +103,10 @@ triangle = Cube [
   , Decl ("phi" ,   Type [(idT "f" 1, idT "h" 1) , (emptT "x" , idT "g" 1)])
            ]
 
+
+fgfg :: Type
+fgfg = Type [(idT "f" 1, idT "g" 1) , (idT "f" 1, idT "g" 1)]
+
 triangleSlide :: Type
 triangleSlide = Type [(idT "h" 1, idT "g" 1) , (idT "f" 1, emptT "z")]
 
@@ -126,11 +130,20 @@ compassoc :: Type
 compassoc = Type [(undefined , undefined) , (emptT "x" , emptT "w")]
 
 
-eh2 :: Cube
-eh2 = Cube [
+-- TODO with more paths to build
+      -- ________
+      -- |      |
+      -- |      |
+      -- - - - -
+      -- |      |
+      -- |      |
+      -- - - - -
+
+
+loopspace :: Cube
+loopspace = Cube [
     Decl ("a" ,     Type [])
-  , Decl ("alph" ,   Type [(emptT "a" , emptT "a") , (emptT "a" , emptT "a")])
-  , Decl ("beta" ,   Type [(emptT "a" , emptT "a") , (emptT "a" , emptT "a")])
+  , Decl ("p" ,   Type [(emptT "a" , emptT "a") , (emptT "a" , emptT "a")])
                  ]
 
 -- aabb = mkSEnv loopspace2 (Path (Path (Path Point (Face "a") (Face "a")) (App (Face "alpha") [[1]]) (App (Face "alpha") [[1]])) (Face "alpha") (Face "alpha"))
@@ -138,3 +151,5 @@ eh2 = Cube [
 -- aabbeasy = mkSEnv loopspace2 (Path (Path (Path Point (Face "a") (Face "a")) (App (Face "alpha") [[1]]) (App (Face "alpha") [[1]])) (Abs (Abs (Face "a"))) (Abs (Abs (Face "a"))))
 
 
+loopAndOr :: Type
+loopAndOr = Type [ (Term "p" andOrTele , emptT "a") , (emptT "a" , emptT "a") , (emptT "a" , emptT "a") ]
