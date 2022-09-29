@@ -6,7 +6,7 @@ import Data.Map ((!), Map)
 
 import Prel
 import Data
-import Deg
+import Poset
 
 
 -- TODO first steps towards type inference for the formula description of
@@ -34,7 +34,7 @@ infer cube (Term id (Tele [Formula r])) d = Type $ map (\i -> (evalTerm i e0, ev
           else Term id $ offset i $ Tele [Formula red]
 
   getBoundary :: Endpoint -> Term
-  getBoundary (Endpoint e) = let def = lookup (id) (map decl (constr cube)) in
+  getBoundary (Endpoint e) = let def = lookup (id) (map decl2pair (constr cube)) in
     case def of
       Just (Type [(l , r)]) -> if e then r else l
       Nothing -> error $ "Could not find definition of term " ++ id

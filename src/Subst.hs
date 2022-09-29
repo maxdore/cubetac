@@ -44,7 +44,7 @@ subst2Tele s =
     where
     constrFormula :: [(Vert , Endpoint)] -> Formula
     constrFormula ves =
-      let truevs = [ v | (v , Endpoint e) <- ves , e ] in -- filter (toBool . snd) ves in
+      let truevs = [ v | (v , Endpoint e) <- ves , e ] in
       let cs = [ Disj [ Conj i | (Endpoint e,i) <- (zip vs [1..]) , e] | Vert vs <- truevs ] in
       let redcs = filter (\(Disj c) -> not (any (\(Disj d) -> c /= d && d `isSubsequenceOf` c) cs)) cs in
       let normcs = sort redcs in
@@ -67,33 +67,35 @@ instance Show PTerm where
   show (PTerm id part) = show id ++ " " ++ show part
 
 
+-- Given dimensions for domain and codomain, create the most general
+-- potential substitution
+createPSubst :: Int -> Int -> PSubst
+createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
 
--- in list, later vertices are not necessarily below
--- but all below are later!
-
-createPSubsts :: Int -> Int -> [(Vert , [Vert])]
-createPSubsts k l = map (\v -> (v , createPoset l)) (createPoset k)
-
-filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
-filterRec x v ys = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ])) ys
-
-getSubsts :: [(Vert , [Vert])] -> [[(Vert , Vert)]]
-getSubsts [] = [[]]
-getSubsts ((x , vs) : ys) = [ (x , v) : r | v <- vs , r <- getSubsts (filterRec x v ys) ]
-
--- getFirstSubst :: PSubst -> Subst
--- getFirstSubst sigma = Map.fromList (head (getSubsts (Map.toList sigma)))
-
-fstPSubst :: PSubst -> PSubst
-fstPSubst = Map.fromList . fstPSubst' . Map.toList
+-- Given a potential substitution, generate all possible substitutions from it
+getSubsts :: PSubst -> [Subst]
+getSubsts sigma = map Map.fromList (getSubsts' (Map.toList sigma))
   where
-  fstPSubst' :: [(Vert , [Vert])] -> [(Vert , [Vert])]
+  getSubsts' :: [(Vert , [Vert])] -> [[(Vert , Vert)]]
+  getSubsts' [] = [[]]
+  getSubsts' ((x , vs) : ys) = [ (x , v) : r | v <- vs , r <- getSubsts' (filterRec x v ys) ]
+
+  filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
+  filterRec x v ys = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ])) ys
+
+
+-- Given a potential substitution, generate the substitution from it
+-- (could be equivalently head of getSubsts)
+fstSubst :: PSubst -> Subst
+fstSubst = Map.fromList . fstPSubst' . Map.toList
+  where
+  fstPSubst' :: [(Vert , [Vert])] -> [(Vert , Vert)]
   fstPSubst' [] = []
-  fstPSubst' ((x,vs) : yws) = (x , [head vs]) :
+  fstPSubst' ((x,vs) : yws) = (x , head vs) :
     fstPSubst' (map (\(y , ws) -> (y , filter (\w -> (y `below` x) --> (w `below` head vs)) ws)) yws)
 
-psubst2subst :: PSubst -> Subst
-psubst2subst = Map.map head
+injPSubst :: Subst -> PSubst
+injPSubst = Map.map (\v -> [v])
 
 createPTerm :: Decl -> Int -> PTerm
 createPTerm (Decl id ty) gdim =
@@ -102,8 +104,3 @@ createPTerm (Decl id ty) gdim =
   PTerm id (Map.fromList parts)
 
 
-createPSubst :: Int -> Int -> PSubst
-createPSubst i j = Map.fromList (createPSubsts i j)
-
-psubst2substs :: PSubst -> [Subst]
-psubst2substs sigma = map Map.fromList (getSubsts (Map.toList sigma))

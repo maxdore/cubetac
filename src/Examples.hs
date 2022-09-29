@@ -6,8 +6,8 @@ import Data.Map ((!), Map)
 
 import Prel
 import Data
-import Deg
-import Type
+import Poset
+import Subst
 
 
 orSubst , andSubst :: Subst
@@ -70,9 +70,9 @@ app1PSubst = Map.fromList [
 
 int :: Cube
 int = Cube [
-    Decl ("zero" ,   Type  [])
-  , Decl ("one" ,    Type  [])
-  , Decl ("seg" ,    Type  [(emptT "zero" , emptT "one")])
+    Decl "zero" (Type  [])
+  , Decl "one" (Type  [])
+  , Decl "seg" (Type  [(emptT "zero" , emptT "one")])
            ]
 
 intApp1Term = Term "seg" $ Tele [Formula [Disj [Conj 1]]]
@@ -92,20 +92,31 @@ intInv = Type [(emptT "one" , emptT "zero")]
 
 
 
-triangle :: Cube
-triangle = Cube [
-    Decl ("x" ,     Type [])
-  , Decl ("y" ,     Type [])
-  , Decl ("z" ,     Type [])
-  , Decl ("f" ,     Type [(emptT "x" , emptT "y")])
-  , Decl ("g" ,     Type [(emptT "y" , emptT "z")])
-  , Decl ("h" ,     Type [(emptT "x" , emptT "z")])
-  , Decl ("phi" ,   Type [(idT "f" 1, idT "h" 1) , (emptT "x" , idT "g" 1)])
-           ]
 
+twopaths :: Cube
+twopaths = Cube [
+    Decl "x"     (Type [])
+  , Decl "y"     (Type [])
+  , Decl "z"     (Type [])
+  , Decl "f"     (Type [(emptT "x" , emptT "y")])
+  , Decl "g"     (Type [(emptT "y" , emptT "z")])
+           ]
 
 fgfg :: Type
 fgfg = Type [(idT "f" 1, idT "g" 1) , (idT "f" 1, idT "g" 1)]
+
+
+
+triangle :: Cube
+triangle = Cube [
+    Decl "x"     (Type [])
+  , Decl "y"     (Type [])
+  , Decl "z"     (Type [])
+  , Decl "f"     (Type [(emptT "x" , emptT "y")])
+  , Decl "g"     (Type [(emptT "y" , emptT "z")])
+  , Decl "h"     (Type [(emptT "x" , emptT "z")])
+  , Decl "phi"   (Type [(idT "f" 1, idT "h" 1) , (emptT "x" , idT "g" 1)])
+           ]
 
 triangleSlide :: Type
 triangleSlide = Type [(idT "h" 1, idT "g" 1) , (idT "f" 1, emptT "z")]
@@ -114,13 +125,13 @@ triangleSlide = Type [(idT "h" 1, idT "g" 1) , (idT "f" 1, emptT "z")]
 
 composition :: Cube
 composition = Cube [
-    Decl ("x" ,     Type [])
-  , Decl ("y" ,     Type [])
-  , Decl ("z" ,     Type [])
-  , Decl ("w" ,     Type [])
-  , Decl ("p" ,     Type [(emptT "x" , emptT "y")])
-  , Decl ("q" ,     Type [(emptT "y" , emptT "z")])
-  , Decl ("r" ,     Type [(emptT "z" , emptT "w")])
+    Decl "x"     (Type [])
+  , Decl "y"     (Type [])
+  , Decl "z"     (Type [])
+  , Decl "w"     (Type [])
+  , Decl "p"     (Type [(emptT "x" , emptT "y")])
+  , Decl "q"     (Type [(emptT "y" , emptT "z")])
+  , Decl "r"     (Type [(emptT "z" , emptT "w")])
                    ]
 
 compfiller :: Type
@@ -142,8 +153,8 @@ compassoc = Type [(undefined , undefined) , (emptT "x" , emptT "w")]
 
 loopspace :: Cube
 loopspace = Cube [
-    Decl ("a" ,     Type [])
-  , Decl ("p" ,   Type [(emptT "a" , emptT "a") , (emptT "a" , emptT "a")])
+    Decl "a"   (Type [])
+  , Decl "p"   (Type [(emptT "a" , emptT "a") , (emptT "a" , emptT "a")])
                  ]
 
 -- aabb = mkSEnv loopspace2 (Path (Path (Path Point (Face "a") (Face "a")) (App (Face "alpha") [[1]]) (App (Face "alpha") [[1]])) (Face "alpha") (Face "alpha"))

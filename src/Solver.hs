@@ -10,6 +10,7 @@ import qualified Data.Map as Map
 import Data.Map ((!), Map)
 import Data.Set (Set)
 import qualified Data.Set as Set
+import Data.Either
 
 import qualified Debug.Trace as D
 
@@ -283,7 +284,7 @@ firstSubst :: CVar -> Solving s PTerm
 firstSubst var = do
   vals <- lookupDom var
   let PTerm id sigma = head vals
-  let newval = PTerm id (fstPSubst sigma)
+  let newval = PTerm id (injPSubst (fstSubst sigma))
   when ([newval] /= vals) $ update var [newval]
   return newval
 
@@ -312,7 +313,7 @@ comp (Type [(Term a (Tele []) , Term b (Tele []))]) = do
   lookupDom side1 >>= trace . show
   lookupDom back >>= trace . show
 
-  res <- mapM (\s -> firstSubst s >>= \(PTerm f sigma) -> return $ Term f ((subst2Tele . psubst2subst . fstPSubst) sigma))
+  res <- mapM (\s -> firstSubst s >>= \(PTerm f sigma) -> return $ Term f ((subst2Tele . fstSubst) sigma))
     (side0 : side1 : back : [])
 
   lookupDom side0 >>= trace . show
@@ -388,7 +389,7 @@ comp (Type [(Term k r, Term l s), (m,n)]) = do
 
   -- mapM firstSubst (sidei0 : sidei1 : sidej0 : sidej1 : back : [])
 
-  res <- mapM (\s -> firstSubst s >>= \(PTerm f sigma) -> return $ Term f ((subst2Tele . psubst2subst . fstPSubst) sigma))
+  res <- mapM (\s -> firstSubst s >>= \(PTerm f sigma) -> return $ Term f ((subst2Tele . fstSubst) sigma))
     (sidei0 : sidei1 : sidej0 : sidej1 : back : [])
 
   trace "FIRST SOLUTION"
@@ -424,23 +425,28 @@ simpleSolve (Decl id ty) = do
   goal <- gets goal
   trace $ "TRY TO FIT " ++ id
 
-  -- trace $ show sigma ++ " :::: " ++ show (length (psubst2substs sigma))
+  cvar <- newCVar [(createPTerm (Decl id ty) (dim goal))]
 
-  cvar <- newCVar [(PTerm id (createPSubst (dim goal) (dim ty)))]
-
-  let points = createPoset (dim goal)
-  mapM (\x -> do
-           [sigma] <- lookupDom cvar
-           v <- evalType goal x
-           res <- checkPTerm x [v] sigma
-           trace $ show res
-           case res of
-             Nothing -> guard False
-             Just sigma' -> update cvar [sigma']
-       ) points
-
-  let edges = concat $ map (\v -> [ (v , u) | u <- points, v `above` u , vdiff v u == 1 ]) points
-  trace $ show edges
+  case dim goal of
+    _ -> do
+      let points = createPoset (dim goal)
+      mapM (\x -> do
+              -- addConstraint cvar (
+              --   do
+                  [sigma] <- lookupDom cvar
+                  v <- evalType goal x
+                  res <- checkPTerm x [v] sigma
+                  trace $ show res
+                  case res of
+                    Nothing -> guard False
+                    Just sigma' -> when (sigma /= sigma') (update cvar [sigma'])
+                                      -- )
+          ) points
+    2 -> do
+      let points = createPoset (dim goal)
+      let edges = concat $ map (\v -> [ (v , u) | u <- points, v `above` u , vdiff v u == 1 ]) points
+      trace $ show edges
+      return []
 
   -- mapM (\x -> do
   --          [sigma] <- lookupDom cvar
@@ -454,34 +460,28 @@ simpleSolve (Decl id ty) = do
 
   lookupDom cvar >>= trace . show
 
-  res <- lookupDom cvar >>= \[PTerm id sigma] -> return $ Term id ((subst2Tele . psubst2subst . fstPSubst) sigma)
-  return []
+  res <- firstSubst cvar >>= \(PTerm id sigma) -> return $ Term id ((subst2Tele . fstSubst) sigma)
+  return [res]
 
-
--- solve :: Solving s [Term]
--- solve = do
---   trace "CUBE"
---   Cube cube <- gets cube
---   mapM (\(Decl (face , ty)) -> trace $ face ++ " : " ++ show ty) cube
-
---   trace "GOAL"
---   goal <- gets goal
---   trace $ show goal
-
---   -- TODO check for direct matches before composing
-
---   -- mapM (\face -> simpleSolve face goal) cube
---   -- comp goal
-
---   return []
 
 solver :: Cube -> Type -> IO ()
 solver cube goal = do
-  putStrLn $ show cube
+  putStrLn "CUBE"
+  mapM (putStrLn . show) (constr cube)
+  putStrLn "GOAL"
+  putStrLn $ show goal
+
+  -- RUN SIMPLE SOLVE FOR ALL FACES
   simp <- mapM (\face -> runExceptT $ runStateT (simpleSolve face) (mkSEnv cube goal)) (constr cube)
 
-  -- if not (null simp)
-  --   then putStrLn simp
-  --   else return()
+
+  -- RUN KAN COMPOSITION SOLVER
+  if not (null (rights simp))
+    then do
+      putStrLn "FOUND SIMPLE SOLUTIONS"
+      (putStrLn . show) (concat (map fst (rights simp)))
+    else do
+      res <- runExceptT $ runStateT (comp goal) (mkSEnv cube goal)
+      return ()
 
   return ()
