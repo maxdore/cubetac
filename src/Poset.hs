@@ -5,7 +5,6 @@ import qualified Data.Map as Map
 import Data.Map ((!), Map)
 
 import Prel
-import Data
 
 -- Basic setup for posets
 
@@ -38,47 +37,17 @@ createPoset 0 = [Vert []]
 createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (e0 : v)) g ++ map (\v -> Vert (e1 : v)) g
 
-inse :: Endpoint -> Vert -> Vert
-e `inse` x = Vert (e: toBools (x))
+insv :: Endpoint -> Vert -> Vert
+e `insv` x = Vert (e: toBools (x))
 
--- createPos :: Int -> [[Endpoint]]
--- createPos 0 = [[]]
--- createPos n = let g = (createPos (n - 1))
---   in map (\v -> (e0 : v)) g ++ map (\v -> (e1 : v)) g
 
 getFaces :: Int -> Int -> [[Vert]]
 getFaces m 0 = map (\x -> [x]) (createPoset m)
 getFaces m n | m == n = [ createPoset m ]
 getFaces m n =
-  map (map (e0 `inse`)) (getFaces (m-1) n)
-  ++ map (map (Vert . (e1:) . toBools)) (getFaces (m-1) n)
-  ++ map (\l -> map (Vert . (e0:) . toBools) l ++ map (Vert . (e1:) . toBools) l) (getFaces (m-1) (n-1))
-
-
-
-
--- The dimension of the poset and the dimension of the face
--- getFaces :: Int -> Int -> [[Vert]]
--- getFaces m n =
---   let flips = createPoset n in
---   let dims = [ (i , e) | i <- [1 .. m] , e <- [e0 , e1]]
-
---   map ($) [ map (\x -> vinsert x i e) flips | (i,e) <- dims , _ <- [1 .. m-n]]
-
---   map (\(i , e) ->)
-
---   where
---   vinsert :: Vert -> Int -> Endpoint -> Vert
---   vinsert (Vert xs) 1 e = Vert (e : xs)
---   vinsert (Vert (x : xs)) n e = Vert (x : toBools (vinsert (Vert xs) (n - 1) e))
-
--- getFaces xs 0 = map (\x -> [x]) xs
--- getFaces xs 1 = concat $ map (\x -> [ [x , y] | y <- xs, x `above` y , vdiff x y == 1 ]) xs
--- getFaces xs 2 = concat $ map (\x -> [ [x , y , z , w] | y <- xs, z <- xs , w <- xs ,
---                                       x `dirabove` y && x `dirabove` z &&
---                                       y `dirabove` w && z `dirabove` w
---                                                       ]) xs
-
+  map (map (e0 `insv`)) (getFaces (m-1) n)
+  ++ map (map (e1 `insv`)) (getFaces (m-1) n)
+  ++ map (\l -> map (e0 `insv`) l ++ map (e1 `insv`) l) (getFaces (m-1) (n-1))
 
 
 

@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module Data where
 
 import Data.List
@@ -5,48 +7,31 @@ import qualified Data.Map as Map
 import Data.Map ((!), Map)
 
 import Prel
+import Poset
 
--- This file contains the basic data structures used for representing cubes
+-- This data structures are used to internally represent cubes
 
 
--- Formulas
-
--- Use de Brujin indices for variables
-type IVar = Int
 
 -- These are the names of faces of a cube
 type Id = String
 
-newtype Conj = Conj {literal :: IVar}
-  deriving (Eq , Ord)
+-- Use de Brujin indices for variables
+type IVar = Int
 
-instance Show Conj where
-  show (Conj i) = show i
 
-newtype Disj = Disj {literals :: [Conj]}
-  deriving (Eq , Ord)
+-- We regard interval substitutions as poset maps
+type Subst = Map Vert Vert
 
-instance Show Disj where
-  show (Disj is) = "(" ++ (concat $ intersperse " /\\ " (map show is)) ++ ")"
-
-newtype Formula = Formula {clauses :: [Disj]}
-  deriving (Eq , Ord)
-
-instance Show Formula where
-  show (Formula cs) = "(" ++ (concat $ intersperse " \\/ " (map show cs)) ++ ")"
-
--- Tuples of formulas in DNF
-newtype Tele = Tele {formulas :: [Formula]}
-  deriving (Eq , Ord)
-
-instance Show Tele where
-  show (Tele rs) = concat $ intersperse " " (map show rs)
-
+-- Get the dimensions of domain and codomain of a substitution
+instance Fct Subst where
+  domdim = length . toBools . fst . head . Map.toList
+  coddim = length . toBools . snd . head . Map.toList
 
 
 -- Cubes
 
-data Term = Term Id Tele | Comp Box
+data Term = Term Id Subst | Comp Box
   deriving (Eq , Show)
 
 data Box = Box [(Term , Term)] Term
@@ -57,16 +42,13 @@ data Box = Box [(Term , Term)] Term
 --   show (Term id r) = show id ++ " " ++ show r
 --   show (Comp b) = show b -- show sides ++ " " ++ show back
 
-newtype Point = Point { point :: Id }
-  deriving (Eq , Show)
-
 -- Constructor for a constant point
 emptT :: Id -> Term
-emptT face = Term face (Tele [])
+emptT face = Term face undefined
 
 -- Constructor for a 1-path with single variable application
 idT :: Id -> IVar -> Term
-idT face i = Term face (Tele [Formula [ Disj [Conj i]]])
+idT face i = Term face undefined
 
 newtype Type = Type { faces :: [(Term, Term)]}
 
@@ -88,4 +70,60 @@ newtype Cube = Cube { constr :: [Decl]}
 
 instance Show Cube where
   show (Cube fc) = show fc
+
+
+
+
+
+
+-- Potential substitutions have for each element in the domain a list of possible values
+type PSubst = Map Vert [Vert]
+
+instance Fct PSubst where
+  domdim = length . head . Map.toList
+  coddim = undefined -- TODO
+
+-- A potential term is an identifier with potential substitution
+data PTerm = PTerm Id PSubst
+  deriving (Eq)
+
+instance Show PTerm where
+  show (PTerm id part) = show id ++ " " ++ show part
+
+
+-- Given dimensions for domain and codomain, create the most general
+-- potential substitution
+createPSubst :: Int -> Int -> PSubst
+createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
+
+-- Given a potential substitution, generate all possible substitutions from it
+getSubsts :: PSubst -> [Subst]
+getSubsts sigma = map Map.fromList (getSubsts' (Map.toList sigma))
+  where
+  getSubsts' :: [(Vert , [Vert])] -> [[(Vert , Vert)]]
+  getSubsts' [] = [[]]
+  getSubsts' ((x , vs) : ys) = [ (x , v) : r | v <- vs , r <- getSubsts' (filterRec x v ys) ]
+
+  filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
+  filterRec x v ys = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ])) ys
+
+
+-- Given a potential substitution, generate the substitution from it
+-- (could be equivalently head of getSubsts)
+fstSubst :: PSubst -> Subst
+fstSubst = Map.fromList . fstPSubst' . Map.toList
+  where
+  fstPSubst' :: [(Vert , [Vert])] -> [(Vert , Vert)]
+  fstPSubst' [] = []
+  fstPSubst' ((x,vs) : yws) = (x , head vs) :
+    fstPSubst' (map (\(y , ws) -> (y , filter (\w -> (y `below` x) --> (w `below` head vs)) ws)) yws)
+
+injPSubst :: Subst -> PSubst
+injPSubst = Map.map (\v -> [v])
+
+createPTerm :: Decl -> Int -> PTerm
+createPTerm (Decl id ty) gdim =
+  let img = createPoset (dim ty) in
+  let parts = map (\v -> (v , img)) (createPoset gdim) in
+  PTerm id (Map.fromList parts)
 
