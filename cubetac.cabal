@@ -26,10 +26,11 @@ source-repository head
 library
   exposed-modules:
       Data
-      Deg
       Examples
+      Poset
       Prel
       Solver
+      Subst
       Type
   other-modules:
       Paths_cubetac

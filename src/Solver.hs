@@ -88,6 +88,11 @@ newCVar domain = do
                 in
                 s { varMap = Map.insert x vi vm }
 
+emptyConstraints :: Solving s ()
+emptyConstraints = do
+  s <- get
+  put $ s { varMap = Map.map (\vi -> CVarInfo { values = values vi , delayedConstraints = return() }) (varMap s) }
+
 
 lookupDom :: Int -> Solving s [PTerm]
 lookupDom x = do
@@ -122,11 +127,11 @@ addBinaryConstraint f x y = do
 
 
 
-evalType :: Type -> Vert -> Solving s Point
--- evalType f (Vert []) = return $ Point f -- What goes here?
-evalType (Type [(Term a _ , Term b _)]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
-evalType (Type [(Term a _ , Term b _) , _]) (Vert [Endpoint e , Endpoint e']) =
-  evalPoint (if e then b else a) (Vert [Endpoint e'])
+
+-- Work with substitutions in the context
+
+
+
 
 
 evalPoint :: Id -> Vert -> Solving s Point
@@ -147,7 +152,7 @@ evalEdge f v u = do
       case d of
         1 -> return $ Just (idT f 1)
         2 -> do
-          let (i , Endpoint e) = getPath v u
+          let (i , Endpoint e) = getBoundary v u
           Type [(a , b) , (c , d)] <- lookupDef f
           return $ Just $ if i == 1 then (if e then b else a) else (if e then d else c)
     2 -> return Nothing
@@ -181,7 +186,8 @@ checkPTerm x as (PTerm f sigma) = do
 
 -- Return only those partial substitutions such that x is one of as
 filterPSubsts :: Vert -> [Point] -> [PTerm] -> Solving s [PTerm]
-filterPSubsts x as pts = mapM (checkPTerm x as) pts >>= return . catMaybes
+filterPSubsts x as pts = catMaybes <$> mapM (checkPTerm x as) pts
+  -- <*> to separate multiple arguments
 
 equalVertex :: Vert -> Vert -> CVar -> CVar -> Solving s ()
 equalVertex v u = addBinaryConstraint $ \x y -> do
@@ -189,8 +195,8 @@ equalVertex v u = addBinaryConstraint $ \x y -> do
   ys <- lookupDom y
 
   -- Find all the points that v could be with the partial substitutions in the domain
-  pxv <- mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! v)) xs >>= return . nub . concat
-  pyu <- mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! u)) ys >>= return . nub . concat
+  pxv <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! v)) xs
+  pyu <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! u)) ys
   let ps = intersect pxv pyu
 
   xs' <- filterPSubsts v ps xs
@@ -256,6 +262,9 @@ checkPTermEdge i e fs (PTerm f sigma) = do
                                                             (z `below` y) --> any (w `below`) us'
                                                           ) ws) sigma''
           return $ Just (PTerm f propagate)
+
+
+
 
 
 filterPSubstsEdge :: IVar -> Endpoint -> [Term] -> [PTerm] -> Solving s [PTerm]
@@ -368,6 +377,8 @@ comp (Type [(Term k r, Term l s), (m,n)]) = do
   lookupDom sidej1 >>= trace . show
   lookupDom back >>= trace . show
 
+  -- We don't have to check the vertex constraints anymore once we check the edges
+  emptyConstraints
 
   -- Ensure that the edges match
   equalEdge 1 e0 1 e0 sidei0 sidej0
@@ -418,50 +429,112 @@ comp goal = do
   return []
 
 
+filterPTerm1 :: (Vert , Vert) -> [Term] -> PTerm -> Solving s (Maybe PTerm)
+filterPTerm1 (x , y) fs (PTerm f sigma) = do
+  fdim <- dimTerm f
+  case fdim of
+    0 -> if (emptT f `elem` fs) then return $ Just (PTerm f sigma) else return Nothing
+    _ -> do
+      let vs = sigma ! x
+      let us = sigma ! y
+
+      vs' <- filterM (\v -> anyM (\u -> evalEdge f v u >>= \g ->
+                                     case g of
+                                       Just g' -> return (g' `elem` fs)
+                                       Nothing -> return False
+                                     ) us) vs
+      us' <- filterM (\u -> anyM (\v -> evalEdge f v u >>= \g ->
+                                     case g of
+                                       Just g' -> return (g' `elem` fs)
+                                       Nothing -> return False
+                                     ) vs') us
+      if null vs' || null us'
+        then return Nothing
+        else do
+          let sigma' = Map.insert x vs' sigma
+          let sigma'' = Map.insert x vs' sigma'
+          let propagate = Map.mapWithKey (\z ws -> filter (\w ->
+                                                            (z `above` x) --> any (w `above`) vs' &&
+                                                            (z `below` x) --> any (w `below`) vs' &&
+                                                            (z `above` y) --> any (w `above`) us' &&
+                                                            (z `below` y) --> any (w `below`) us'
+                                                          ) ws) sigma''
+          return $ Just (PTerm f propagate)
+
+
+evalFace :: Term -> Vert -> Solving s Point
+evalFace (Term f s) x = do
+  goal <- gets goal
+  let sigma = tele2Subst s (dim goal - 1)
+  trace $ show sigma
+
+  return $ Point "asd"
+
+evalType :: Type -> Vert -> Solving s Point
+evalType (Type ((a , b) : _)) (Vert (Endpoint e : es)) =
+  evalFace (if e then b else a) (Vert es)
+
+-- evalType (Type [(Term a _ , Term b _)]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
+-- evalType (Type [(Term a _ , Term b _) , _]) (Vert [Endpoint e , Endpoint e']) =
+--   evalPoint (if e then b else a) (Vert [Endpoint e'])
+-- evalType (Type [(Term a _ , Term b _) , _ , _]) (Vert (Endpoint e : es)) =
+--   evalPoint (if e then b else a) (Vert es)
+
+
+evalType1 :: Type -> (Vert , Vert) -> Solving s Term
+-- evalType1 (Type [(Term a _ , Term b _)]) (Vert [Endpoint e]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
+evalType1 (Type fs) (x , y) = do
+  let (i , Endpoint e) = getBoundary x y
+  trace $ show i ++ "|" ++ show e
+  let res = (if e then snd else fst) (fs !! (i - 1))
+  trace $ show res
+  return res
 
 
 simpleSolve :: Decl -> Solving s [Term]
 simpleSolve (Decl id ty) = do
   goal <- gets goal
-  trace $ "TRY TO FIT " ++ id
+  -- trace $ "TRY TO FIT " ++ id
 
   cvar <- newCVar [(createPTerm (Decl id ty) (dim goal))]
 
-  case dim goal of
-    _ -> do
-      let points = createPoset (dim goal)
-      mapM (\x -> do
-              -- addConstraint cvar (
-              --   do
-                  [sigma] <- lookupDom cvar
-                  v <- evalType goal x
-                  res <- checkPTerm x [v] sigma
-                  trace $ show res
-                  case res of
-                    Nothing -> guard False
-                    Just sigma' -> when (sigma /= sigma') (update cvar [sigma'])
-                                      -- )
-          ) points
-    2 -> do
-      let points = createPoset (dim goal)
-      let edges = concat $ map (\v -> [ (v , u) | u <- points, v `above` u , vdiff v u == 1 ]) points
-      trace $ show edges
-      return []
+  let points = createPoset (dim goal)
 
-  -- mapM (\x -> do
-  --          [sigma] <- lookupDom cvar
-  --          v <- evalType goal x
-  --          res <- checkPTermEdge x [v] sigma
-  --          trace $ show res
-  --          case res of
-  --            Nothing -> guard False
-  --            Just sigma' -> update cvar [sigma']
-  --      ) edges
+  mapM (\x -> do
+          a <- evalType goal x
+          -- addConstraint cvar $ do
+          [sigma] <- lookupDom cvar
+          res <- checkPTerm x [a] sigma
+          case res of
+            Nothing -> guard False
+            Just sigma' -> when (sigma /= sigma') (update cvar [sigma'])
+      ) points
+
+  -- when (dim goal > 1) (do
+  let edges = concat $ map (\v -> [ (v , u) | u <- points, v `above` u , vdiff v u == 1 ]) points
+  trace $ show edges
+
+  mapM (\f -> do
+            v <- evalType1 goal f
+            -- addConstraint cvar $ do
+            [sigma] <- lookupDom cvar
+            res <- filterPTerm1 f [v] sigma
+            trace $ show res
+            case res of
+              Nothing -> guard False
+              Just sigma' -> update cvar [sigma']
+        ) edges
+                      -- )
 
   lookupDom cvar >>= trace . show
 
   res <- firstSubst cvar >>= \(PTerm id sigma) -> return $ Term id ((subst2Tele . fstSubst) sigma)
   return [res]
+
+
+
+
+
 
 
 solver :: Cube -> Type -> IO ()
@@ -473,7 +546,6 @@ solver cube goal = do
 
   -- RUN SIMPLE SOLVE FOR ALL FACES
   simp <- mapM (\face -> runExceptT $ runStateT (simpleSolve face) (mkSEnv cube goal)) (constr cube)
-
 
   -- RUN KAN COMPOSITION SOLVER
   if not (null (rights simp))
