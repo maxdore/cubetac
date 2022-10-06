@@ -17,28 +17,27 @@ import qualified Debug.Trace as D
 import Prel
 import Data
 import Poset
-import Subst
-
--- Check fibrancy of extension types: cofibration only mentions interval variables which are bound in the extension type https://discord.com/channels/954089080197611551/1007614554647306240/1010200102469632010
--- TODO IMPLEMENT!
 
 
+-- Constraint variables are just indices
 type CVar = Int
 
+-- The Solving monad
 type Solving s a = StateT (SEnv s) (ExceptT String IO) a
+
+-- For each constraint variable we save the constraints that still need to be checked as well as the current domain
+data CVarInfo a = CVarInfo { delayedConstraints :: Solving a (), values :: [PTerm] }
 
 data SEnv s =
   SEnv { cube :: Cube
        , goal :: Type
        , varSupply :: Int
-       , varMap :: CVarMap s
+       , varMap :: Map Int (CVarInfo s)
        , verbose :: Bool
        }
 
 mkSEnv c g = SEnv c g 0 Map.empty True
 
-data CVarInfo a = CVarInfo { delayedConstraints :: Solving a (), values :: [PTerm] }
-type CVarMap a = Map Int (CVarInfo a)
 
 trace :: String -> Solving s ()
 trace s = do
@@ -57,11 +56,10 @@ dimTerm id = do
   ty <- lookupDef id
   return $ dim ty
 
-
-vertices :: Solving s [Term]
-vertices = do
-  cube <- gets cube
-  return [ emptT id | Decl id ty <- constr cube , dim ty == 0 ]
+-- vertices :: Solving s [Term]
+-- vertices = do
+--   cube <- gets cube
+--   return [ emptT id | Decl id ty <- constr cube , dim ty == 0 ]
 
 
 
@@ -134,159 +132,159 @@ addBinaryConstraint f x y = do
 
 
 
-evalPoint :: Id -> Vert -> Solving s Term
-evalPoint f (Vert []) = return $ emptT f
-evalPoint f (Vert [Endpoint e]) = do
-  Type [(Term a _ , Term b _)] <- lookupDef f
-  return $ emptT (if e then b else a)
-evalPoint f (Vert [Endpoint e , Endpoint e']) = do
-  Type [(Term a _ , Term b _) , _] <- lookupDef f
-  evalPoint (if e then b else a) (Vert [Endpoint e'])
+-- evalPoint :: Id -> Vert -> Solving s Term
+-- evalPoint f (Vert []) = return $ emptT f
+-- evalPoint f (Vert [Endpoint e]) = do
+--   Type [(Term a _ , Term b _)] <- lookupDef f
+--   return $ emptT (if e then b else a)
+-- evalPoint f (Vert [Endpoint e , Endpoint e']) = do
+--   Type [(Term a _ , Term b _) , _] <- lookupDef f
+--   evalPoint (if e then b else a) (Vert [Endpoint e'])
 
-evalEdge :: Id -> Vert -> Vert -> Solving s (Maybe Term)
-evalEdge f v u = do
-  case vdiff v u of
-    0 -> evalPoint f v >>= \(Term a (Tele [])) -> return (Just (emptT a))
-    1 -> do
-      d <- dimTerm f
-      case d of
-        1 -> return $ Just (idT f 1)
-        2 -> do
-          let (i , Endpoint e) = getBoundary v u
-          Type [(a , b) , (c , d)] <- lookupDef f
-          return $ Just $ if i == 1 then (if e then b else a) else (if e then d else c)
-    2 -> return Nothing
-
-
--- Vertex constraints
---   restrict sigma!x to [ | y <- sigma ! x , evalPoint f y == a ]
---   propagate down...
-checkPTerm :: Vert -> [Term] -> PTerm -> Solving s (Maybe PTerm)
-checkPTerm x as (PTerm f sigma) = do
-  fdim <- dimTerm f
-  case fdim of
-    0 -> if (emptT f `elem` as) then return $ Just (PTerm f sigma) else return Nothing
-    _ -> do
-      vs <- filterM (\v -> evalPoint f v >>= \b -> return (b `elem` as)) (sigma ! x)
-      if null vs
-        then return Nothing
-        else do
-          let sigma' = Map.insert x vs sigma
-          -- TODO DOES PROPAGATION NEEDS TO BE RECURSIVE?
-          let propagate = Map.mapWithKey (\y us -> filter (\u ->
-                                                            (y `above` x) --> any (u `above`) vs &&
-                                                            (y `below` x) --> any (u `below`) vs
-                                                          ) us) sigma'
-          return $ Just (PTerm f propagate)
+-- evalEdge :: Id -> Vert -> Vert -> Solving s (Maybe Term)
+-- evalEdge f v u = do
+--   case vdiff v u of
+--     0 -> evalPoint f v >>= \(Term a _) -> return (Just (Term a (constSubst 2)))
+--     1 -> do
+--       d <- dimTerm f
+--       case d of
+--         1 -> return $ Just (idT f 1)
+--         2 -> do
+--           let (i , Endpoint e) = getBoundary v u
+--           Type [(a , b) , (c , d)] <- lookupDef f
+--           return $ Just $ if i == 1 then (if e then b else a) else (if e then d else c)
+--     2 -> return Nothing
 
 
-
-
-
-
--- Return only those partial substitutions such that x is one of as
-filterPSubsts :: Vert -> [Term] -> [PTerm] -> Solving s [PTerm]
-filterPSubsts x as pts = catMaybes <$> mapM (checkPTerm x as) pts
-  -- <*> to separate multiple arguments
-
-equalVertex :: Vert -> Vert -> CVar -> CVar -> Solving s ()
-equalVertex v u = addBinaryConstraint $ \x y -> do
-  xs <- lookupDom x
-  ys <- lookupDom y
-
-  -- Find all the points that v could be with the partial substitutions in the domain
-  pxv <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! v)) xs
-  pyu <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! u)) ys
-  let ps = intersect pxv pyu
-
-  xs' <- filterPSubsts v ps xs
-  ys' <- filterPSubsts u ps ys
-  guard $ not $ null xs'
-  guard $ not $ null ys'
-  when (xs' /= xs) $ update x xs'
-  when (ys' /= ys) $ update y ys'
-
-equalVertices :: CVar -> CVar -> [(Vert , Vert)] -> Solving s ()
-equalVertices x y vus = mapM (\(v,u) -> equalVertex v u x y) vus >> return ()
-
-
-
-
--- Edge constraints
-
-getEdges :: PTerm -> IVar -> Endpoint -> Solving s [Term]
-getEdges ps i e = do
-  -- trace $ show ps ++ " | " ++ show i ++ "@" ++ show e
-  let PTerm f sigma = ps
-  let vs = sigma ! Vert (map (\j -> if i /= j then e else e0) [1..2])
-  let us = sigma ! Vert (map (\j -> if i /= j then e else e1) [1..2])
-  -- trace $ show vs ++ " --> " ++ show us
-
-  mapM (\v -> mapM (evalEdge f v) (filter (`below` v) us)) vs >>= return . catMaybes . concat
-
-
--- TODO COMPUTE BOUNDARY ONLY ONCE BY KEEPING TRACK OF WHICH ASSIGNMENTS GAVE RISE TO CERTAIN BOUNDARY
-checkPTermEdge :: IVar -> Endpoint -> [Term] -> PTerm -> Solving s (Maybe PTerm)
-checkPTermEdge i e fs (PTerm f sigma) = do
-  fdim <- dimTerm f
-  case fdim of
-    0 -> if (emptT f `elem` fs) then return $ Just (PTerm f sigma) else return Nothing
-    _ -> do
-      -- trace $ show "Restrict " ++ show (f , sigma) ++ "|" ++ show i ++ "@" ++ show e ++ " to boundaries " ++ show fs
-
-      let x = Vert (map (\j -> if i /= j then e else e0) [1..2])
-      let y = Vert (map (\j -> if i /= j then e else e1) [1..2])
-
-      let vs = sigma ! x
-      let us = sigma ! y
-
-      vs' <- filterM (\v -> anyM (\u -> evalEdge f v u >>= \g ->
-                                     case g of
-                                       Just g' -> return (g' `elem` fs)
-                                       Nothing -> return False
-                                     ) us) vs
-      us' <- filterM (\u -> anyM (\v -> evalEdge f v u >>= \g ->
-                                     case g of
-                                       Just g' -> return (g' `elem` fs)
-                                       Nothing -> return False
-                                     ) vs') us
-      if null vs' || null us'
-        then return Nothing
-        else do
-          let sigma' = Map.insert x vs' sigma
-          let sigma'' = Map.insert x vs' sigma'
-          let propagate = Map.mapWithKey (\z ws -> filter (\w ->
-                                                            (z `above` x) --> any (w `above`) vs' &&
-                                                            (z `below` x) --> any (w `below`) vs' &&
-                                                            (z `above` y) --> any (w `above`) us' &&
-                                                            (z `below` y) --> any (w `below`) us'
-                                                          ) ws) sigma''
-          return $ Just (PTerm f propagate)
+-- -- Vertex constraints
+-- --   restrict sigma!x to [ | y <- sigma ! x , evalPoint f y == a ]
+-- --   propagate down...
+-- checkPTerm :: Vert -> [Term] -> PTerm -> Solving s (Maybe PTerm)
+-- checkPTerm x as (PTerm f sigma) = do
+--   fdim <- dimTerm f
+--   case fdim of
+--     0 -> if (emptT f `elem` as) then return $ Just (PTerm f sigma) else return Nothing
+--     _ -> do
+--       vs <- filterM (\v -> evalPoint f v >>= \b -> return (b `elem` as)) (sigma ! x)
+--       if null vs
+--         then return Nothing
+--         else do
+--           let sigma' = Map.insert x vs sigma
+--           -- TODO DOES PROPAGATION NEEDS TO BE RECURSIVE?
+--           let propagate = Map.mapWithKey (\y us -> filter (\u ->
+--                                                             (y `above` x) --> any (u `above`) vs &&
+--                                                             (y `below` x) --> any (u `below`) vs
+--                                                           ) us) sigma'
+--           return $ Just (PTerm f propagate)
 
 
 
 
 
-filterPSubstsEdge :: IVar -> Endpoint -> [Term] -> [PTerm] -> Solving s [PTerm]
-filterPSubstsEdge i e fs ss = mapM (checkPTermEdge i e fs) ss >>= return . catMaybes
 
-equalEdge :: IVar -> Endpoint -> IVar -> Endpoint -> CVar -> CVar -> Solving s ()
-equalEdge i e j e' = addBinaryConstraint $ \x y -> do
-  xs <- lookupDom x
-  ys <- lookupDom y
+-- -- Return only those partial substitutions such that x is one of as
+-- filterPSubsts :: Vert -> [Term] -> [PTerm] -> Solving s [PTerm]
+-- filterPSubsts x as pts = catMaybes <$> mapM (checkPTerm x as) pts
+--   -- <*> to separate multiple arguments
 
-  exs <- mapM (\sigma -> getEdges sigma i e) xs >>= return . nub . concat
-  eys <- mapM (\sigma -> getEdges sigma j e') ys >>= return . nub . concat
+-- equalVertex :: Vert -> Vert -> CVar -> CVar -> Solving s ()
+-- equalVertex v u = addBinaryConstraint $ \x y -> do
+--   xs <- lookupDom x
+--   ys <- lookupDom y
 
-  -- TODO rename to fs to avoid clash with endpoint lists es
-  let es = intersect exs eys
+--   -- Find all the points that v could be with the partial substitutions in the domain
+--   pxv <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! v)) xs
+--   pyu <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! u)) ys
+--   let ps = intersect pxv pyu
 
-  xs' <- filterPSubstsEdge i e es xs
-  ys' <- filterPSubstsEdge j e' es ys
-  guard $ not $ null xs'
-  guard $ not $ null ys'
-  when (xs' /= xs) $ update x xs'
-  when (ys' /= ys) $ update y ys'
+--   xs' <- filterPSubsts v ps xs
+--   ys' <- filterPSubsts u ps ys
+--   guard $ not $ null xs'
+--   guard $ not $ null ys'
+--   when (xs' /= xs) $ update x xs'
+--   when (ys' /= ys) $ update y ys'
+
+-- equalVertices :: CVar -> CVar -> [(Vert , Vert)] -> Solving s ()
+-- equalVertices x y vus = mapM (\(v,u) -> equalVertex v u x y) vus >> return ()
+
+
+
+
+-- -- Edge constraints
+
+-- getEdges :: PTerm -> IVar -> Endpoint -> Solving s [Term]
+-- getEdges ps i e = do
+--   -- trace $ show ps ++ " | " ++ show i ++ "@" ++ show e
+--   let PTerm f sigma = ps
+--   let vs = sigma ! Vert (map (\j -> if i /= j then e else e0) [1..2])
+--   let us = sigma ! Vert (map (\j -> if i /= j then e else e1) [1..2])
+--   -- trace $ show vs ++ " --> " ++ show us
+
+--   mapM (\v -> mapM (evalEdge f v) (filter (`below` v) us)) vs >>= return . catMaybes . concat
+
+
+-- -- TODO COMPUTE BOUNDARY ONLY ONCE BY KEEPING TRACK OF WHICH ASSIGNMENTS GAVE RISE TO CERTAIN BOUNDARY
+-- checkPTermEdge :: IVar -> Endpoint -> [Term] -> PTerm -> Solving s (Maybe PTerm)
+-- checkPTermEdge i e fs (PTerm f sigma) = do
+--   fdim <- dimTerm f
+--   case fdim of
+--     0 -> if (emptT f `elem` fs) then return $ Just (PTerm f sigma) else return Nothing
+--     _ -> do
+--       -- trace $ show "Restrict " ++ show (f , sigma) ++ "|" ++ show i ++ "@" ++ show e ++ " to boundaries " ++ show fs
+
+--       let x = Vert (map (\j -> if i /= j then e else e0) [1..2])
+--       let y = Vert (map (\j -> if i /= j then e else e1) [1..2])
+
+--       let vs = sigma ! x
+--       let us = sigma ! y
+
+--       vs' <- filterM (\v -> anyM (\u -> evalEdge f v u >>= \g ->
+--                                      case g of
+--                                        Just g' -> return (g' `elem` fs)
+--                                        Nothing -> return False
+--                                      ) us) vs
+--       us' <- filterM (\u -> anyM (\v -> evalEdge f v u >>= \g ->
+--                                      case g of
+--                                        Just g' -> return (g' `elem` fs)
+--                                        Nothing -> return False
+--                                      ) vs') us
+--       if null vs' || null us'
+--         then return Nothing
+--         else do
+--           let sigma' = Map.insert x vs' sigma
+--           let sigma'' = Map.insert x vs' sigma'
+--           let propagate = Map.mapWithKey (\z ws -> filter (\w ->
+--                                                             (z `above` x) --> any (w `above`) vs' &&
+--                                                             (z `below` x) --> any (w `below`) vs' &&
+--                                                             (z `above` y) --> any (w `above`) us' &&
+--                                                             (z `below` y) --> any (w `below`) us'
+--                                                           ) ws) sigma''
+--           return $ Just (PTerm f propagate)
+
+
+
+
+
+-- filterPSubstsEdge :: IVar -> Endpoint -> [Term] -> [PTerm] -> Solving s [PTerm]
+-- filterPSubstsEdge i e fs ss = mapM (checkPTermEdge i e fs) ss >>= return . catMaybes
+
+-- equalEdge :: IVar -> Endpoint -> IVar -> Endpoint -> CVar -> CVar -> Solving s ()
+-- equalEdge i e j e' = addBinaryConstraint $ \x y -> do
+--   xs <- lookupDom x
+--   ys <- lookupDom y
+
+--   exs <- mapM (\sigma -> getEdges sigma i e) xs >>= return . nub . concat
+--   eys <- mapM (\sigma -> getEdges sigma j e') ys >>= return . nub . concat
+
+--   -- TODO rename to fs to avoid clash with endpoint lists es
+--   let es = intersect exs eys
+
+--   xs' <- filterPSubstsEdge i e es xs
+--   ys' <- filterPSubstsEdge j e' es ys
+--   guard $ not $ null xs'
+--   guard $ not $ null ys'
+--   when (xs' /= xs) $ update x xs'
+--   when (ys' /= ys) $ update y ys'
 
 
 firstSubst :: CVar -> Solving s PTerm
@@ -300,233 +298,8 @@ firstSubst var = do
 -- What to do with degeneracies equivalent to a face? e.g.
 -- "seg" fromList [(0,[0]),(1,[0])]
 -- is the same as its left face
--- comp :: Type -> Solving s [Term]
--- comp (Type [(Term a (Tele []) , Term b (Tele []))]) = do
---   let gdim = 1
---   Cube cube <- gets cube
 
---   let pterms = map (\f -> createPTerm f gdim) cube
-
---   side0 <- filterPSubsts (Vert [e1]) [Point a] pterms >>= newCVar
---   side1 <- filterPSubsts (Vert [e1]) [Point b] pterms >>= newCVar
---   back <- newCVar pterms
-
---   lookupDom side0 >>= trace . show
---   lookupDom side1 >>= trace . show
---   lookupDom back >>= trace . show
-
---   equalVertices side0 back [(Vert [e0] , Vert [e0])]
---   equalVertices side1 back [(Vert [e0] , Vert [e1])]
-
---   lookupDom side0 >>= trace . show
---   lookupDom side1 >>= trace . show
---   lookupDom back >>= trace . show
-
---   res <- mapM (\s -> firstSubst s >>= \(PTerm f sigma) -> return $ Term f ((subst2Tele . fstSubst) sigma))
---     (side0 : side1 : back : [])
-
---   lookupDom side0 >>= trace . show
---   lookupDom side1 >>= trace . show
---   lookupDom back >>= trace . show
-
---   return [Comp (Box [((res !! 0) , res !! 1)] (res !! 2))]
-
-
--- comp (Type [(Term k r, Term l s), (m,n)]) = do
---   let gdim = 2
---   Cube cube <- gets cube
-
---   -- Initialize the variables and domains
---   let pterms = map (\f -> createPTerm f gdim) cube
-
---   v00 <- evalPoint k (Vert [e0])
---   v01 <- evalPoint k (Vert [e1])
---   v10 <- evalPoint l (Vert [e0])
---   v11 <- evalPoint l (Vert [e1])
-
---   sidei0 <- filterPSubsts (Vert [e1,e0]) [v00] pterms >>= filterPSubsts (Vert [e1,e1]) [v01] >>= filterPSubstsEdge 2 e1 [Term k r] >>= newCVar
---   sidei1 <- filterPSubsts (Vert [e1,e0]) [v10] pterms >>= filterPSubsts (Vert [e1,e1]) [v11] >>= filterPSubstsEdge 2 e1 [Term l s] >>= newCVar
---   sidej0 <- filterPSubsts (Vert [e1,e0]) [v00] pterms >>= filterPSubsts (Vert [e1,e1]) [v10] >>= filterPSubstsEdge 2 e1 [m] >>= newCVar
---   sidej1 <- filterPSubsts (Vert [e1,e0]) [v01] pterms >>= filterPSubsts (Vert [e1,e1]) [v11] >>= filterPSubstsEdge 2 e1 [n] >>= newCVar
---   back <- newCVar pterms
-
---   trace $ "INITIAL DOMAINS"
---   lookupDom sidei0 >>= trace . show
---   lookupDom sidei1 >>= trace . show
---   lookupDom sidej0 >>= trace . show
---   lookupDom sidej1 >>= trace . show
---   lookupDom back >>= trace . show
-
-
---   -- Ensure that all vertices coincide
-
---   equalVertices sidei0 back [(Vert [e0, e0] , Vert [e0 , e0]) , (Vert [e0,e1] , Vert [e0,e1])]
---   equalVertices sidei1 back [(Vert [e0, e0] , Vert [e1 , e0]) , (Vert [e0,e1] , Vert [e1,e1])]
---   equalVertices sidej0 back [(Vert [e0, e0] , Vert [e0 , e0]) , (Vert [e0,e1] , Vert [e1,e0])]
---   equalVertices sidej1 back [(Vert [e0, e0] , Vert [e0 , e1]) , (Vert [e0,e1] , Vert [e1,e1])]
-
---   equalVertices sidei0 sidej0 [(Vert [e0, e0] , Vert [e0 , e0]) , (Vert [e1,e0] , Vert [e1,e0])]
---   equalVertices sidei1 sidej0 [(Vert [e0, e0] , Vert [e0 , e1]) , (Vert [e1,e0] , Vert [e1,e1])]
---   equalVertices sidei0 sidej1 [(Vert [e0, e1] , Vert [e0 , e0]) , (Vert [e1,e1] , Vert [e1,e0])]
---   equalVertices sidei1 sidej1 [(Vert [e0, e1] , Vert [e0 , e1]) , (Vert [e1,e1] , Vert [e1,e1])]
-
---   trace "AFTER VERTEX MATCH"
---   lookupDom sidei0 >>= trace . show
---   lookupDom sidei1 >>= trace . show
---   lookupDom sidej0 >>= trace . show
---   lookupDom sidej1 >>= trace . show
---   lookupDom back >>= trace . show
-
---   -- We don't have to check the vertex constraints anymore once we check the edges
---   emptyConstraints
-
---   -- Ensure that the edges match
---   equalEdge 1 e0 1 e0 sidei0 sidej0
---   equalEdge 1 e1 1 e0 sidei0 sidej1
---   equalEdge 1 e0 1 e1 sidei1 sidej0
---   equalEdge 1 e1 1 e1 sidei1 sidej1
-
---   equalEdge 2 e0 2 e0 sidei0 back
---   equalEdge 2 e0 2 e1 sidei1 back
---   equalEdge 2 e0 1 e0 sidej0 back
---   equalEdge 2 e0 1 e1 sidej1 back
-
---   trace "AFTER EDGES MATCH"
---   lookupDom sidei0 >>= trace . show
---   lookupDom sidei1 >>= trace . show
---   lookupDom sidej0 >>= trace . show
---   lookupDom sidej1 >>= trace . show
---   lookupDom back >>= trace . show
-
---   -- mapM firstSubst (sidei0 : sidei1 : sidej0 : sidej1 : back : [])
-
---   res <- mapM (\s -> firstSubst s >>= \(PTerm f sigma) -> return $ Term f ((subst2Tele . fstSubst) sigma))
---     (sidei0 : sidei1 : sidej0 : sidej1 : back : [])
-
---   trace "FIRST SOLUTION"
---   lookupDom sidei0 >>= trace . show
---   lookupDom sidei1 >>= trace . show
---   lookupDom sidej0 >>= trace . show
---   lookupDom sidej1 >>= trace . show
---   lookupDom back >>= trace . show
-
---   return [Comp (Box [((res !! 0) , res !! 1) , ((res !! 2) , res !! 3)] (res !! 4))]
-
-
-
--- comp (Type [(Term k _, Comp (Box [(Term f _ , Term g _)] b)), (m,n)]) = do
---   let gdim = 2
---   Cube cube <- gets cube
---   let pterms = map (\f -> createPTerm f gdim) cube
-
---   -- TODO UNFOLD HCOMP
---   return []
-
--- comp goal = do
-
---   return []
-
-
-filterPTerm1 :: [Vert] -> [Term] -> PTerm -> Solving s (Maybe PTerm)
-filterPTerm1 [x , y] fs (PTerm f sigma) = do
-  fdim <- dimTerm f
-  case fdim of
-    0 -> if (emptT f `elem` fs) then return $ Just (PTerm f sigma) else return Nothing
-    _ -> do
-      let vs = sigma ! x
-      let us = sigma ! y
-
-      vs' <- filterM (\v -> anyM (\u -> evalEdge f v u >>= \g ->
-                                     case g of
-                                       Just g' -> return (g' `elem` fs)
-                                       Nothing -> return False
-                                     ) us) vs
-      us' <- filterM (\u -> anyM (\v -> evalEdge f v u >>= \g ->
-                                     case g of
-                                       Just g' -> return (g' `elem` fs)
-                                       Nothing -> return False
-                                     ) vs') us
-      if null vs' || null us'
-        then return Nothing
-        else do
-          let sigma' = Map.insert x vs' sigma
-          let sigma'' = Map.insert x vs' sigma'
-          let propagate = Map.mapWithKey (\z ws -> filter (\w ->
-                                                            (z `above` x) --> any (w `above`) vs' &&
-                                                            (z `below` x) --> any (w `below`) vs' &&
-                                                            (z `above` y) --> any (w `above`) us' &&
-                                                            (z `below` y) --> any (w `below`) us'
-                                                          ) ws) sigma''
-          return $ Just (PTerm f propagate)
-
-
-evalFace :: Term -> Vert -> Solving s Term
-evalFace (Term f s) x = do
-  goal <- gets goal
-  let sigma = tele2Subst s (dim goal - 1)
-  trace $ show sigma
-
-  return $ emptT "asd"
-
-evalType :: Type -> Vert -> Solving s Term
-evalType (Type ((a , b) : _)) (Vert (Endpoint e : es)) =
-  evalFace (if e then b else a) (Vert es)
-
--- evalType (Type [(Term a _ , Term b _)]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
--- evalType (Type [(Term a _ , Term b _) , _]) (Vert [Endpoint e , Endpoint e']) =
---   evalPoint (if e then b else a) (Vert [Endpoint e'])
--- evalType (Type [(Term a _ , Term b _) , _ , _]) (Vert (Endpoint e : es)) =
---   evalPoint (if e then b else a) (Vert es)
-
-
-evalType1 :: Type -> [Vert] -> Solving s Term
--- evalType1 (Type [(Term a _ , Term b _)]) (Vert [Endpoint e]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
-evalType1 (Type fs) [x , y] = do
-  let (i , Endpoint e) = getBoundary x y
-  trace $ show i ++ "|" ++ show e
-  let res = (if e then snd else fst) (fs !! (i - 1))
-  trace $ show res
-  return res
-
-
-simpleSolve :: Decl -> Solving s [Term]
-simpleSolve (Decl id ty) = do
-  goal <- gets goal
-  trace $ "TRY TO FIT " ++ id
-
-  cvar <- newCVar [(createPTerm (Decl id ty) (dim goal))]
-
-  mapM (\[x] -> do
-          a <- evalType goal x
-          trace $ show a
-          -- addConstraint cvar $ do
-          [sigma] <- lookupDom cvar
-          res <- checkPTerm x [a] sigma
-          case res of
-            Nothing -> guard False
-            Just sigma' -> when (sigma /= sigma') (update cvar [sigma'])
-      ) (getFaces (dim goal) 0)
-
-  trace "VERTICES MATCH"
-  lookupDom cvar >>= trace . show
   
-  -- when (dim goal > 1) (do
-  mapM (\f -> do
-            v <- evalType1 goal f
-            -- addConstraint cvar $ do
-            [sigma] <- lookupDom cvar
-            res <- filterPTerm1 f [v] sigma
-            trace $ show res
-            case res of
-              Nothing -> guard False
-              Just sigma' -> update cvar [sigma']
-        ) (getFaces (dim goal) 1)
-                      -- )
-
-  lookupDom cvar >>= trace . show
-
-  res <- firstSubst cvar >>= \(PTerm id sigma) -> return $ Term id ((subst2Tele . fstSubst) sigma)
-  return [res]
 
 
 
@@ -534,23 +307,25 @@ simpleSolve (Decl id ty) = do
 
 
 
-solver :: Cube -> Type -> IO ()
-solver cube goal = do
-  putStrLn "CUBE"
-  mapM (putStrLn . show) (constr cube)
-  putStrLn "GOAL"
-  putStrLn $ show goal
+-- PUT IN MAIN
 
-  -- RUN SIMPLE SOLVE FOR ALL FACES
-  simp <- mapM (\face -> runExceptT $ runStateT (simpleSolve face) (mkSEnv cube goal)) (constr cube)
+-- solver :: Cube -> Type -> IO ()
+-- solver cube goal = do
+--   putStrLn "CUBE"
+--   mapM (putStrLn . show) (constr cube)
+--   putStrLn "GOAL"
+--   putStrLn $ show goal
 
-  -- RUN KAN COMPOSITION SOLVER
-  if not (null (rights simp))
-    then do
-      putStrLn "FOUND SIMPLE SOLUTIONS"
-      (putStrLn . show) (concat (map fst (rights simp)))
-    else do
-      -- res <- runExceptT $ runStateT (comp goal) (mkSEnv cube goal)
-      return ()
+--   -- RUN SIMPLE SOLVE FOR ALL FACES
+--   simp <- mapM (\face -> runExceptT $ runStateT (simpleSolve face) (mkSEnv cube goal)) (constr cube)
 
-  return ()
+--   -- RUN KAN COMPOSITION SOLVER
+--   if not (null (rights simp))
+--     then do
+--       putStrLn "FOUND SIMPLE SOLUTIONS"
+--       (putStrLn . show) (concat (map fst (rights simp)))
+--     else do
+--       -- res <- runExceptT $ runStateT (comp goal) (mkSEnv cube goal)
+--       return ()
+
+--   return ()

@@ -1,6 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-module Subst where
+module Formula where
 
 import Data.List
 import qualified Data.Map as Map

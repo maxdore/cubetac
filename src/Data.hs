@@ -29,6 +29,12 @@ instance Fct Subst where
   coddim = length . toBools . snd . head . Map.toList
 
 
+-- Constructor for a constant substitution
+constSubst :: IVar -> Subst
+constSubst dim = Map.fromList (map (\x -> (x, Vert [])) (createPoset dim))
+
+
+
 -- Cubes
 
 data Term = Term Id Subst | Comp Box
@@ -41,14 +47,6 @@ data Box = Box [(Term , Term)] Term
 -- instance Show Term where
 --   show (Term id r) = show id ++ " " ++ show r
 --   show (Comp b) = show b -- show sides ++ " " ++ show back
-
--- Constructor for a constant point
-emptT :: Id -> Term
-emptT face = Term face undefined
-
--- Constructor for a 1-path with single variable application
-idT :: Id -> IVar -> Term
-idT face i = Term face undefined
 
 newtype Type = Type { faces :: [(Term, Term)]}
 
@@ -73,6 +71,8 @@ instance Show Cube where
 
 
 
+-- Check fibrancy of extension types: cofibration only mentions interval variables which are bound in the extension type https://discord.com/channels/954089080197611551/1007614554647306240/1010200102469632010
+-- TODO IMPLEMENT!
 
 
 

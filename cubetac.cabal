@@ -27,10 +27,10 @@ library
   exposed-modules:
       Data
       Examples
+      Formula
       Poset
       Prel
       Solver
-      Subst
       Type
   other-modules:
       Paths_cubetac

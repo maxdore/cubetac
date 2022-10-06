@@ -7,8 +7,12 @@ import Data.Map ((!), Map)
 import Prel
 import Data
 import Poset
-import Subst
+import Formula
 
+idSubst = Map.fromList [
+              (Vert [e0] , Vert [e0])
+            , (Vert [e1] , Vert [e1])
+              ]
 
 orSubst , andSubst :: Subst
 orSubst = Map.fromList [
@@ -60,35 +64,47 @@ bothTele = Tele [Formula [Disj [Conj 1, Conj 2] , Disj [Conj 1 , Conj 3]]]
 andOrTele = Tele [Formula [Disj [Conj 1, Conj 2]] , Formula [Disj [Conj 1], Disj [Conj 2]]]
 swap = Tele [Formula [Disj [Conj 2]] , Formula [Disj [Conj 1]]]
 
-app1PSubst = Map.fromList [
-              (Vert [e0, e0] , [Vert [e0]])
-            , (Vert [e0, e1] , [Vert [e1]])
-            , (Vert [e1, e0] , [Vert [e0]])
-            , (Vert [e1, e1] , [Vert [e1]])
+app1Subst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0])
+            , (Vert [e0, e1] , Vert [e1])
+            , (Vert [e1, e0] , Vert [e0])
+            , (Vert [e1, e1] , Vert [e1])
               ]
+
+app2Subst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0])
+            , (Vert [e0, e1] , Vert [e1])
+            , (Vert [e1, e0] , Vert [e0])
+            , (Vert [e1, e1] , Vert [e1])
+              ]
+
+
+-- -- Constructor for a 1-path with single variable application
+idT :: Id -> IVar -> Term
+idT face i = Term face undefined
 
 
 int :: Cube
 int = Cube [
     Decl "zero" (Type  [])
   , Decl "one" (Type  [])
-  , Decl "seg" (Type  [(emptT "zero" , emptT "one")])
+  , Decl "seg" (Type  [(Term "zero" (constSubst 2) , Term "one" (constSubst 2))])
            ]
 
-intApp1Term = Term "seg" $ Tele [Formula [Disj [Conj 1]]]
-intApp1Type = Type [(emptT "zero" , emptT "one") , (idT "seg" 1 , idT "seg" 1)]
+intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2
+intApp1Type = Type [(Term "zero" (constSubst 2) , Term "one" (constSubst 2)) , (idT "seg" 1 , idT "seg" 1)]
 
-intAnd2Term = Term "seg" $ Tele [Formula [Disj [Conj 2]]]
-intApp2Type = Type [(idT "seg" 1 , idT "seg" 1) , (emptT "zero" , emptT "one")]
+intAnd2Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 2]]]) 2
+intApp2Type = Type [(Term "seg" app1Subst , Term "seg" app1Subst) , (Term "zero" (constSubst 2) , Term "one" (constSubst 2))]
 
-intAndTerm = Term "seg" $ Tele [Formula [Disj [Conj 1, Conj 2]]]
-intAndType = Type [(emptT "zero" , idT "seg" 1) , (emptT "zero" , idT "seg" 1)]
+intAndTerm = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2]]]) 2
+intAndType = Type [(Term "zero" (constSubst 2) , idT "seg" 1) , (Term "zero" (constSubst 2) , idT "seg" 1)]
 
-intOrTerm = Term "seg" $ Tele [Formula [Disj [Conj 1], Disj [Conj 2]]]
-intOrType = Type [(idT "seg" 1 , emptT "one") , (idT "seg" 1 , emptT "one")]
+intOrTerm = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1], Disj [Conj 2]]]) 2
+intOrType = Type [(Term "seg" app1Subst , Term "one" (constSubst 2)) , (Term "seg" app1Subst , Term "one" (constSubst 2))]
 
 intInv :: Type
-intInv = Type [(emptT "one" , emptT "zero")]
+intInv = Type [(Term "one" (constSubst 2) , Term "zero" (constSubst 2))]
 
 
 
@@ -98,12 +114,12 @@ twopaths = Cube [
     Decl "x"     (Type [])
   , Decl "y"     (Type [])
   , Decl "z"     (Type [])
-  , Decl "f"     (Type [(emptT "x" , emptT "y")])
-  , Decl "g"     (Type [(emptT "y" , emptT "z")])
+  , Decl "f"     (Type [(Term "x" (constSubst 0) , Term "y" (constSubst 0))])
+  , Decl "g"     (Type [(Term "y" (constSubst 0) , Term "z" (constSubst 0))])
            ]
 
 fgfg :: Type
-fgfg = Type [(idT "f" 1, idT "g" 1) , (idT "f" 1, idT "g" 1)]
+fgfg = Type [(Term "f" idSubst, Term "g" idSubst) , (Term "f" idSubst, Term "g" idSubst)]
 
 
 
@@ -112,14 +128,14 @@ triangle = Cube [
     Decl "x"     (Type [])
   , Decl "y"     (Type [])
   , Decl "z"     (Type [])
-  , Decl "f"     (Type [(emptT "x" , emptT "y")])
-  , Decl "g"     (Type [(emptT "y" , emptT "z")])
-  , Decl "h"     (Type [(emptT "x" , emptT "z")])
-  , Decl "phi"   (Type [(idT "f" 1, idT "h" 1) , (emptT "x" , idT "g" 1)])
+  , Decl "f"     (Type [(Term "x" (constSubst 0) , Term "y" (constSubst 0))])
+  , Decl "g"     (Type [(Term "y" (constSubst 0) , Term "z" (constSubst 0))])
+  , Decl "h"     (Type [(Term "x" (constSubst 0) , Term "z" (constSubst 0))])
+  , Decl "phi"   (Type [(Term "f" idSubst, Term "h" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
            ]
 
 triangleSlide :: Type
-triangleSlide = Type [(idT "h" 1, idT "g" 1) , (idT "f" 1, emptT "z")]
+triangleSlide = Type [(Term "h" app1Subst, Term "g" app1Subst) , (Term "f" app1Subst, Term "z" (constSubst 2))]
 
 
 
@@ -129,16 +145,16 @@ composition = Cube [
   , Decl "y"     (Type [])
   , Decl "z"     (Type [])
   , Decl "w"     (Type [])
-  , Decl "p"     (Type [(emptT "x" , emptT "y")])
-  , Decl "q"     (Type [(emptT "y" , emptT "z")])
-  , Decl "r"     (Type [(emptT "z" , emptT "w")])
+  , Decl "p"     (Type [(Term "x" (constSubst 1) , Term "y" (constSubst 1))])
+  , Decl "q"     (Type [(Term "y" (constSubst 1) , Term "z" (constSubst 1))])
+  , Decl "r"     (Type [(Term "z" (constSubst 1) , Term "w" (constSubst 1))])
                    ]
 
 compfiller :: Type
-compfiller = Type [(idT "p" 1, Comp (Box [(emptT "x" , idT "q" 1)] (idT "p" 1))) , (emptT "x" , idT "q" 1)]
+compfiller = Type [(Term "p" app1Subst, Comp (Box [(Term "x" (constSubst 1) , Term "q" app1Subst)] (idT "p" 1))) , (Term "x" (constSubst 2) , Term "q" app1Subst)]
 
 compassoc :: Type
-compassoc = Type [(undefined , undefined) , (emptT "x" , emptT "w")]
+compassoc = Type [(undefined , undefined) , (Term "x" (constSubst 2) , Term "w" (constSubst 2))]
 
 
 -- TODO with more paths to build
@@ -154,13 +170,8 @@ compassoc = Type [(undefined , undefined) , (emptT "x" , emptT "w")]
 loopspace :: Cube
 loopspace = Cube [
     Decl "a"   (Type [])
-  , Decl "p"   (Type [(emptT "a" , emptT "a") , (emptT "a" , emptT "a")])
+  , Decl "p"   (Type [(Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))])
                  ]
 
--- aabb = mkSEnv loopspace2 (Path (Path (Path Point (Face "a") (Face "a")) (App (Face "alpha") [[1]]) (App (Face "alpha") [[1]])) (Face "alpha") (Face "alpha"))
-
--- aabbeasy = mkSEnv loopspace2 (Path (Path (Path Point (Face "a") (Face "a")) (App (Face "alpha") [[1]]) (App (Face "alpha") [[1]])) (Abs (Abs (Face "a"))) (Abs (Abs (Face "a"))))
-
-
 loopAndOr :: Type
-loopAndOr = Type [ (Term "p" andOrTele , emptT "a") , (emptT "a" , emptT "a") , (emptT "a" , emptT "a") ]
+loopAndOr = Type [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
