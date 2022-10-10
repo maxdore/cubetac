@@ -67,18 +67,40 @@ vdiff (Vert (e:es)) (Vert (e':es')) = (if e == e' then 0 else 1) + vdiff (Vert e
 
 -- If v and u have vdiff 1, then getPath yields the boundary prescribed by v and u,
 -- E.g., i=1
-getBoundary :: Vert -> Vert -> (Int , Endpoint)
-getBoundary (Vert (e:es)) (Vert (e':es')) =
-  if e == e'
-    then (1 , e)
-    else let (i , e'') = getBoundary (Vert es) (Vert es') in (i + 1 , e'')
+-- getBoundary :: Vert -> Vert -> (Int , Endpoint)
+-- getBoundary (Vert (e:es)) (Vert (e':es')) =
+--   if e == e'
+--     then (1 , e)
+--     else let (i , e'') = getBoundary (Vert es) (Vert es') in (i + 1 , e'')
+
+
+getFirstCommon :: [Vert] -> (Int , Endpoint)
+getFirstCommon vs =
+  if (all (== True) (map (toBool . head . toBools) vs))
+    then (1 , e1)
+    else if (all (== False) (map (toBool . head . toBools) vs))
+      then (1 , e0)
+      else let (i , e'') = getFirstCommon (map (Vert . tail .toBools) vs) in (i + 1 , e'')
 
 
 
+removeInd :: Vert -> Int -> Vert
+removeInd (Vert (e:es)) 1 = Vert es
+removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
+
+
+-- A gadget is a (direct/correct/plain) n-face of a cube (vertices, lines with
+-- length 1, diamonds with all edges length 1 etc)
+
+-- Implicit that these are images of gadgets
+compGadgetImg :: [[Vert]] -> [[Vert]]
+compGadgetImg [vs] = map singleton vs
+compGadgetImg [vs , us] = [ [v , u] | v <- vs , u <- us , v `above` u ]
+compGadgetImg [vs , us , ts , ss] = [ [v , u , t , s ] | v <- vs , u <- us , v `above` u , t <- ts , v `above` t , s <- ss , u `above` s, t `above` s ]
 
 
 
-
-
+reconstrPMap :: [Vert] -> Map Vert Vert
+reconstrPMap vs = Map.fromList (zip (createPoset (log2 (length vs))) vs)
 
 

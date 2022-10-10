@@ -25,11 +25,13 @@ source-repository head
 
 library
   exposed-modules:
+      CompSolver
       Data
       Examples
       Formula
       Poset
       Prel
+      SimpleSolver
       Solver
       Type
   other-modules:

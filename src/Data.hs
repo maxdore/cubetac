@@ -33,6 +33,10 @@ instance Fct Subst where
 constSubst :: IVar -> Subst
 constSubst dim = Map.fromList (map (\x -> (x, Vert [])) (createPoset dim))
 
+idSubst = Map.fromList [
+              (Vert [e0] , Vert [e0])
+            , (Vert [e1] , Vert [e1])
+              ]
 
 
 -- Cubes
@@ -48,20 +52,20 @@ data Box = Box [(Term , Term)] Term
 --   show (Term id r) = show id ++ " " ++ show r
 --   show (Comp b) = show b -- show sides ++ " " ++ show back
 
-newtype Type = Type { faces :: [(Term, Term)]}
+newtype Boundary = Boundary { faces :: [(Term, Term)]}
 
-instance Show Type where
-  show (Type ss) = show ss
+instance Show Boundary where
+  show (Boundary ss) = show ss
 
-dim :: Type -> Int
+dim :: Boundary -> Int
 dim = length . faces
 
-data Decl = Decl Id Type
+data Decl = Decl Id Boundary
 
 instance Show Decl where
   show (Decl id ty) = show id ++ " : " ++ show ty
 
-decl2pair :: Decl -> (Id , Type)
+decl2pair :: Decl -> (Id , Boundary)
 decl2pair (Decl id ty) = (id , ty)
 
 newtype Cube = Cube { constr :: [Decl]}
@@ -127,3 +131,11 @@ createPTerm (Decl id ty) gdim =
   let parts = map (\v -> (v , img)) (createPoset gdim) in
   PTerm id (Map.fromList parts)
 
+
+-- Given a potential substitution, restrict the values of x to vs
+-- and make sure that the map is still a poset map
+updatePSubst :: PSubst -> Vert -> [Vert] -> PSubst
+updatePSubst sigma x vs = Map.mapWithKey (\y us -> filter (\u ->
+                                                        (y `above` x) --> any (u `above`) vs &&
+                                                        (y `below` x) --> any (u `below`) vs
+                                                      ) us) (Map.insert x vs sigma)
