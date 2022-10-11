@@ -23,6 +23,12 @@ andSubst = Map.fromList [
             , (Vert [e1, e0] , Vert [e0])
             , (Vert [e1, e1] , Vert [e1])
               ]
+redSubst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0])
+            , (Vert [e0, e1] , Vert [e0])
+            , (Vert [e1, e0] , Vert [e1])
+            , (Vert [e1, e1] , Vert [e1])
+              ]
 
 bothSubst = Map.fromList [
               (Vert [e0, e0, e0] , Vert [e0])
@@ -153,15 +159,6 @@ compassoc :: Boundary
 compassoc = Boundary [(undefined , undefined) , (Term "x" (constSubst 2) , Term "w" (constSubst 2))]
 
 
--- TODO with more paths to build
-      -- ________
-      -- |      |
-      -- |      |
-      -- - - - -
-      -- |      |
-      -- |      |
-      -- - - - -
-
 
 loopspace :: Cube
 loopspace = Cube [
@@ -169,5 +166,9 @@ loopspace = Cube [
   , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
                  ]
 
-loopAndOr :: Boundary
+loopAndOr , loopAndOr' , loop4Cube :: Boundary
 loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
+
+loopAndOr' = Boundary [ (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,(Term "p" andOrSubst , Term "a" (constSubst 2))  ]
+
+loop4Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ]

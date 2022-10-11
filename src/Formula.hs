@@ -2,7 +2,6 @@ module Formula where
 
 import Data.List
 import qualified Data.Map as Map
-import Data.Map ((!), Map)
 
 import Prel
 import Data
@@ -24,20 +23,20 @@ newtype Disj = Disj {literals :: [Conj]}
   deriving (Eq , Ord)
 
 instance Show Disj where
-  show (Disj is) = "(" ++ (concat $ intersperse " /\\ " (map show is)) ++ ")"
+  show (Disj is) = "(" ++ intercalate " /\\ " (map show is) ++ ")"
 
 newtype Formula = Formula {clauses :: [Disj]}
   deriving (Eq , Ord)
 
 instance Show Formula where
-  show (Formula cs) = "(" ++ (concat $ intersperse " \\/ " (map show cs)) ++ ")"
+  show (Formula cs) = "(" ++ intercalate " \\/ " (map show cs) ++ ")"
 
 -- Tuples of formulas in DNF
 newtype Tele = Tele {formulas :: [Formula]}
   deriving (Eq , Ord)
 
 instance Show Tele where
-  show (Tele rs) = concat $ intersperse " " (map show rs)
+  show (Tele rs) = unwords (map show rs)
 
 
 -- Constructor for a 1-path with single variable application
@@ -55,7 +54,7 @@ tele2Subst r gdim = Map.fromList (map (\v -> (v , evalTele r v)) (createPoset gd
   evalFormula :: Vert -> Formula -> Endpoint
   evalFormula (Vert is) (Formula cs) =
     let vs1 = map fst $ filter (toBool . snd) (zip [1..] is) in
-    let result = map (\(Disj c) -> Disj (filter (\(Conj i) -> not (i `elem` vs1)) c)) cs in
+    let result = map (\(Disj c) -> Disj (filter (\(Conj i) -> i `notElem` vs1) c)) cs in
     Endpoint $ Disj [] `elem` result
 
 
@@ -69,7 +68,7 @@ subst2Tele s =
     constrFormula :: [(Vert , Endpoint)] -> Formula
     constrFormula ves =
       let truevs = [ v | (v , Endpoint e) <- ves , e ] in
-      let cs = [ Disj [ Conj i | (Endpoint e,i) <- (zip vs [1..]) , e] | Vert vs <- truevs ] in
+      let cs = [ Disj [ Conj i | (Endpoint e,i) <- zip vs [1..] , e] | Vert vs <- truevs ] in
       let redcs = filter (\(Disj c) -> not (any (\(Disj d) -> c /= d && d `isSubsequenceOf` c) cs)) cs in
       let normcs = sort redcs in
         Formula normcs

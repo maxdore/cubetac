@@ -4,15 +4,9 @@ module Solver where
 
 import Control.Monad.Except
 import Control.Monad.State
-import Data.Maybe
-import Data.List
 import qualified Data.Map as Map
 import Data.Map ((!), Map)
-import Data.Set (Set)
-import qualified Data.Set as Set
-import Data.Either
 
-import qualified Debug.Trace as D
 
 import Prel
 import Data
@@ -36,6 +30,7 @@ data SEnv s =
        , verbose :: Bool
        }
 
+mkSEnv :: Cube -> Boundary -> SEnv s
 mkSEnv c g = SEnv c g 0 Map.empty True
 
 
@@ -46,14 +41,14 @@ trace s = do
 
 lookupDef :: Id -> Solving s Boundary
 lookupDef name = do
-  cube <- gets cube
-  case lookup name (map decl2pair (constr cube)) of
+  c <- gets cube
+  case lookup name (map decl2pair (constr c)) of
     Just face -> return face
     Nothing -> throwError $ "Could not find definition of " ++ name
 
 dimTerm :: Id -> Solving s Int
-dimTerm id = do
-  ty <- lookupDef id
+dimTerm f = do
+  ty <- lookupDef f
   return $ dim ty
 
 -- vertices :: Solving s [Term]
@@ -129,8 +124,8 @@ addBinaryConstraint f x y = do
 firstSubst :: CVar -> Solving s PTerm
 firstSubst var = do
   vals <- lookupDom var
-  let PTerm id sigma = head vals
-  let newval = PTerm id (injPSubst (fstSubst sigma))
+  let PTerm f sigma = head vals
+  let newval = PTerm f (injPSubst (fstSubst sigma))
   when ([newval] /= vals) $ update var [newval]
   return newval
 

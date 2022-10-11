@@ -63,10 +63,10 @@ dim = length . faces
 data Decl = Decl Id Boundary
 
 instance Show Decl where
-  show (Decl id ty) = show id ++ " : " ++ show ty
+  show (Decl f ty) = show f ++ " : " ++ show ty
 
 decl2pair :: Decl -> (Id , Boundary)
-decl2pair (Decl id ty) = (id , ty)
+decl2pair (Decl f ty) = (f , ty)
 
 newtype Cube = Cube { constr :: [Decl]}
 
@@ -109,7 +109,7 @@ getSubsts sigma = map Map.fromList (getSubsts' (Map.toList sigma))
   getSubsts' ((x , vs) : ys) = [ (x , v) : r | v <- vs , r <- getSubsts' (filterRec x v ys) ]
 
   filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
-  filterRec x v ys = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ])) ys
+  filterRec x v = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ]))
 
 
 -- Given a potential substitution, generate the substitution from it
@@ -126,10 +126,10 @@ injPSubst :: Subst -> PSubst
 injPSubst = Map.map (\v -> [v])
 
 createPTerm :: Decl -> Int -> PTerm
-createPTerm (Decl id ty) gdim =
+createPTerm (Decl f ty) gdim =
   let img = createPoset (dim ty) in
   let parts = map (\v -> (v , img)) (createPoset gdim) in
-  PTerm id (Map.fromList parts)
+  PTerm f (Map.fromList parts)
 
 
 -- Given a potential substitution, restrict the values of x to vs

@@ -38,11 +38,11 @@ createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (e0 : v)) g ++ map (\v -> Vert (e1 : v)) g
 
 insv :: Endpoint -> Vert -> Vert
-e `insv` x = Vert (e: toBools (x))
+e `insv` x = Vert (e: toBools x)
 
 
 getFaces :: Int -> Int -> [[Vert]]
-getFaces m 0 = map (\x -> [x]) (createPoset m)
+getFaces m 0 = map (: []) (createPoset m)
 getFaces m n | m == n = [ createPoset m ]
 getFaces m n =
   map (map (e0 `insv`)) (getFaces (m-1) n)
@@ -89,18 +89,22 @@ removeInd (Vert (e:es)) 1 = Vert es
 removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
 
 
--- A gadget is a (direct/correct/plain) n-face of a cube (vertices, lines with
--- length 1, diamonds with all edges length 1 etc)
+-- A gadget is a (direct/correct/plain) n-face of a cube
+isGadget :: [Vert] -> Bool
+isGadget vs = let dim = log2 (length vs) in
+  all (\i -> head vs `above` (vs !! i)) [1..dim]
 
 -- Implicit that these are images of gadgets
 compGadgetImg :: [[Vert]] -> [[Vert]]
-compGadgetImg [vs] = map singleton vs
+compGadgetImg [vs] = map (: []) vs
 compGadgetImg [vs , us] = [ [v , u] | v <- vs , u <- us , v `above` u ]
 compGadgetImg [vs , us , ts , ss] = [ [v , u , t , s ] | v <- vs , u <- us , v `above` u , t <- ts , v `above` t , s <- ss , u `above` s, t `above` s ]
 
+-- compGadgetImg vss = let dim = log2 (length vss) in
+--   map (v :_) undefined
 
 
 reconstrPMap :: [Vert] -> Map Vert Vert
 reconstrPMap vs = Map.fromList (zip (createPoset (log2 (length vs))) vs)
-
+-- USE THIS FIRST, AND THEN USE PSUBST INFRASTRUCTURE TO COMPUTE ALL GADGET IMAGES???
 
