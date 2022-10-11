@@ -31,17 +31,17 @@ instance Show Vert where
 
 type Poset = [Vert]
 
+insv :: Endpoint -> Vert -> Vert
+e `insv` x = Vert (e: toBools x)
+
 -- Construct an n-element poset
 createPoset :: Int -> Poset
 createPoset 0 = [Vert []]
 createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (e0 : v)) g ++ map (\v -> Vert (e1 : v)) g
 
-insv :: Endpoint -> Vert -> Vert
-e `insv` x = Vert (e: toBools x)
-
-
-getFaces :: Int -> Int -> [[Vert]]
+-- Given m and n, generate all n-dimensional faces of the m-element poset
+getFaces :: Int -> Int -> [Poset]
 getFaces m 0 = map (: []) (createPoset m)
 getFaces m n | m == n = [ createPoset m ]
 getFaces m n =
@@ -49,62 +49,35 @@ getFaces m n =
   ++ map (map (e1 `insv`)) (getFaces (m-1) n)
   ++ map (\l -> map (e0 `insv`) l ++ map (e1 `insv`) l) (getFaces (m-1) (n-1))
 
-
-
-
--- Predicates for checking relation between two elements of a poset
-below , above , dirabove :: Vert -> Vert -> Bool
-x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBools y))
-x `above` y = y `below` x
-
-x `dirabove` y = x `above` y && vdiff x y == 1
-
 -- Given two elements of a poset, compute the number of indices in which they differ
 -- E.g., vdiff v u == 1 means that v and u are adjacent
 vdiff :: Vert -> Vert -> Int
 vdiff (Vert []) (Vert []) = 0
 vdiff (Vert (e:es)) (Vert (e':es')) = (if e == e' then 0 else 1) + vdiff (Vert es) (Vert es')
+vdiff _ _ = error "Comparing difference between elements of different posets"
 
--- If v and u have vdiff 1, then getPath yields the boundary prescribed by v and u,
--- E.g., i=1
--- getBoundary :: Vert -> Vert -> (Int , Endpoint)
--- getBoundary (Vert (e:es)) (Vert (e':es')) =
---   if e == e'
---     then (1 , e)
---     else let (i , e'') = getBoundary (Vert es) (Vert es') in (i + 1 , e'')
+-- Checking order between two elements of a poset
+below , above , dirabove :: Vert -> Vert -> Bool
+x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBools y))
+x `above` y = y `below` x
+x `dirabove` y = x `above` y && vdiff x y == 1
 
-
+-- Given a list of vertices, return the first index at which all vertices
+-- have the same value, as well as that value
 getFirstCommon :: [Vert] -> (Int , Endpoint)
-getFirstCommon vs =
-  if (all (== True) (map (toBool . head . toBools) vs))
-    then (1 , e1)
-    else if (all (== False) (map (toBool . head . toBools) vs))
-      then (1 , e0)
-      else let (i , e'') = getFirstCommon (map (Vert . tail .toBools) vs) in (i + 1 , e'')
+getFirstCommon vs
+  | all ((== True) . toBool . head . toBools) vs = (1 , e1)
+  | all ((== False) . toBool . head . toBools) vs = (1 , e0)
+  | otherwise = let (i , e) = getFirstCommon (map (Vert . tail . toBools) vs) in (i + 1 , e)
 
-
-
+-- Given an element in a poset, remove the i-th index from it
 removeInd :: Vert -> Int -> Vert
-removeInd (Vert (e:es)) 1 = Vert es
+removeInd (Vert (_:es)) 1 = Vert es
 removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
+removeInd _ _ = error "This index is not part of the element"
 
 
--- A gadget is a (direct/correct/plain) n-face of a cube
-isGadget :: [Vert] -> Bool
-isGadget vs = let dim = log2 (length vs) in
-  all (\i -> head vs `above` (vs !! i)) [1..dim]
-
--- Implicit that these are images of gadgets
-compGadgetImg :: [[Vert]] -> [[Vert]]
-compGadgetImg [vs] = map (: []) vs
-compGadgetImg [vs , us] = [ [v , u] | v <- vs , u <- us , v `above` u ]
-compGadgetImg [vs , us , ts , ss] = [ [v , u , t , s ] | v <- vs , u <- us , v `above` u , t <- ts , v `above` t , s <- ss , u `above` s, t `above` s ]
-
--- compGadgetImg vss = let dim = log2 (length vss) in
---   map (v :_) undefined
-
-
+-- Given a list of n^2 elements of a poset, generate map from [1]^n to the elements
 reconstrPMap :: [Vert] -> Map Vert Vert
 reconstrPMap vs = Map.fromList (zip (createPoset (log2 (length vs))) vs)
--- USE THIS FIRST, AND THEN USE PSUBST INFRASTRUCTURE TO COMPUTE ALL GADGET IMAGES???
 

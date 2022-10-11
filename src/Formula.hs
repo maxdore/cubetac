@@ -23,12 +23,14 @@ newtype Disj = Disj {literals :: [Conj]}
   deriving (Eq , Ord)
 
 instance Show Disj where
+  show (Disj [i]) = show i
   show (Disj is) = "(" ++ intercalate " /\\ " (map show is) ++ ")"
 
 newtype Formula = Formula {clauses :: [Disj]}
   deriving (Eq , Ord)
 
 instance Show Formula where
+  show (Formula [c]) = show c
   show (Formula cs) = "(" ++ intercalate " \\/ " (map show cs) ++ ")"
 
 -- Tuples of formulas in DNF
@@ -61,9 +63,7 @@ tele2Subst r gdim = Map.fromList (map (\v -> (v , evalTele r v)) (createPoset gd
 -- Convert formulas to substitutions
 subst2Tele :: Subst -> Tele
 subst2Tele s =
-  let nvs = domdim s in
-  let nfs = coddim s in
-  Tele $ map (\fi -> constrFormula (map (\(x , Vert is) -> (x , is !! fi)) (Map.toList s))) [0 .. nfs-1]
+  Tele $ map (\fi -> constrFormula (map (\(x , Vert is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1]
     where
     constrFormula :: [(Vert , Endpoint)] -> Formula
     constrFormula ves =
@@ -74,3 +74,6 @@ subst2Tele s =
         Formula normcs
 
 
+agdaTerm :: Term -> String
+agdaTerm (Term f subst) = f ++ " " ++ show (subst2Tele subst)
+agdaTerm (Comp _) = "PRINT COMP OUTPUT"

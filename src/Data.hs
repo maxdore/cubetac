@@ -1,10 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 module Data where
 
-import Data.List
 import qualified Data.Map as Map
-import Data.Map ((!), Map)
+import Data.Map (Map)
 
 import Prel
 import Poset
@@ -32,12 +30,6 @@ instance Fct Subst where
 -- Constructor for a constant substitution
 constSubst :: IVar -> Subst
 constSubst dim = Map.fromList (map (\x -> (x, Vert [])) (createPoset dim))
-
-idSubst = Map.fromList [
-              (Vert [e0] , Vert [e0])
-            , (Vert [e1] , Vert [e1])
-              ]
-
 
 -- Cubes
 
@@ -92,7 +84,7 @@ data PTerm = PTerm Id PSubst
   deriving (Eq)
 
 instance Show PTerm where
-  show (PTerm id part) = show id ++ " " ++ show part
+  show (PTerm f part) = show f ++ " " ++ show part
 
 
 -- Given dimensions for domain and codomain, create the most general
@@ -123,7 +115,7 @@ fstSubst = Map.fromList . fstPSubst' . Map.toList
     fstPSubst' (map (\(y , ws) -> (y , filter (\w -> (y `below` x) --> (w `below` head vs)) ws)) yws)
 
 injPSubst :: Subst -> PSubst
-injPSubst = Map.map (\v -> [v])
+injPSubst = Map.map (: [])
 
 createPTerm :: Decl -> Int -> PTerm
 createPTerm (Decl f ty) gdim =

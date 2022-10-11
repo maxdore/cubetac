@@ -9,6 +9,13 @@ import Data
 import Poset
 import Formula
 
+idSubst :: Subst
+idSubst = Map.fromList [
+              (Vert [e0] , Vert [e0])
+            , (Vert [e1] , Vert [e1])
+              ]
+
+
 
 orSubst , andSubst :: Subst
 orSubst = Map.fromList [
@@ -166,9 +173,11 @@ loopspace = Cube [
   , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
                  ]
 
-loopAndOr , loopAndOr' , loop4Cube :: Boundary
+loopAndOr , loopAndOr' , loop4Cube , loop4Cube' :: Boundary
 loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
 loopAndOr' = Boundary [ (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,(Term "p" andOrSubst , Term "a" (constSubst 2))  ]
 
 loop4Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ]
+
+loop4Cube' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3))  ]

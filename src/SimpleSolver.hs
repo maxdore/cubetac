@@ -5,16 +5,15 @@ module SimpleSolver where
 import Control.Monad.Except
 import Control.Monad.State
 import Data.List
-import Data.Map ((!), Map)
+import Data.Map.Strict ((!), restrictKeys)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
 import Prel
 import Data
 import Poset
 import Solver
 import Formula
-
-
-
 
 
 
@@ -34,11 +33,9 @@ evalFace f vs = do
         else evalBoundary ty vs
 
 
-
 evalBoundary :: Boundary -> [Vert] -> Solving s Term
 evalBoundary (Boundary fgs) xs = do
   let (i , Endpoint e) = getFirstCommon xs
-  -- trace $ show i ++ "   " ++ show e
   let (a , b) = fgs !! (i - 1)
   let (Term f subst) = if e then b else a
   evalFace f (map (\x -> subst ! removeInd x i) xs)
@@ -47,9 +44,8 @@ evalBoundary (Boundary fgs) xs = do
 checkPTerm :: [Vert] -> [Term] -> PTerm -> Solving s (Maybe PTerm)
 checkPTerm xs as (PTerm f sigma) = do
   gads <-
-    filterM (evalFace f >=> \b -> trace (show b) >> return (b `elem` as))
-    (compGadgetImg (map (sigma !) xs))
-
+    filterM (evalFace f >=> \b -> return (b `elem` as))
+    (map (map snd . Map.toList) (getSubsts (sigma `restrictKeys` Set.fromList xs)))
   let vus = map (\i -> nub (map (!!i) gads)) [0 .. length xs - 1]
   return $ if any null vus
     then Nothing
@@ -61,39 +57,27 @@ simpleSolve f = do
   cube <- gets cube
   goal <- gets goal
 
-  trace "CUBE"
-  mapM_ (trace . show) (constr cube)
-  trace "GOAL"
-  trace $ show goal
-
   trace $ "TRY TO FIT " ++ f
-
   ty <- lookupDef f
 
+  -- Create new constraint variable containing a single value: f matched to the goal
   cvar <- newCVar [createPTerm (Decl f ty) (dim goal)]
 
   mapM_ (\i -> do
     lookupDom cvar >>= trace . show
     trace ("MATCH DIM " ++ show i)
     mapM (\x -> do
-      trace $ show x
-      lookupDom cvar >>= trace . show
       a <- evalBoundary goal x
-      trace $ "HAS TO BE " ++ show a
-      -- addConstraint cvar $ do
       [sigma] <- lookupDom cvar
       res <- checkPTerm x [a] sigma
       case res of
         Nothing -> guard False
         Just sigma' -> when (sigma /= sigma') (update cvar [sigma'])
         ) (getFaces (dim goal) i))
-
     [0..(dim goal - 1)]
 
+  lookupDom cvar >>= trace . show
+  res <- firstSubst cvar >>= \(PTerm f sigma) -> return $ Term f (fstSubst sigma)
+  lookupDom cvar >>= trace . show
+  return [res]
 
-  lookupDom cvar >>= \[PTerm _ sigma] -> (trace . show .subst2Tele . fstSubst) sigma
-
-  -- res <- firstSubst cvar >>= \(PTerm id sigma) -> return $ Term id ((subst2Tele . fstSubst) sigma)
-  -- return [res]
-
-  return []
