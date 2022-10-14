@@ -13,13 +13,11 @@ import Solver
 import SimpleSolver
 import Formula
 import Examples
+import Parser
 
 
-main :: IO ()
-main = return ()
-
-solver :: Cube -> Boundary -> IO ()
-solver cube goal = do
+solver :: Cube -> Boundary -> Bool -> IO ()
+solver cube goal verbose = do
   putStrLn "CUBE"
   mapM_ print (constr cube)
   putStrLn "GOAL"
@@ -28,7 +26,7 @@ solver cube goal = do
   putStrLn "RUN SIMPLE SOLVER"
   simp <- concatMap fst . rights <$>
     mapM
-      (\(Decl f _) -> runExceptT $ runStateT (simpleSolve f) (mkSEnv cube goal False))
+      (\(Decl f _) -> runExceptT $ runStateT (simpleSolve f) (mkSEnv cube goal verbose))
       (constr cube)
 
   -- RUN KAN COMPOSITION SOLVER
@@ -42,3 +40,21 @@ solver cube goal = do
       return ()
 
   return ()
+
+
+
+main :: IO ()
+main = do
+  args <- getArgs
+  let file = args !! 0
+  let gid = args !! 1
+  let verbose = "verbose" `elem` args
+
+  (cube , goals) <- loadExample file
+  case lookup gid goals of
+    Just goal -> solver cube goal verbose
+    Nothing -> error $ "Could not find definition of " ++ gid
+
+
+
+

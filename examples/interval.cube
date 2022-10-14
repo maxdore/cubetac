@@ -1,0 +1,6 @@
+zero : []
+one : []
+seg : [(zero , one)]
+---
+app1 = [(seg 1, seg 1) , (zero , one)]
+inv = [(one , zero)]
