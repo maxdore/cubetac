@@ -78,13 +78,14 @@ checkPTerm xs as (PTerm f sigma) = do
   -- potential substitution
   let gadgets = map (map snd . Map.toList) (getSubsts (sigma `restrictKeys` Set.fromList xs))
 
-  -- evaluate f at each of these faces
-  gads <- filterM (evalFace f >=> \b -> return (b `elem` as)) gadgets
+  -- evaluate f at each of these faces and retain only those gadgets which yield
+  -- a face which is in as
+  gadgets' <- filterM (evalFace f >=> \b -> return (b `elem` as)) gadgets
 
   -- Combine result by forgetting about which vertices led to which face, we
   -- only keep track of whether there is some vertex for which a face could
   -- be found which is in as
-  let vus = map (\i -> nub (map (!!i) gads)) [0 .. length xs - 1]
+  let vus = map (\i -> nub (map (!!i) gadgets')) [0 .. length xs - 1]
 
   -- If there is some empty domain for a vertex, the potential substitution is
   -- not a valid substitution and we return nothing. Otherwise we update the

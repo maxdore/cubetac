@@ -15,7 +15,8 @@ import Poset
 import Solver
 
 
-
+-- Given an identifier for a face in the context, try to stretch that face to
+-- match the goal. 
 simpleSolve :: Id -> Solving s [Term]
 simpleSolve f = do
   cube <- gets cube
@@ -27,9 +28,13 @@ simpleSolve f = do
   -- Create new constraint variable containing a single value: f matched to the goal
   cvar <- newCVar [createPTerm (Decl f ty) (dim goal)]
 
+  -- For each dimension i from 0 to the n-1, we check that the i-faces match the goal
   mapM_ (\i -> do
+
+    -- Print the current potential substitution before matching the current dimension
     lookupDom cvar >>= trace . show
     trace ("MATCH DIM " ++ show i)
+
     mapM (\xs -> do
       a <- evalBoundary goal xs
       [sigma] <- lookupDom cvar
