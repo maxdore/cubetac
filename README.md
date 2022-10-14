@@ -30,7 +30,7 @@ a square. Each face is implicitly abstracted over a interval variable, which may
 be used. For instance, `seg 1` means that we apply that interval variable to the
 `seg` path, while `zero` is just a constant path.
 
-A `.cube` can be called with a single goal to be solved. For instance, 
+A `.cube` file can be called with a single goal to be solved. For instance, 
 
 `stack exec cubetac-exe examples/interval.cube app1`
 
@@ -44,15 +44,14 @@ asked to give more debugging information by appending a `verbose` as follows:
 
 ## Next steps
 
-Simple solver work for arbitrary dimensions
-- boundary check for potential substitutions
-- Integrate with Agda
+Introduce constructor terms
+
+Integrate with Agda
 
 Making representations of types and terms more general
 - Extension types
 - Partially specified boundaries
 - Reversal of paths: Translation between formulas with reversals and partially specified cubes
-- Introduce constructors
 
 Kan composition solver
 - Implement some basic heuristics:
