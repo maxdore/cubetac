@@ -11,6 +11,7 @@ import Data
 import Poset
 import Solver
 import SimpleSolver
+import CompSolver
 import Formula
 import Examples
 import Parser
@@ -29,6 +30,7 @@ solver cube goal verbose = do
       (\(Decl f _) -> runExceptT $ runStateT (simpleSolve f) (mkSEnv cube goal verbose))
       (constr cube)
 
+
   -- RUN KAN COMPOSITION SOLVER
   if not (null simp)
     then do
@@ -36,7 +38,13 @@ solver cube goal verbose = do
       mapM_ (putStrLn . agdaTerm) simp
     else do
       putStrLn "NO SIMPLE SOLUTIONS"
-      -- res <- runExceptT $ runStateT (comp goal) (mkSEnv cube goal)
+      comp <- runExceptT $ runStateT compSolve (mkSEnv cube goal verbose)
+      case comp of
+        Right res -> do
+          putStrLn "FOUND COMPOSITION SOLUTIONS"
+          mapM_ (putStrLn . agdaTerm) (fst res)
+        Left _ -> do
+          putStrLn "NO COMPOSITION SOLUTIONS"
       return ()
 
   return ()

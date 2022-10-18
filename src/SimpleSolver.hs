@@ -4,10 +4,6 @@ module SimpleSolver where
 
 import Control.Monad.Except
 import Control.Monad.State
-import Data.List
-import Data.Map.Strict ((!), restrictKeys)
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
 
 import Prel
 import Data
@@ -28,7 +24,7 @@ simpleSolve f = do
   -- Create new constraint variable containing a single value: f matched to the goal
   cvar <- newCVar [createPTerm (Decl f ty) (dim goal)]
 
-  -- For each dimension i from 0 to the n-1, we check that the i-faces match the goal
+  -- For each dimension i from 0 to n-1, we check that the i-faces match the goal
   mapM_ (\i -> do
 
     -- Print the current potential substitution before matching the current dimension

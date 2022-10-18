@@ -86,6 +86,8 @@ data PTerm = PTerm Id PSubst
 instance Show PTerm where
   show (PTerm f part) = show f ++ " " ++ show part
 
+pterm2term :: PTerm -> Term
+pterm2term (PTerm f subst) = Term f (fstSubst subst)
 
 -- Given dimensions for domain and codomain, create the most general
 -- potential substitution

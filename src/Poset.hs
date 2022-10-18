@@ -41,7 +41,7 @@ createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (e0 : v)) g ++ map (\v -> Vert (e1 : v)) g
 
 -- Given m and n, generate all n-dimensional faces of the m-element poset
-getFaces :: Int -> Int -> [Poset]
+getFaces :: Int -> Int -> [[Vert]]
 getFaces m 0 = map (: []) (createPoset m)
 getFaces m n | m == n = [ createPoset m ]
 getFaces m n =
@@ -66,8 +66,8 @@ x `dirabove` y = x `above` y && vdiff x y == 1
 -- have the same value, as well as that value
 getFirstCommon :: [Vert] -> (Int , Endpoint)
 getFirstCommon vs
-  | all ((== True) . toBool . head . toBools) vs = (1 , e1)
-  | all ((== False) . toBool . head . toBools) vs = (1 , e0)
+  | all ((== e1) . head . toBools) vs = (1 , e1)
+  | all ((== e0) . head . toBools) vs = (1 , e0)
   | otherwise = let (i , e) = getFirstCommon (map (Vert . tail . toBools) vs) in (i + 1 , e)
 
 -- Given an element in a poset, remove the i-th index from it
@@ -76,6 +76,8 @@ removeInd (Vert (_:es)) 1 = Vert es
 removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
 removeInd _ _ = error "This index is not part of the element"
 
+insInd :: Int -> Endpoint -> Vert -> Vert
+insInd i e (Vert es) = Vert (take (length es - i) es ++ [e] ++ drop (length es - i) es)
 
 -- Given a list of n^2 elements of a poset, generate map from [1]^n to the elements
 reconstrPMap :: [Vert] -> Map Vert Vert

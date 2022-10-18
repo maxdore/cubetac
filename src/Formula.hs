@@ -76,4 +76,4 @@ subst2Tele s =
 
 agdaTerm :: Term -> String
 agdaTerm (Term f subst) = f ++ " " ++ show (subst2Tele subst)
-agdaTerm (Comp _) = "PRINT COMP OUTPUT"
+agdaTerm (Comp (Box fgs b)) = "Comp [" ++ concatMap (\(f,g) -> "(" ++ agdaTerm f ++ " , " ++ agdaTerm g ++ ") ; ") fgs ++ "] " ++ agdaTerm b

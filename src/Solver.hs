@@ -3,6 +3,7 @@
 module Solver where
 
 import Data.List
+import Data.Maybe
 import Control.Monad.Except
 import Control.Monad.State
 import qualified Data.Set as Set
@@ -95,6 +96,86 @@ checkPTerm xs as (PTerm f sigma) = do
     else Just $ PTerm f $ foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
 
 
+filterPSubsts :: [Vert] -> [Term] -> [PTerm] -> Solving s [PTerm]
+filterPSubsts xs as pts = catMaybes <$> mapM (checkPTerm xs as) pts
+
+
+boundaryConstraint :: [Vert] -> [Vert] -> CVar -> CVar -> Solving s ()
+boundaryConstraint xs ys = addBinaryConstraint $ \c d -> do
+  -- trace $ show c ++ "|" ++ show xs ++ " vs " ++ show d ++ "|" ++ show ys
+
+  ps <- lookupDom c
+  qs <- lookupDom d
+
+  fs <- mapM (\(PTerm f sigma) -> mapM (\gad -> do
+                                           let vs = (map snd . Map.toList) gad
+                                           a <- evalFace f vs
+                                           return (f , gad , a)
+                                       ) (getSubsts (sigma `restrictKeys` Set.fromList xs))
+             ) ps
+  gs <- mapM (\(PTerm f sigma) -> mapM (\gad -> do
+                                           let vs = (map snd . Map.toList) gad
+                                           a <- evalFace f vs
+                                           return (f , gad , a)
+                                       ) (getSubsts (sigma `restrictKeys` Set.fromList ys))
+             ) qs
+
+  -- trace "POSSIBLE fs"
+  -- trace $ show fs
+  -- trace "POSSIBLE gs"
+  -- trace $ show gs
+
+  -- Take intersection
+  let fs' = map (filter (\(_ , _ , t) -> any (\(_ , _ , s) -> s == t) (concat gs))) fs
+  let gs' = map (filter (\(_ , _ , t) -> any (\(_ , _ , s) -> s == t) (concat fs))) gs
+
+  -- trace "NEW fs"
+  -- trace $ show fs'
+  -- trace "NEW gs"
+  -- trace $ show gs'
+
+  -- Combine all results
+  let ps' = catMaybes $ zipWith (\(PTerm f sigma) hs -> if null hs
+                      then Nothing
+                      else Just $ PTerm f (foldl (\s x -> updatePSubst s x (nub (map (\(_,gad,_) -> gad ! x) hs))) sigma xs))
+            ps fs'
+  let qs' = catMaybes $ zipWith (\(PTerm f sigma) hs -> if null hs
+                      then Nothing
+                      else Just $ PTerm f (foldl (\s x -> updatePSubst s x (nub (map (\(_,gad,_) -> gad ! x) hs))) sigma ys))
+            qs gs'
+
+  -- TODO UPDATE POSET MAPS!!!
+
+  -- trace $ show ps
+  -- trace $ show ps'
+  -- trace $ show qs
+  -- trace $ show qs'
+  -- when (null ps') $ trace $ "EMPTY " ++ show c
+  -- when (null qs') $ trace $ "EMPTY " ++ show d
+  guard $ not $ null ps'
+  guard $ not $ null qs'
+  when (ps' /= ps) $ update c ps'
+  when (qs' /= qs) $ update d qs'
+
+-- equalVertex :: Vert -> Vert -> CVar -> CVar -> Solving s ()
+-- equalVertex v u = addBinaryConstraint $ \x y -> do
+--   xs <- lookupDom x
+--   ys <- lookupDom y
+
+--   -- Find all the points that v could be with the partial substitutions in the domain
+--   pxv <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! v)) xs
+--   pyu <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! u)) ys
+--   let ps = intersect pxv pyu
+
+--   xs' <- filterPSubsts v ps xs
+--   ys' <- filterPSubsts u ps ys
+--   guard $ not $ null xs'
+--   guard $ not $ null ys'
+--   when (xs' /= xs) $ update x xs'
+--   when (ys' /= ys) $ update y ys'
+
+
+
 
 
 -- DOMAIN AND CONSTRAINT MANAGEMENT
@@ -155,6 +236,8 @@ addBinaryConstraint f x y = do
     constraint
     addConstraint x constraint
     addConstraint y constraint
+
+
 
 
 -- Commit to the first substitution of a given constraint variable
