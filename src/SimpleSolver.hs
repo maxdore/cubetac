@@ -12,7 +12,7 @@ import Solver
 
 
 -- Given an identifier for a face in the context, try to stretch that face to
--- match the goal. 
+-- match the goal.
 simpleSolve :: Id -> Solving s [Term]
 simpleSolve f = do
   cube <- gets cube

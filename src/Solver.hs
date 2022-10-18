@@ -63,7 +63,7 @@ evalFace f vs = do
         then return $ Term f (reconstrPMap vs)
         else evalBoundary ty vs
 
--- Given a selection of vertices xs, compute select the part of the boundary
+-- Given a selection of vertices xs, select the part of the boundary
 -- prescribed by xs
 evalBoundary :: Boundary -> [Vert] -> Solving s Term
 evalBoundary (Boundary fgs) xs = do
@@ -94,6 +94,7 @@ checkPTerm xs as (PTerm f sigma) = do
   return $ if any null vus
     then Nothing
     else Just $ PTerm f $ foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
+  -- TODO ALSO CHECK IN updatePSubst WHETHER SOME VALUATIONS TURN EMPTY?
 
 
 filterPSubsts :: [Vert] -> [Term] -> [PTerm] -> Solving s [PTerm]

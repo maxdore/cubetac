@@ -97,7 +97,7 @@ int :: Cube
 int = Cube [
     Decl "zero" (Boundary  [])
   , Decl "one" (Boundary  [])
-  , Decl "seg" (Boundary  [(Term "zero" (constSubst 2) , Term "one" (constSubst 2))])
+  , Decl "seg" (Boundary  [(Term "zero" (constSubst 0) , Term "one" (constSubst 0))])
            ]
 
 intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2
@@ -113,7 +113,7 @@ intOrTerm = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1], Disj [Conj 2]
 intOrBoundary = Boundary [(Term "seg" app1Subst , Term "one" (constSubst 2)) , (Term "seg" app1Subst , Term "one" (constSubst 2))]
 
 intInv :: Boundary
-intInv = Boundary [(Term "one" (constSubst 2) , Term "zero" (constSubst 2))]
+intInv = Boundary [(Term "one" (constSubst 0) , Term "zero" (constSubst 0))]
 
 
 
