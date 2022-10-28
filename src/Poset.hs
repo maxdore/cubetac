@@ -36,7 +36,7 @@ e `insv` x = Vert (e: toBools x)
 
 -- Construct an n-element poset
 createPoset :: Int -> Poset
-createPoset 0 = [Vert []]
+createPoset n | n <= 0 = [Vert []]
 createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (e0 : v)) g ++ map (\v -> Vert (e1 : v)) g
 

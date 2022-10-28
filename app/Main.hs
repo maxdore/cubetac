@@ -24,6 +24,11 @@ solver cube goal verbose = do
   putStrLn "GOAL"
   print goal
 
+  runExceptT $ runStateT wellFormed (mkSEnv cube goal verbose)
+  -- case runExceptT $ runStateT wellFormed (mkSEnv cube goal verbose) of
+    -- Left a -> return ()
+    -- Right b -> return ()
+
   putStrLn "RUN SIMPLE SOLVER"
   simp <- concatMap fst . rights <$>
     mapM

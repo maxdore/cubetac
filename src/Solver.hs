@@ -48,6 +48,8 @@ lookupDef name = do
     Nothing -> throwError $ "Could not find definition of " ++ name
 
 
+
+
 -- COMPUTE AND RESTRICT BOUNDARIES
 
 -- Given a face and a selection of vertices, compute its face
@@ -71,6 +73,23 @@ evalBoundary (Boundary fgs) xs = do
   let (a , b) = fgs !! (i - 1)
   let (Term f subst) = if e then b else a
   evalFace f (map (\x -> subst ! removeInd x i) xs)
+
+
+
+wellFormed :: Solving s ()
+wellFormed = do
+  fs <- gets cube
+
+  mapM_ (\(Decl id ty) -> do
+            let subp = createPoset (dim ty -2)
+            mapM_ (\(i,j) -> do
+                      throwError "ASD"
+                  ) [ (i,j) | i <- [0..dim ty - 1], j <- [i..dim ty - 1] ]
+            ) (constr fs)
+
+
+
+
 
 -- Restrict a potential substitution such that the face prescribed by xs is in as
 checkPTerm :: [Vert] -> [Term] -> PTerm -> Solving s (Maybe PTerm)

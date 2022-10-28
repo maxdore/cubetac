@@ -141,6 +141,7 @@ triangle = Cube [
   , Decl "g"     (Boundary [(Term "y" (constSubst 0) , Term "z" (constSubst 0))])
   , Decl "h"     (Boundary [(Term "x" (constSubst 0) , Term "z" (constSubst 0))])
   , Decl "phi"   (Boundary [(Term "f" idSubst, Term "h" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
+  , Decl "phi"   (Boundary [(Term "f" idSubst, Term "g" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
            ]
 
 triangleSlide :: Boundary
@@ -173,10 +174,13 @@ loopspace = Cube [
   , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
                  ]
 
-loopAndOr , loopAndOr' , loop4Cube , loop4Cube' :: Boundary
+loopAndOr , loopAndOr' , loopSwap, loop4Cube , loop4Cube' :: Boundary
 loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
 loopAndOr' = Boundary [ (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,(Term "p" andOrSubst , Term "a" (constSubst 2))  ]
+  
+loopSwap = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2]]]) 2), Term "p" (tele2Subst swap 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
+
 
 loop4Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ]
 
