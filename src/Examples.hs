@@ -15,7 +15,13 @@ idSubst = Map.fromList [
             , (Vert [e1] , Vert [e1])
               ]
 
-
+id2Subst :: Subst
+id2Subst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e1] , Vert [e0, e1])
+            , (Vert [e1, e0] , Vert [e1, e0])
+            , (Vert [e1, e1] , Vert [e1, e1])
+              ]
 
 orSubst , andSubst :: Subst
 orSubst = Map.fromList [
@@ -82,8 +88,8 @@ app1Subst = Map.fromList [
 
 app2Subst = Map.fromList [
               (Vert [e0, e0] , Vert [e0])
-            , (Vert [e0, e1] , Vert [e1])
-            , (Vert [e1, e0] , Vert [e0])
+            , (Vert [e0, e1] , Vert [e0])
+            , (Vert [e1, e0] , Vert [e1])
             , (Vert [e1, e1] , Vert [e1])
               ]
 
@@ -141,7 +147,7 @@ triangle = Cube [
   , Decl "g"     (Boundary [(Term "y" (constSubst 0) , Term "z" (constSubst 0))])
   , Decl "h"     (Boundary [(Term "x" (constSubst 0) , Term "z" (constSubst 0))])
   , Decl "phi"   (Boundary [(Term "f" idSubst, Term "h" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
-  , Decl "phi"   (Boundary [(Term "f" idSubst, Term "g" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
+  , Decl "phi3"   (Boundary [(Term "f" app1Subst, Term "h" app1Subst) , (Term "phi" id2Subst , Term "phi" id2Subst) , (Term "x" (constSubst 2) , Term "g" app2Subst)])
            ]
 
 triangleSlide :: Boundary

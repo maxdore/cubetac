@@ -20,68 +20,73 @@ import Solver
 import Formula
 
 
-compSolve :: Solving s [Term]
-compSolve = do
-  cube <- gets cube
-  goal <- gets goal
+-- compSolve :: Solving s [Term]
+-- compSolve = do
+--   cube <- gets cube
+--   goal <- gets goal
 
-  trace "RUNNING COMPOSITION SOLVER"
-  let pterms = map (\f -> createPTerm f (dim goal)) (constr cube)
+--   trace "RUNNING COMPOSITION SOLVER"
+--   let pterms = map (\f -> createPTerm f (dim goal)) (constr cube)
 
-  let is = [0..(dim goal - 1)]
+--   let is = [0..(dim goal - 1)]
 
-  let subp = createPoset (dim goal -1)
-  let faces = getFaces (dim goal) (dim goal - 1)
-  trace $ show faces
+--   let subp = createPoset (dim goal -1)
+--   let faces = getFaces (dim goal) (dim goal - 1)
+--   trace $ show faces
 
-  sides0 <- mapM (\i -> do
-                     trace $ show $ dim goal - i
-                     a <- evalBoundary goal (map (insInd (dim goal - 1 - i) e0) subp)
-                     ts <- filterPSubsts (map (e1 `insv`) (createPoset (dim goal -1))) [a] pterms
-                     newCVar ts) [0..(dim goal - 1)]
-  sides1 <- mapM (\i -> do
-                     a <- evalBoundary goal (map (insInd (dim goal - 1 - i) e1) subp)
-                     ts <- filterPSubsts (map (e1 `insv`) (createPoset (dim goal -1))) [a] pterms
-                     newCVar ts) [0..(dim goal - 1)]
-  back <- newCVar pterms
+--   sides0 <- mapM (\i -> do
+--                      trace $ show $ dim goal - i
+--                      a <- evalBoundary goal (map (insInd (dim goal - 1 - i) e0) subp)
+--                      ts <- filterPSubsts (map (e1 `insv`) (createPoset (dim goal -1))) [a] pterms
+--                      newCVar ts) [0..(dim goal - 1)]
+--   sides1 <- mapM (\i -> do
+--                      a <- evalBoundary goal (map (insInd (dim goal - 1 - i) e1) subp)
+--                      ts <- filterPSubsts (map (e1 `insv`) (createPoset (dim goal -1))) [a] pterms
+--                      newCVar ts) [0..(dim goal - 1)]
+--   back <- newCVar pterms
 
-  trace "INITIAL DOMAINS"
-  mapM_ (lookupDom >=> trace . show) sides0
-  mapM_ (lookupDom >=> trace . show) sides1
-  mapM_ (lookupDom >=> trace . show) [back]
+--   trace "INITIAL DOMAINS"
+--   mapM_ (lookupDom >=> trace . show) sides0
+--   mapM_ (lookupDom >=> trace . show) sides1
+--   mapM_ (lookupDom >=> trace . show) [back]
 
-  -- Impose back constraints
-  mapM_ (\i -> boundaryConstraint (map (e0 `insv`) subp) (faces !! i) (sides0 !! i) back) is
-  mapM_ (\i -> boundaryConstraint (map (e0 `insv`) subp) (faces !! (i + dim goal)) (sides1 !! i) back) is
+--   -- Impose back constraints
+--   mapM_ (\i -> boundaryConstraint (map (e0 `insv`) subp) (faces !! i) (sides0 !! i) back) is
+--   mapM_ (\i -> boundaryConstraint (map (e0 `insv`) subp) (faces !! (i + dim goal)) (sides1 !! i) back) is
 
-  trace "AFTER BACK CONSTRAINTS"
-  mapM_ (lookupDom >=> trace . show) sides0
-  mapM_ (lookupDom >=> trace . show) sides1
-  mapM_ (lookupDom >=> trace . show) [back]
+--   trace "AFTER BACK CONSTRAINTS"
+--   mapM_ (lookupDom >=> trace . show) sides0
+--   mapM_ (lookupDom >=> trace . show) sides1
+--   mapM_ (lookupDom >=> trace . show) [back]
 
-  mapM_ (\i -> mapM_ (\j -> trace $ show i ++ show j) [i + 1 .. dim goal - 1]) is
-  mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e0) subp) (map (insInd i e0) subp) (sides0 !! i) (sides0 !! j)) [i + 1 .. dim goal - 1]) is
-  mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e1) subp) (map (insInd i e0) subp) (sides0 !! i) (sides1 !! j)) [i + 1 .. dim goal - 1]) is
-  mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e0) subp) (map (insInd i e1) subp) (sides1 !! i) (sides0 !! j)) [i + 1 .. dim goal - 1]) is
-  mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e1) subp) (map (insInd i e1) subp) (sides1 !! i) (sides1 !! j)) [i + 1 .. dim goal - 1]) is
+--   mapM_ (\i -> mapM_ (\j -> trace $ show i ++ show j) [i + 1 .. dim goal - 1]) is
+--   mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e0) subp) (map (insInd i e0) subp) (sides0 !! i) (sides0 !! j)) [i + 1 .. dim goal - 1]) is
+--   mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e1) subp) (map (insInd i e0) subp) (sides0 !! i) (sides1 !! j)) [i + 1 .. dim goal - 1]) is
+--   mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e0) subp) (map (insInd i e1) subp) (sides1 !! i) (sides0 !! j)) [i + 1 .. dim goal - 1]) is
+--   mapM_ (\i -> mapM_ (\j -> boundaryConstraint (map (insInd i e1) subp) (map (insInd i e1) subp) (sides1 !! i) (sides1 !! j)) [i + 1 .. dim goal - 1]) is
 
-  trace "AFTER SIDE CONSTRAINTS"
-  mapM_ (lookupDom >=> trace . show) sides0
-  mapM_ (lookupDom >=> trace . show) sides1
-  mapM_ (lookupDom >=> trace . show) [back]
+--   trace "AFTER SIDE CONSTRAINTS"
+--   mapM_ (lookupDom >=> trace . show) sides0
+--   mapM_ (lookupDom >=> trace . show) sides1
+--   mapM_ (lookupDom >=> trace . show) [back]
 
-  mapM_ firstSubst (sides0 ++ sides1 ++ [back])
+--   mapM_ firstSubst (sides0 ++ sides1 ++ [back])
 
-  trace "FIRST SOLUTION"
-  res0 <- map (pterm2term . head) <$> mapM lookupDom sides0
-  res1 <- map (pterm2term . head) <$> mapM lookupDom sides1
-  resb <- pterm2term . head <$> lookupDom back
+--   trace "FIRST SOLUTION"
+--   res0 <- map (pterm2term . head) <$> mapM lookupDom sides0
+--   res1 <- map (pterm2term . head) <$> mapM lookupDom sides1
+--   resb <- pterm2term . head <$> lookupDom back
 
-  -- res0 <- map pterm2term <$> mapM firstSubst sides0
-  -- res1 <- map pterm2term <$> mapM firstSubst sides1
-  -- resb <- pterm2term <$> firstSubst back
+--   -- res0 <- map pterm2term <$> mapM firstSubst sides0
+--   -- res1 <- map pterm2term <$> mapM firstSubst sides1
+--   -- resb <- pterm2term <$> firstSubst back
 
-  return [Comp (Box (zip res0 res1) resb)]
+--   return [Comp (Box (zip res0 res1) resb)]
+
+
+
+
+
 
 -- comp :: Type -> Solving s [Term]
 -- comp (Type [(Term a (Tele []) , Term b (Tele []))]) = do

@@ -9,9 +9,9 @@ import Data.Either
 import Prel
 import Data
 import Poset
-import Solver
-import SimpleSolver
-import CompSolver
+-- import Solver
+-- import SimpleSolver
+-- import CompSolver
 import Formula
 import Examples
 import Parser
@@ -24,36 +24,34 @@ solver cube goal verbose = do
   putStrLn "GOAL"
   print goal
 
-  runExceptT $ runStateT wellFormed (mkSEnv cube goal verbose)
-  -- case runExceptT $ runStateT wellFormed (mkSEnv cube goal verbose) of
-    -- Left a -> return ()
-    -- Right b -> return ()
-
-  putStrLn "RUN SIMPLE SOLVER"
-  simp <- concatMap fst . rights <$>
-    mapM
-      (\(Decl f _) -> runExceptT $ runStateT (simpleSolve f) (mkSEnv cube goal verbose))
-      (constr cube)
+  if not (wellFormed cube)
+    then return ()
+    else do
+      case findDistortion cube goal of
+        Just t -> do
+          putStrLn "FOUND SIMPLE SOLUTIONS"
+          (putStrLn . agdaTerm) t
+        Nothing ->
+          return ()
 
 
   -- RUN KAN COMPOSITION SOLVER
-  if not (null simp)
-    then do
-      putStrLn "FOUND SIMPLE SOLUTIONS"
-      mapM_ (putStrLn . agdaTerm) simp
-    else do
-      putStrLn "NO SIMPLE SOLUTIONS"
-      comp <- runExceptT $ runStateT compSolve (mkSEnv cube goal verbose)
-      case comp of
-        Right res -> do
-          putStrLn "FOUND COMPOSITION SOLUTIONS"
-          mapM_ (putStrLn . agdaTerm) (fst res)
-        Left _ -> do
-          putStrLn "NO COMPOSITION SOLUTIONS"
-      return ()
+  -- if not (null simp)
+  --   then do
+  --     putStrLn "FOUND SIMPLE SOLUTIONS"
+  --     mapM_ (putStrLn . agdaTerm) simp
+  --   else do
+  --     putStrLn "NO SIMPLE SOLUTIONS"
+  --     comp <- runExceptT $ runStateT compSolve (mkSEnv cube goal verbose)
+  --     case comp of
+  --       Right res -> do
+  --         putStrLn "FOUND COMPOSITION SOLUTIONS"
+  --         mapM_ (putStrLn . agdaTerm) (fst res)
+  --       Left _ -> do
+  --         putStrLn "NO COMPOSITION SOLUTIONS"
+  --     return ()
 
   return ()
-
 
 
 main :: IO ()

@@ -1,14 +1,19 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Data where
 
-import qualified Data.Map as Map
-import Data.Map (Map)
+import Control.Monad
+import Data.Map.Strict (Map, (!), restrictKeys)
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import Data.List
 
 import Prel
 import Poset
 
--- This data structures are used to internally represent cubes
+import Debug.Trace
 
+
+-- This data structures are used to internally represent cubes
 
 
 -- These are the names of faces of a cube
@@ -65,11 +70,80 @@ newtype Cube = Cube { constr :: [Decl]}
 instance Show Cube where
   show (Cube fc) = show fc
 
+cdim :: Cube -> Int
+cdim = length . constr
 
 
--- Check fibrancy of extension types: cofibration only mentions interval variables which are bound in the extension type https://discord.com/channels/954089080197611551/1007614554647306240/1010200102469632010
--- TODO IMPLEMENT!
+lookupDef :: Cube -> Id -> Boundary
+lookupDef cube name =
+  case lookup name (map decl2pair (constr cube)) of
+    Just face -> face
+    Nothing -> error $ "Could not find definition of " ++ name
 
+evalFace :: Cube -> Id -> [Vert] -> Term
+evalFace cube f vs =
+  let ty = lookupDef cube f in
+  case dim ty of
+    0 -> Term f (constSubst (log2 (length vs)))
+    n -> if any (\u -> head vs `vdiff` u > n-1) (tail vs)
+        then Term f (reconstrPMap vs)
+        else evalBoundary cube ty vs
+
+evalBoundary :: Cube -> Boundary -> [Vert] -> Term
+evalBoundary cube (Boundary fgs) xs =
+  let (i , Endpoint e) = getFirstCommon xs in
+  let (a , b) = fgs !! (i - 1) in
+  let (Term f subst) = if e then b else a in
+  evalFace cube f (map (\x -> subst ! removeInd x i) xs)
+
+
+wellFormedDecl :: Cube -> Decl -> Bool
+wellFormedDecl ctxt (Decl id ty) = 
+  case dim ty of
+    0 -> True -- check no name clash?
+    1 -> True -- check that vertices are defined
+    _ ->
+      let subp = createPoset (dim ty -2) in
+      -- trace ("CHECK " ++ id ++ show (dim ty)) -- ++ " over " ++ show ctxt )
+      all (\xs ->
+        let (i , Endpoint e) = getFirstCommon xs in
+        let (j , Endpoint e') = getFirstCommon (map (\x -> removeInd x i) xs) in
+
+        let (Term f subst) = (if e then snd else fst) (faces ty !! (i - 1)) in
+        let a = evalFace ctxt f (map (\x -> subst ! removeInd x i) xs) in
+
+        let (Term g subst') = (if e' then snd else fst) (faces ty !! j) in
+        let b = evalFace ctxt g (map (\x -> subst' ! removeInd x (j + 1)) xs) in
+
+        -- trace (show xs ++ " : " ++ show (i,e,a) ++ " vs " ++ show (j+1,e',b))
+        (a == b)
+        ) (getFaces (dim ty) (dim ty - 2))
+
+-- TODO also check for correct dimensions?
+wellFormed :: Cube -> Bool
+wellFormed cube = all (\i -> wellFormedDecl (Cube (take i (constr cube))) (constr cube !! i)) [0..cdim cube-1]
+
+
+matchDistortion :: Cube -> Boundary -> Id -> Maybe Term
+matchDistortion cube goal f =
+  let ty = lookupDef cube f in
+  let psubst = foldr
+                (\xs sigma ->
+                  let a = evalBoundary cube goal xs in
+                  let gadgets = map (map snd . Map.toList) (getSubsts (sigma `restrictKeys` Set.fromList xs)) in
+                  let gadgets' = filter (\g -> evalFace cube f g == a) gadgets in
+                  let vus = map (\i -> nub (map (!!i) gadgets')) [0 .. length xs - 1] in
+                  foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
+                  )
+                (createPSubst (dim goal) (dim ty))
+                (getFaces (dim goal) (dim goal - 1)) in
+
+  if any null (psubst)
+    then Nothing
+    else Just $ Term f (fstSubst psubst)
+
+findDistortion :: Cube -> Boundary -> Maybe Term
+findDistortion ctxt goal = msum (map (\(Decl id _) -> matchDistortion ctxt goal id) (constr ctxt))
 
 
 -- Potential substitutions have for each element in the domain a list of possible values
