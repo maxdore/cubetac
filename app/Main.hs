@@ -30,6 +30,7 @@ solver cube goal verbose = do
       case findDistortion cube goal of
         Just t -> do
           putStrLn "FOUND SIMPLE SOLUTIONS"
+          print t
           (putStrLn . agdaTerm) t
         Nothing ->
           return ()

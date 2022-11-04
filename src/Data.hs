@@ -50,6 +50,7 @@ data Box = Box [(Term , Term)] Term
 --   show (Comp b) = show b -- show sides ++ " " ++ show back
 
 newtype Boundary = Boundary { faces :: [(Term, Term)]}
+  deriving (Eq)
 
 instance Show Boundary where
   show (Boundary ss) = show ss
@@ -82,6 +83,7 @@ lookupDef cube name =
 
 evalFace :: Cube -> Id -> [Vert] -> Term
 evalFace cube f vs =
+  -- traceShow vs $
   let ty = lookupDef cube f in
   case dim ty of
     0 -> Term f (constSubst (log2 (length vs)))
@@ -97,17 +99,25 @@ evalBoundary cube (Boundary fgs) xs =
   evalFace cube f (map (\x -> subst ! removeInd x i) xs)
 
 
+inferBoundary :: Cube -> Term -> Boundary
+inferBoundary ctxt (Term p sigma) =
+  let facepos = createPoset (domdim sigma - 1) in
+    Boundary $ map (\i -> (
+                       evalFace ctxt p (map (\x -> sigma ! insInd i e0 x) facepos),
+                       evalFace ctxt p (map (\x -> sigma ! insInd i e1 x) facepos)))
+    [0 .. domdim sigma - 1]
+
+
 wellFormedDecl :: Cube -> Decl -> Bool
-wellFormedDecl ctxt (Decl id ty) = 
+wellFormedDecl ctxt (Decl id ty) =
   case dim ty of
     0 -> True -- check no name clash?
     1 -> True -- check that vertices are defined
     _ ->
-      let subp = createPoset (dim ty -2) in
       -- trace ("CHECK " ++ id ++ show (dim ty)) -- ++ " over " ++ show ctxt )
       all (\xs ->
         let (i , Endpoint e) = getFirstCommon xs in
-        let (j , Endpoint e') = getFirstCommon (map (\x -> removeInd x i) xs) in
+        let (j , Endpoint e') = getFirstCommon (map (`removeInd` i) xs) in
 
         let (Term f subst) = (if e then snd else fst) (faces ty !! (i - 1)) in
         let a = evalFace ctxt f (map (\x -> subst ! removeInd x i) xs) in
@@ -124,6 +134,25 @@ wellFormed :: Cube -> Bool
 wellFormed cube = all (\i -> wellFormedDecl (Cube (take i (constr cube))) (constr cube !! i)) [0..cdim cube-1]
 
 
+matchContortion :: Cube -> Boundary -> Id -> Maybe Term
+matchContortion cube goal f =
+  let ty = lookupDef cube f in
+  let psubst = foldr
+                (\xs sigma ->
+                  let a = evalBoundary cube goal xs in
+                  let gadgets = map (map snd . Map.toList) (getSubsts (sigma `restrictKeys` Set.fromList xs)) in
+                  let gadgets' = filter (\g -> evalFace cube f g == a) gadgets in
+                  traceShow gadgets' $
+                  let vus = map (\i -> nub (map (!!i) gadgets')) [0 .. length xs - 1] in
+                  foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
+                  )
+                (createPSubst (dim goal) (dim ty))
+                (reverse (getFaces (dim goal) (dim goal - 1))) in
+  if any null psubst
+    then Nothing
+    else Just $ Term f (fstSubst psubst)
+
+
 matchDistortion :: Cube -> Boundary -> Id -> Maybe Term
 matchDistortion cube goal f =
   let ty = lookupDef cube f in
@@ -137,13 +166,13 @@ matchDistortion cube goal f =
                   )
                 (createPSubst (dim goal) (dim ty))
                 (getFaces (dim goal) (dim goal - 1)) in
-
   if any null (psubst)
     then Nothing
     else Just $ Term f (fstSubst psubst)
 
+
 findDistortion :: Cube -> Boundary -> Maybe Term
-findDistortion ctxt goal = msum (map (\(Decl id _) -> matchDistortion ctxt goal id) (constr ctxt))
+findDistortion ctxt goal = undefined -- msum (map (\(Decl id _) -> matchDistortion ctxt goal id) (constr ctxt))
 
 
 -- Potential substitutions have for each element in the domain a list of possible values
