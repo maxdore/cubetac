@@ -70,6 +70,15 @@ getFirstCommon vs
   | all ((== e0) . head . toBools) vs = (1 , e0)
   | otherwise = let (i , e) = getFirstCommon (map (Vert . tail . toBools) vs) in (i + 1 , e)
 
+
+getAllCommon :: [Vert] -> [(Int , Endpoint)]
+getAllCommon vs = if length vs > length (toBools (head vs)) -- TODO NOT CORRECT
+  then []
+  else
+    let (i,e) = getFirstCommon vs in
+    (i,e) : map (\(j,e') -> (j+ 1, e')) (getAllCommon (map (\v -> removeInd v i) vs))
+
+
 -- Given an element in a poset, remove the i-th index from it
 removeInd :: Vert -> Int -> Vert
 removeInd (Vert (_:es)) 1 = Vert es

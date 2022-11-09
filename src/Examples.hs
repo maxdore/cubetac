@@ -15,12 +15,40 @@ idSubst = Map.fromList [
             , (Vert [e1] , Vert [e1])
               ]
 
+degSubst :: Subst
+degSubst = Map.fromList [
+              (Vert [e0] , Vert [e0])
+            , (Vert [e1] , Vert [e0])
+              ]
+
 id2Subst :: Subst
 id2Subst = Map.fromList [
               (Vert [e0, e0] , Vert [e0, e0])
             , (Vert [e0, e1] , Vert [e0, e1])
             , (Vert [e1, e0] , Vert [e1, e0])
             , (Vert [e1, e1] , Vert [e1, e1])
+              ]
+
+ddeg2Subst :: Subst
+ddeg2Subst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e1] , Vert [e0, e0])
+            , (Vert [e1, e0] , Vert [e0, e0])
+            , (Vert [e1, e1] , Vert [e0, e0])
+              ]
+deg2Subst :: Subst
+deg2Subst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e1] , Vert [e0, e0])
+            , (Vert [e1, e0] , Vert [e0, e1])
+            , (Vert [e1, e1] , Vert [e0, e1])
+              ]
+deg2Subst' :: Subst
+deg2Subst' = Map.fromList [
+              (Vert [e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e1] , Vert [e0, e0])
+            , (Vert [e1, e0] , Vert [e1, e0])
+            , (Vert [e1, e1] , Vert [e1, e0])
               ]
 
 orSubst , andSubst :: Subst
@@ -184,7 +212,7 @@ loopAndOr , loopAndOr' , loopSwap, loop4Cube , loop4Cube' :: Boundary
 loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
 loopAndOr' = Boundary [ (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,(Term "p" andOrSubst , Term "a" (constSubst 2))  ]
-  
+
 loopSwap = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2]]]) 2), Term "p" (tele2Subst swap 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
 

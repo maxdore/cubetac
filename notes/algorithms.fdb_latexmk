@@ -1,0 +1,11 @@
+# Fdb version 3
+["pdflatex"] 1667835865 "algorithms.tex" "algorithms.pdf" "algorithms" 1667835865
+  "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
+  "/usr/share/texlive/texmf-dist/fonts/tfm/public/cm/cmtt10.tfm" 1136768653 768 1321e9409b4137d6fb428ac9dc956269 ""
+  "/usr/share/texlive/texmf-dist/web2c/texmf.cnf" 1621882710 39615 33f7d51cf394547e122c9714408659b1 ""
+  "/usr/share/texlive/texmf-var/web2c/pdftex/pdflatex.fmt" 1639742878 2418621 be22486dc65bc4f984ce72143973ae9d ""
+  "algorithms.aux" 1667834406 32 3985256e7290058c681f74d7a3565a19 ""
+  "algorithms.tex" 1667835864 5901 cddf438c4059d68dfc44b2733f97c6ca ""
+  (generated)
+  "algorithms.log"
+  "algorithms.pdf"

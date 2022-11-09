@@ -8,6 +8,7 @@
 \usepackage{amsthm}
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
 \newtheorem{example}{Example}
 \newtheorem*{expcont}{Example \continuation}
 \newcommand{\continuation}{??}
@@ -18,29 +19,47 @@
 \usepackage[noEnd=True, indLines=True]{algpseudocodex}
 \algrenewcommand\algorithmicrequire{\textbf{Input:}}
 \algrenewcommand\algorithmicensure{\textbf{Output:}}
+\def\algorithmautorefname{Algorithm}
 
+\usepackage{ifthen}
+\usepackage{tcolorbox}
+\newcommand{\todo}[1]{
+  \begin{tcolorbox}
+    TODO {#1} 
+  \end{tcolorbox}
+}
 
 \newcommand{\mdef}{:=}
 \newcommand{\mname}[1]{\textit{{#1}}}
 \newcommand{\problem}[1]{\textsc{{#1}}}
+\newcommand{\mlist}[1]{[ {#1} ]}
 
 \newcommand{\join}{\wedge}
 \newcommand{\meet}{\vee}
 \newcommand{\dedekind}{\square_{\join \meet}}
 % \newcommand{\pint}{[1]}
 \newcommand{\pint}[1]{\mathbf{1}^{#1}}
+\newcommand{\pintrestr}[3]{\mathbf{1}^{#1}_{{#2}={#3}}}
+\newcommand{\izero}{\mathsf{0}}
+\newcommand{\ione}{\mathsf{1}}
+\newcommand{\ivar}{*}
 \newcommand{\restrict}[2]{{#1}|_{#2}}
+\newcommand{\image}[1]{\textsf{Img}({#1})}
 \newcommand{\psh}[1]{\mathbf{Set}^{{#1}^{op}}}
 \renewcommand{\hom}[2]{\text{Hom}({#1} , {#2})}
 \renewcommand{\dim}[1]{\mathsf{dim}({#1})}
 \newcommand{\ctxtdim}[1]{|{#1}|}
 \newcommand{\smap}[1]{s_{{#1}}}
 \newcommand{\dmap}[2]{d_{({#1} , {#2})}}
-\renewcommand{\deg}[1]{\lambda {#1}} % TODO OR JUST USE smap EVERYWHERE?
+% \newcommand{\cont}[2]{{#1}\langle{#2}\rangle}
+\newcommand{\cont}[2]{ \ifthenelse{\equal{#2}{}}{#1}{{#1}\langle{#2}\rangle} }
+
+
 
 \newcommand{\pow}[1]{\mathcal{P}({#1})}
 \newcommand{\cset}[1]{\mathsf{{#1}}}
 \newcommand{\boundary}[1]{\partial({#1})}
+\newcommand{\comp}[2]{\mathsf{Comp}({#1}\ {#2})}
 
 \newcommand{\substtwo}[2]{\tiny
   \arraycolsep=.4pt\def\arraystretch{1}
@@ -49,7 +68,8 @@
     1 &\mapsto {#2}
   \end{array}
 }
-\newcommand{\constzero}{\substtwo{()}{()}}
+\newcommand{\oneconst}{\substtwo{()}{()}}
+\newcommand{\oneid}{\substtwo{0}{1}}
 
 \newcommand{\substfour}[4]{\tiny
   \arraycolsep=.4pt\def\arraystretch{1}
@@ -62,8 +82,8 @@
 }
 
 
-\title{ Searching in cubes}
-\author{ Maximilian Dor\'e}
+\title{Searching in cubes}
+\author{Maximilian Dor\'e}
 \date{\today}
 
 
@@ -77,43 +97,104 @@ and $\join$ forming a bounded free distributive lattice.
 \cite{williamson12_combin_homot_theor}: we shall think geometrically, and prove
 algebraically!
 
+% Allowable boundary shapes are generating cofibrations from a model categorical perspective
+
 
 \section{Cubical sets and their boundaries}
 
-\subsection{The object/universe of study}
+\subsection{Background}
 
 The Dedekind cube category $\dedekind$ is the full subcategory of the category
 of posets and monotone maps with objects $\pint{n}$ for $n \geq 0$, where $\pint{}
-= \{ 0<1 \}$. Therefore morphisms in $\dedekind$ are of
+= \{ \izero < \ione \}$. Therefore morphisms in $\dedekind$ are of
 the form $\pint{m} \to \pint{n}$. The cardinality of $\hom{\pint{m}}{\pint{}}$ is the
 $m$-th Dedekind number, which explains the name of $\dedekind$.
 
-We denote elements of $\pint{n}$ with $(e_1 \ldots e_n)$ where $e_i \in \{0,1\}$
-for $1 \leq i \leq n$ (we sometimes may omit the brackets). For an element $x =
-(e_1 \ldots e_n)$ write $x_i \mdef e_i$. The poset $\pint{0}$ has one element
-$()$.
+We denote elements of $\pint{n}$ with $(e_1 \ldots e_n)$ where $e_i \in
+\{\izero, \ione\}$ for $1 \leq i \leq n$ (we sometimes may omit the brackets).
+For an element $x = (e_1 \ldots e_n)$ write $x_i \mdef e_i$. The poset
+$\pint{0}$ has one element $()$. We will write $\pintrestr{n}{i}{e} \mdef
+\{ x \in \pint{n} \mid x_i = e \}$, which is a subposet of $\pint{n}$. Given
+$\pint{m} \to \pint{n}$ and a poset $P \subseteq \pint{m}$, we will denote with
+$\restrict{\sigma}{P} : P \to \pint{n}$ the restriction of $\sigma$ to $P$.
 
 Certain poset maps of interest are:
 \begin{align*}
   s^i &: \pint{n} \to \pint{n-1}, (e_1 \ldots e_n) \mapsto (e_1 \ldots e_{i-1} e_{i+1} \ldots e_n) \text{ for } 1 \leq i \leq n\\
   d^{(i,e)} &: \pint{n-1} \to \pint{n}, 
-      (e_1 \ldots e_{n-1}) \mapsto (e_1 \ldots e_{i-1} e e_{i+1} \ldots e_{n-1}) \text{ for } 1 \leq i \leq n, e \in \{0,1\}
+      (e_1 \ldots e_{n-1}) \mapsto (e_1 \ldots e_{i-1} e e_{i+1} \ldots e_{n-1}) \text{ for } 1 \leq i \leq n, e \in \{\izero,\ione\}
 \end{align*}
 
 
 Cubical sets are objects of $\psh{\dedekind}$, i.e., presheaves over the
 Dedekind cube category. For a cubical set $X$ write $X_n \mdef X(\pint{n})$,
 which are called the $n$-cells of $X$. Given an element $p$ of $X_n$, we call
-$\dim{p} \mdef n$ the dimension of $p$. Write also $\smap{i} \mdef X(s^i) : X_{n-1}
-\to X_n$ and $\dmap{i}{e} \mdef X(d^{(i,e)}) : X_n \to X_{n-1}$, these maps are
-called \mname{degeneracy maps} and \mname{face maps}, respectively. Note that in any non-empty
-cubical set $X$, we must have non-empty $X_n$ for all $n$: given an $n$-cell
-$p$, the codomain $X_{n+1}$ of $\smap{n+1}$ as well as the codomain $X_{n-1}$ of
-$\dmap{n}{\_}$ must be non-empty. The objects in the image of some $\smap{i}$ are
-called \mname{degeneracies}. If the dimension $n$ is understood, we will sometimes
-denote with $\smap{m}$ the composite $\smap{m} \circ \smap{m-1} \circ \ldots
-\circ \smap{n+1}$. This gives the shorthand $\smap{m}(p)$ for an $n$-cell
-considered to be a degenerate $m$-cell.
+$\dim{p} \mdef n$ the dimension of $p$. If the cubical set $X$ is understood,
+write $\smap{i} \mdef X(s^i) : X_{n-1} \to X_n$ and $\dmap{i}{e} \mdef
+X(d^{(i,e)}) : X_n \to X_{n-1}$, these maps are called \mname{degeneracy maps}
+and \mname{face maps}, respectively.
+
+The objects in the image of some $\smap{i}$ are called \mname{degeneracies}. If
+the dimension $n$ is understood, we will sometimes denote with $\smap{m}$ the
+composite $\smap{m} \circ \smap{m-1} \circ \ldots \circ \smap{n+1}$. This gives
+the shorthand $\smap{m}(p)$ for an $n$-cell $p$ considered a degenerate
+$m$-cell.
+
+Conversely, the cell $\dmap{i}{e}(p)$ is called the $(i,e)$-th face of $p$. We
+will call the collection of all faces of an $n$-cell $p$ its boundary $\boundary{p}$:
+$$\boundary{p} \mdef \mlist{ \dmap{n}{0}(p), \dmap{n}{1}(p) , \ldots , \dmap{1}{0}(p), \dmap{1}{1}(p)}$$
+
+The functor laws of $X$ ensure that the faces of $p$ have overlapping
+boundaries. TODO EXPLAIN/EXAMPLE
+
+% Note that in any non-empty cubical set $X$, we must have non-empty $X_n$ for
+% all $n$: given an $n$-cell $p$, the codomain $X_{n+1}$ of $\smap{n+1}$ as well
+% as the codomain $X_{n-1}$ of $\dmap{n}{\_}$ must be non-empty.
+
+Not all poset maps can be obtained as compositions of degeneracy and face maps
+(in contrast to simplicial sets). Therefore we will shift our attention to
+general poset maps $\sigma : \pint{m} \to \pint{n}$ in the following. 
+Given an $n$-cell $p$, any such $\sigma$ gives rise to an $m$-cell
+$X(\sigma)(p)$, which furthermore has the following faces:
+$$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
+
+TODO EXPLAIN WHY
+Thereby we have a specified boundary.
+
+In the next section we will see how this consideration is turned up side down:
+Given a boundary, we want to come up with poset maps such as $\sigma$ to attain
+the cell under question. For this we will introduce some notation. An
+$n$-dimensional boundary $T$ is a list of $2n$ cells $\mlist{p_{(1,\izero)},
+  p_{(1,\ione)} , ... , p_{(n,\izero)}, p_{(n, \ione)}}$. We will write
+$T_{(i=e)} \mdef p_{(i,e)}$.
+
+\paragraph{Kan cubical sets}
+
+
+TODO Kan condition
+This is not all! Kan condition
+
+% In fact, we will be concerned in
+% \autoref{sec:contortionsearch} with searching for intricate poset maps which
+% give rise to cells with a specified boundary.
+
+
+% A cubical set $X$ satisfies the Kan condition if for any open box
+% $[t_1, s_1, \ldots , t_n , s_n] \ t$ we have a cell $s$ such that $[t_1,
+% s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary.\\[.5em]
+
+% Call $\comp{[t_1, s_1, \ldots , t_n , s_n]}{t} \mdef s$
+
+% When is a cubical set a \emph{type}, i.e., captures heterogenous identifications
+% of elements in a type?
+
+% Hope for syntax-free criterion.
+
+% TODO Uniform Kan condition
+
+% (still some issues: definitional equivalence of identity elimination has not
+% been verified by model, only holds up to higher identification)
+% A type is a cubical set satisfying the uniform Kan condition.
 
 \begin{example}\label{exp:int}
   The cubical set $\cset{Int}$ is generated by the following data: $\cset{Int}_0
@@ -124,6 +205,10 @@ considered to be a degenerate $m$-cell.
   1-cell which is constantly $\cset{zero}$, captured by the fact that the face
   maps $\dmap{1}{\_}$ send
   $\smap{1}(\cset{zero})$ back to $\cset{zero}$.
+
+  Assuming that $\cset{Int}$ is Kan, we can obtain the reversal of $\cset{seg}$
+  as follows:
+  TODO Kan inversion example
 \end{example}
 
 \begin{example}\label{exp:loopspace}
@@ -135,13 +220,13 @@ considered to be a degenerate $m$-cell.
   \dmap{1}{0}(\cset{\alpha}) = \dmap{1}{1}(\cset{\alpha}) = \smap{1} (\cset{a})$.
 \end{example}
 
-\begin{example}\label{exp:torus}
-  We define the cubical set $\cset{Torus}$ with the following data: We have a
-  single 0-cell, so $\cset{Torus}_0 = \{ \cset{a} \}$. There are two
-  non-degenerate 1-cells $\cset{p}$ and $\cset{q}$ and one non-degenerate 2-cell
-  $\dmap{2}{0}(\cset{\alpha}) = \dmap{2}{1}(\cset{\alpha}) = p$ and
-  $\dmap{1}{0}(\cset{\alpha}) = \dmap{1}{1}(\cset{\alpha}) = q$.
-\end{example}
+% \begin{example}\label{exp:torus}
+%   We define the cubical set $\cset{Torus}$ with the following data: We have a
+%   single 0-cell, so $\cset{Torus}_0 = \{ \cset{a} \}$. There are two
+%   non-degenerate 1-cells $\cset{p}$ and $\cset{q}$ and one non-degenerate 2-cell
+%   $\dmap{2}{0}(\cset{\alpha}) = \dmap{2}{1}(\cset{\alpha}) = p$ and
+%   $\dmap{1}{0}(\cset{\alpha}) = \dmap{1}{1}(\cset{\alpha}) = q$.
+% \end{example}
 
 \begin{example}\label{exp:triangle}
   We define the cubical set $\cset{Triangle}$ as generated by the following
@@ -156,263 +241,209 @@ considered to be a degenerate $m$-cell.
     = \smap{1}(\cset{x})$ and $\dmap{2}{1}(\cset{\phi}) = \cset{q}$.
 \end{example}
 
-\begin{example}{\label{exp:assoc}}
-  Associativity of three paths
-\end{example}
-
-\begin{example}\label{exp:group}
-  % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
-  % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
-  % 1-cells $\{\cset{a} , \cset{a^{-1}} ... \} \subseteq \cset{Group}_1$ and a
-  % 2-cell $\cset{idem_a}$ for any generator $a$ with 
-  % $\dmap{2}{0}(\cset{idem_a}) = \cset{a}$, $\dmap{1}{1}(\cset{idem_a}) =
-  % \cset{a^{-1}}$ and $\dmap{2}{1}(\cset{idem_a}) = \dmap{1}{0}(\cset{idem_a}) = \smap{1} (\cset{\star})$.
-
-  Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
-  with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
-  1-cells $\{\cset{a} , ... \} \subseteq \cset{Group}_1$ 
-  
-  (there are more 2-cells that need to be added as explained in \cite[Sect. 6.3]{bezem14_model_type_theor_cubic_sets})
-  % Note that this is not a set. Doesn't matter for undecidability proof?
-\end{example}
-
-
-When is a cubical set a \emph{type}, i.e., captures heterogenous identifications
-of elements in a type?
-
-Hope for syntax-free criterion.
-
-TODO Uniform Kan condition
-
-
-(still some issues: definitional equivalence of identity elimination has not
-been verified by model, only holds up to higher identification)
-A type is a cubical set satisfying the uniform Kan condition.
-
-\subsection{Distortions and contexts} % OUR NEW NOTIONS
-
-These examples suggest that we only require a bit of generating data from which
-the other cells and maps can be inferred in a unique way. This is what the next
-section is for.
-
-We want to specify what a collection of face maps does???
-
-In general, 
-If we have an $n$-cell $p$, we can turn it into an $m$-cell with a map $\sigma :
-\pint{m} \to \pint{n}$: TODO GEOMETRIC INTUITION
-
-This gives many cells, complex to describe (this is what is what the boundary
-below is for)
-
-We will call the morphisms of $\dedekind$ maps substitutions.
-
-TODO GIVE THIS IS A NAME -- NOT DEGENERACY, BUT MORE GENERAL. MAYBE contortion?
-OR substitution? Or substitution gives rise to contortion?
-OR deformation?
-
-TODO EXAMPLE
-
-TODO NOTATION $\constzero$ 
-
-We will call poset maps substitutions in the following (they use interval
-substitutions in the syntactic characterisation).
+% \begin{example}{\label{exp:assoc}}
+%   Associativity of three paths
+% \end{example}
 
 
 
-The examples suggests that we need a more concise notation to describe cubical
-sets. We only give the generating cells and their boundaries, which leads to the
-notion of higher inductive types in Cubical Agda.
-
-In a cubical set $X$, the boundary of an $n$-cell $p$, called $\partial p$, is
-the union of the images of the maps $\dmap{i}{e} : X_n \to X_{n-1}$, which are
-$2 \cdot n$ many $(n-1)$-cells. Conversely, we can specify a cubical set by
-declaring each cell with their boundary. 
 
 
-We will consider a fixed cubical set $X$ in the following.
+\subsection{Cubical sets algorithmically}
+
+(Kan) cubical sets as introduced in the previous section are infinite objects:
+As soon as there is a single cell in a cubical set $X$, we have faces or
+degeneracies in all dimensions, and more generally all sorts of cells induced by
+the poset maps. In order to mechanically search for cells in a cubical set, we
+need a finitary representation of cubical sets. The examples above suggest that
+we only require a bit of generating data from which the other cells and maps can
+be inferred in a unique way. TODO BACKGROUND This is what HITs are for In
+\cite[Sect. 6.4]{bezem14_model_type_theor_cubic_sets}, strict groupoid turned
+into cubical set with general construction Higher inductive types are
+constructed as generalized pushout construction (free $\omega$-groupoid
+construction)
+
+Furthermore, we will introduce a term language to talk about the objects
+generated from this finitary representation, with normal forms. Also we consider
+complexity of boundary computation 
+
 
 \begin{definition}
-  A \mname{term} $t$ is a tuple $(p, \sigma)$ where $\sigma : \pint{n} \to
-  \pint{\dim{p}}$. We call $\dim{t} \mdef n$ the dimension of $t$.
-
-  TODO OR IT IS COMPOSITION OF OPEN BOX
+  A \mname{context} $\Gamma$ is a list of declarations $\mlist{ p_1 : T_1 ,
+    \ldots , p_k : T_k}$. The cubical set $X$ generated by a context $\Gamma$
+  has cells $p_i$ with boundaries $\boundary{p_i} = T_i$ for $1 \leq i \leq k$
+  and all necessary other cells. We call $\ctxtdim{\Gamma} \mdef k$ the length
+  of the context.
 \end{definition}
 
-For example, the degenerate 1-cell $\smap{1}(\cset{zero})$ from \autoref{exp:int}
-is represented in our setting by the term $(\cset{zero}, \constzero)$.
+\todo{Define valid context and describe algorithm checking validity
+
+  Checking that a context is well-formed can be done in $\mathcal{O}(? k)$ and is
+  implemented in \autoref{alg:wellformedboundary} and
+  \autoref{alg:wellformedcontext}.
+}
+
+
+
+In the following we will assume to have given a valid context $\Gamma$
+generating a cubical set $X$.
+
+There are different ways of describing a cell in a cubical set. For our
+considerations we will want a unique representation for every cell to allow for
+literal comparisons between cells. For this we introduce the following notion:
 
 \begin{definition}
-  A \mname{boundary} $T$ is a list of tuples $[(t_1,s_1) , \ldots , (t_n,s_n)]$
-  where each $t_\_$, $s_\_$ is a term of dimension $n-1$. We call $\dim{T} \mdef n$ the dimension of $T$.
+  Given a poset map $\sigma : \pint{m} \to \pint{n}$ and an $n$-cell $p$, we
+  will write $\cont{p}{\sigma} \mdef X(\sigma)(p)$ and call $\cont{p}{\sigma}$ an
+  $m$-contortion of $p$.
 \end{definition}
+
+For example, the degenerate 1-cell $\smap{1}(\cset{zero})$ from
+\autoref{exp:int} is represented in our setting by the 1-contortion
+$\cont{\cset{zero}}{\oneconst}$, where we directly depict the graph of the poset
+map. The identity map gives an $n$-contortion for every $n$-cell which is equal
+to the original cell, for instance $\cont{\cset{seg}}{\oneid}$ is just the cell
+$\cset{seg}$. Even though we describe every cell as a contortion in the
+following, we might omit the poset map if it is the identity.
+
+However, there are still multiple ways to describe the same cell: we could
+have also used $\cont{\cset{seg}}{\substtwo{0}{0}}$ to describe the degenerate
+1-cell which is constantly $\cset{zero}$. Since $\cont{\cset{zero}}{\oneconst}$
+is more basic, we will regard it as the normal form of this cell. In general:
 
 \begin{definition}
-  A \mname{context} $\Gamma$ is a list of declarations $[ (p_1,T_1) , \ldots , (p_k,T_k)]$
-  where each $p_\_$ is a term and each $T_\_$ is a boundary. We call
-  $\ctxtdim{\Gamma} \mdef k$ the length of the context.
+  A contortion $\cont{p}{\sigma}$ is in normal form if there is no face $q$ of
+  $p$ and map $\sigma'$ such that $\cont{p}{\sigma} = \cont{q}{\sigma'}$.
 \end{definition}
 
-A cubical set is said to be generated by a context if TODO HOW EXACTLY
 
-In \cite[Sect. 6.4]{bezem14_model_type_theor_cubic_sets}, strict groupoid turned into
-cubical set with general construction
+We have an algorithm reducing a contortion to normal form as follows:
 
-TODO WELL-FORMEDNESS OF CUBICAL SET DESCRIPTION
+\begin{algorithm}[H]
+  \caption{Normalizing a contortion}
+  \label{alg:normalize}
+  \begin{algorithmic}
+    \Require $\cont{p}{\sigma}$ where $p : T \in \Gamma$ is an $n$-cell and
+    $\sigma : \pint{m} \to \pint{n}$ \Ensure Normal form of $\cont{p}{\sigma}$
+    
+    \Procedure{Normalize}{$\cont{p}{\sigma}$}
+    \If{$\image{\sigma} \subseteq \pintrestr{n}{i}{e}$ for some $1 \leq i \leq n$ and $e
+      \in \{\izero, \ione\}$}
+    \State $\cont{q}{\sigma'} \gets T_{i=e}$
+    \State \Return{ $\Call{Normalize}{\cont{q}{\sigma' \circ \smap{i} \circ \sigma }}$ }
+    \Else{}
+    \State \Return{$\cont{p}{\sigma}$}
+    \EndIf
+    \EndProcedure
 
-Higher inductive types are constructed as generalized pushout construction (free
-$\omega$-groupoid construction)
+  \end{algorithmic}
+\end{algorithm}
+
+TODO EXPLAIN
+The poset map $\sigma' \circ \smap{i} \circ \sigma $ comes about as follows: We
+know that  $\sigma(x)_i = e$ for all $x \in \pint{m}$. Therefore we consider
+where the $(i,e)$-th face of $p$ is sending all elements after forgetting about
+this index.
+
+Checking whether a subset of a poset is of the form $\pintrestr{n}{i}{e}$ can be
+done in $\mathcal{O}(2^n)$ since minimal distance TODO EXPLAIN?
+
+Since the dimension of the contortion under question is decreased by 1 in each
+normalization step, we need to run the algorithm at most $n$ times and therefore
+have an asymptotic run time of $\mathcal{O}(2^n)$.
+
+\autoref{alg:normalize}
+
+
+
+\todo{where to describe \autoref{alg:boundary} }
+
+
+
+% TERM DEFINITION 
+% Given a context $\Gamma$, the set of $m$-dimensional terms over $\Gamma$, denoted $Tm_m(\Gamma)$, consists of
+% \begin{itemize}
+% \item Contortions $\cont{p}{\sigma}$ with $p \in \Gamma$ and $\sigma : \pint{m} \to
+%   \pint{\dim{p}}$
+%   % \item Kan compositions, i.e., $\comp{[(t_1 , s_1) , (t_m, s_m)]}{t}$ for all
+% \item Kan compositions, i.e., $\comp{[t_1 , s_1, ... , t_m, s_m]}{t}$ for all
+%   fitting $m$-contortions $t_1 , s_1, ... , t_m, s_m, t$.
+% \end{itemize}
+
 
 \begin{examplecontd}{exp:int}
-  The following context generates $\cset{Int}$: TODO
+  The following context generates $\cset{Int}$:
+  
+  $\mlist{ \cset{zero} : \mlist{} , \cset{one} : \mlist{} , \cset{seg} : \mlist{
+      \cont{\cset{zero}}{}, \cont{\cset{one}}{} }}$
 \end{examplecontd}
 
 \begin{examplecontd}{exp:loopspace}
   The following context generates $\cset{2Loop}$:
 
-  $[ (\cset{a},[]) , (\cset{\alpha} , [ ((a, \constzero) , (a, \constzero)) ,
-  ((a, \constzero), (a, \constzero)) ])]$
+  $\mlist{ \cset{a} : \mlist{} , \cset{\alpha} : \mlist{ \cont{\cset{a}}{\oneconst} , \cont{\cset{a}}{\oneconst} ,
+  \cont{\cset{a}}{\oneconst}, \cont{\cset{a}}{\oneconst} }}$
   
 \end{examplecontd}
 
 \begin{examplecontd}{exp:triangle}
-  The following context generates $\cset{Triangle}$: TODO 
+  The following context generates $\cset{Triangle}$:
+  
+  % $\mlist{ \cset{x} : \mlist{} , \cset{y} : \mlist{} , \cset{z} : \mlist{} ,
+  %     \cset{p} : \mlist{ \cont{\cset{x}}{}, \cont{\cset{y}}{} } ,
+  %   , \cset{q} : \mlist{ \cont{\cset{y}}{}, \cont{\cset{z}}{} }
+  %   , \cset{r} : \mlist{ \cont{\cset{x}}{}, \cont{\cset{z}}{} }
+  %   , \cset{\phi} : \mlist{ \cont{\cset{p}}{\oneid} , \cont{\cset{r}}{\oneid} ,
+  %     \cont{\cset{x}}{\oneconst}, \cont{\cset{q}}{\oneid} }
+  % }$
+
+  $\mlist{ \cset{x} : \mlist{} , \cset{y} : \mlist{} , \cset{z} : \mlist{} ,
+    \cset{p} : \mlist{ \cset{x}, \cset{y}  } ,
+    , \cset{q} : \mlist{ \cset{y}, \cset{z} }
+    , \cset{r} : \mlist{ \cset{x}, \cset{z} }
+    , \cset{\phi} : \mlist{ \cset{p} , \cset{r} ,
+      \cont{\cset{x}}{\oneconst}, \cset{q} }
+  }$
+  
+  The contortion $(\phi,\substfour{00}{00}{01}{01})$ has normal form $(p,\substfour{0}{0}{1}{1})$.
 \end{examplecontd}
 
+\subsection{Searching for cells}
 
-We will only consider certain boundaries. More general boundary problem is
-conceivable, for now we limit ourselves to the following:
-
-We have $\partial ((\smap{2} \circ \smap{1}) \cset{a}) = \partial{\cset{\alpha}}$.
-
-
-Allowable boundary shapes are generating cofibrations from a model categorical perspective
-
-
-We have to consider sets of elements $xs$ of $\pint{m}$ which pick out a face of
-a cube. For instance, $\{00,01\}$ picks out the first(?) line in a square.
-
-\begin{algorithm}[H]
-  \caption{Computing the boundary of a term with substitution}\label{alg:boundary}
-  \begin{algorithmic}
-    \Require $(p, \sigma)$ where $p$ is an $n$-cell of $X$ and $\sigma : \pint{m} \to \pint{n}$.
-    \Ensure $[faces , ... , ]$
-    
-    \Procedure{Boundary}{$p, \sigma$}
-    \State Do Something
-    % let (i , Endpoint e) = getFirstCommon xs in
-    % let (a , b) = fgs !! (i - 1) in
-    % let (Term f subst) = if e then b else a in
-    % evalFace cube f (map (\x -> subst ! removeInd x i) xs)
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
-For instance, in \autoref{exp:loopspace} the term
-$(\phi,\substfour{00}{00}{01}{01})$ picks out the first face of $\phi$ and
-is judgmentally (?) equal to $(p,\substfour{0}{0}{1}{1})$ TODO REALLY
-
-\begin{algorithm}[H]
-  \caption{Normalize a substituted term to normal form}\label{alg:normalize}
-  \begin{algorithmic}
-    \Require $(p, vs)$ where $p$ is an $n$-cell of $X$/$Gamma$ and $vs$ multiset
-    of $\pint{n}$
-    \Ensure $(f, \sigma)$ normalized term if face of original term
-    
-    \Procedure{Normalize}{$p, vs$}
-    \If{$vs$ is sub face}
-    \State Do Something
-    \Else{}
-    \State $\sigma : \pint{n} \to \pint{n}, \sigma(x) \to vs !! i$
-    \State \Return{$(p, \sigma)$}
-    \EndIf
-    \EndProcedure
-
-    % let ty = lookupDef cube f in
-    % case dim ty of
-    % 0 -> Term f (constSubst (log2 (length vs)))
-    % n -> if any (\u -> head vs `vdiff` u > n-1) (tail vs)
-    % then Term f (reconstrPMap vs)
-    % else evalBoundary cube ty vs
-  \end{algorithmic}
-\end{algorithm}
-
-TODO RUNTIME
-
-
-
-
-
-
-
-
-\begin{algorithm}[H]
-  \caption{Well-formed boundary}\label{alg:wellformedboundary}
-  \begin{algorithmic}
-    \Require $\Gamma$ context, $T$ term
-    \Ensure \texttt{OK} if $T$ well formed, \texttt{Error} otherwise
-
-    \Procedure{WellFormed}{$\Gamma, T$}
-    \State Do Something
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-  \caption{Well-formed context}\label{alg:wellformedcontext}
-  \begin{algorithmic}
-    \Require $\Gamma$ context
-    \Ensure \texttt{OK} if $\Gamma$ well formed, \texttt{Error} otherwise
-
-    \Procedure{WellFormed}{$\Gamma$}
-    \State Gradually build up? Or is it ok to have mutually defined cells?
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
-
-\begin{algorithm}[H]
-  \caption{Faces}\label{alg:wellformedcontext}
-  \begin{algorithmic}
-    \Require $m$, $n$
-    \Ensure $\{ xs \}$ where $xs$ are the $n$-faces of $\pint{m}$
-
-    \Procedure{Faces}{$m,n$}
-    \If{$n = 0$}
-    \State $\{ \{ x \} \mid x \in \pint{m} \}$
-    \ElsIf{$m = n$}
-    \State $\{ \pint{m} \}$
-    \Else
-    \State $\{ \{ 0x \mid x \in xs \} , \{ 1x \mid x \in xs\} \mid xs \in $ \Call{Faces}{$m-1,n$} $ \}$
-    \Statex $\cup TODO$
-    \EndIf
-    \EndProcedure
-    
-    % getFaces :: Int -> Int -> [[Vert]]
-    % getFaces m 0 = map (: []) (createPoset m)
-    % getFaces m n | m == n = [ createPoset m ]
-    % getFaces m n =
-    % map (map (e0 `insv`)) (getFaces (m-1) n)
-    % ++ map (map (e1 `insv`)) (getFaces (m-1) n)
-    % ++ map (\l -> map (e0 `insv`) l ++ map (e1 `insv`) l) (getFaces (m-1) (n-1))
-  \end{algorithmic}
-\end{algorithm}
-
-
-\section{Searching for cells}
-
-In a cubical set, we have very many distortions (?) lying around. Searching
-these is complicated. Here we present first approach to this.
-
-The search problem is the following:
-
+The search problem is the following: given a cubical set and a certain boundary,
+is there a cell with that boundary. Using the finitary representation introduced
+above, we can phrase it as follows:
+  
 \begin{definition}
-  Given a cubical set $X$ (given by a context $\Gamma$) and a boundary $T$ (TODO over $X$?), the problem
-  \problem{CubicalCell}($X$,$T$) is to find a term $t$ such that $\boundary{t} = T$.
+  Given a context $\Gamma$ and a (valid) boundary $T$, the problem
+  \problem{CubicalCell}($X$,$T$) is to find a term $t \in Tm_{\dim{T}}(\Gamma)$ such that
+  $\boundary{t} = T$.
 \end{definition}
 
-In general, \problem{CubicalCell} is undecidable.
+(More generally, we can encode all word problems from universal algebra in our setting.)
 
-If it can be solved by a distortion, it is clearly decidable since there are
+\begin{theorem}
+  \problem{CubicalCell} is undecidable.
+  \begin{proof}
+    
+    % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
+    % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
+    % 1-cells $\{\cset{a} , \cset{a^{-1}} ... \} \subseteq \cset{Group}_1$ and a
+    % 2-cell $\cset{idem_a}$ for any generator $a$ with 
+    % $\dmap{2}{0}(\cset{idem_a}) = \cset{a}$, $\dmap{1}{1}(\cset{idem_a}) =
+    % \cset{a^{-1}}$ and $\dmap{2}{1}(\cset{idem_a}) = \dmap{1}{0}(\cset{idem_a}) = \smap{1} (\cset{\star})$.
+
+    Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
+    with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
+    1-cells $\{\cset{a} , ... \} \subseteq \cset{Group}_1$ 
+    
+    (there are more 2-cells that need to be added as explained in \cite[Sect. 6.3]{bezem14_model_type_theor_cubic_sets})
+    % Note that this is not a set. Doesn't matter for undecidability proof?
+
+\end{proof}
+\end{theorem}
+
+If it can be solved by a contortion, it is clearly decidable since there are
 only finitely many substitutions for each cell in the context, and the search
 space is thereby finite. However, the search space grows super-exponentially:
 Suppose we want to check if there is an $m$-dimensional contortion of a 1-cell
@@ -421,6 +452,25 @@ satisfying a goal, i.e., we are looking for a monotone map $\pint{m} \to
 check and for 9 the exact number of possible substitutions has not even been
 computed yet \url{http://oeis.org/A00372}. Therefore we need something more
 clever to explore the search space.
+
+
+
+\section{Decidable \problem{CubicalCell} / Searching for contortions}
+
+A certainly decidable subproblem of \problem{CubicalCell} is to decide whether
+there exists a cell simply by means of contorting the cells given in the
+context: for a given goal boundary $T$ and a generating cell $p$, there are
+finitely many poset maps $\pint{\dim{T}} \to \pint{\dim{p}}$, so we can
+na\"ively check whether one of those maps gives rise to a fitting contortion. 
+
+We can try this for all elements in the context, thereby have run time
+$\mathcal{O}( \ctxtdim{\Gamma} )$
+
+\subsection{General complexity considerations}
+
+
+Revert characterization 
+$$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
 
 
 \subsection{Potential substitutions}
@@ -453,71 +503,16 @@ for any element, which can be checked in $2^m$ steps. Given a poset $xs
 \subseteq \pint{m}$, we can restrict a ppm $\Sigma : \pint{m} \to \pow{\pint{n}}$ to a
 new ppm $\restrict{\Sigma}{xs} : xs \to \pow{\pint{n}}$ just like any function.
 
-\begin{algorithm}[H]
-  \caption{Update potential substitution}\label{alg:simple}
-  \begin{algorithmic}
-    \Require $\Sigma : \pint{m} \to \pow{\pint{n}}$ ppm, $x \in
-    \pint{m}$, $vs \in \pow{\pint{n}} - \emptyset$
-    \Ensure Updated ppm $\Sigma' : \pint{m} \to \pint{n}$ with $\Sigma(x) = vs$.
-
-    \Procedure{UpdatePPM}{$\Sigma, (x,vs)$}
-    \For{$y \gets \pint{m}$}
-    \If{$x = y$}
-    \State $\Sigma'(x) \gets vs$
-    \ElsIf{$y \leq x$}
-    \State $\Sigma'(y) \gets \{ u \mid u \in \Sigma(y) \text{ such that } \exists
-    v \in vs : u \leq v \} $
-    \ElsIf{$x \leq y$}
-    \State $\Sigma'(y) \gets \{ u \mid u \in \Sigma(y) \text{ such that } \exists
-    v \in vs : v \leq u \} $
-    \EndIf
-    \EndFor
-    \State \Return{$\Sigma'$}
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
+\autoref{alg:updateppm}
 Therefore we have a runtime of $\mathcal{O}(2^m 2^n)$
 
 From a potential poset map we can generate all poset maps. This has a worst-case
 runtime of Dedekind for the full one.
 
 
-\begin{algorithm}[H]
-  \caption{Potential substitution to substitutions}\label{alg:simple}
-  \begin{algorithmic}
-    \Require $\Sigma : \pint{m} \to \pow{\pint{n}}$ potential poset map
-    \Ensure $\{ \sigma : \pint{m} \to \pint{n} \}$ poset maps
-    
-    \Procedure{UnfoldPPM}{$\Sigma$}
-    \State $\sigma : x \mapsto \Sigma(x) $
-    TODO
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
+\autoref{alg:getsubsts}
 $\mathcal{O}(D_m^n)$
 
-For an efficient algorithm we instead consider an algorithm which extracts the
-first substitution from a potential substitution.
-
-\begin{algorithm}[H]
-  \caption{Potential substitution to substitution}\label{alg:simple}
-  \begin{algorithmic}
-    \Require $\Sigma : \pint{m} \to \pow{\pint{n}}$ non-empty ppm
-    \Ensure $\sigma : \pint{m} \to \pint{n}$ poset map
-
-    \Procedure{FstPPM}{$\Sigma$}
-    \For{$x \gets \pint{m}$}
-    \State $v \gets \mathsf{first}(\Sigma(x))$
-    \State $\sigma \gets \Call{FstPPM}{\restrict{\Sigma}{-x}}$
-    \State $\sigma(x) \mapsto v$
-    \EndFor
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
-This has amortised runtime of $\mathcal{O}(2^m 2^n)$.
 
 \subsection{Simple solver}
 
@@ -526,8 +521,8 @@ We want to try and see
 \begin{algorithm}[H]
   \caption{Simple solver}\label{alg:simple}
   \begin{algorithmic}
-    \Require $\Gamma$ context, $(p,S) \in \Gamma$, $T$ goal boundary
-    \Ensure $\sigma$ s.t. $\boundary{p,\sigma} = T$ if there is such a
+    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary
+    \Ensure $\sigma$ s.t. $\boundary{\cont{p}{\sigma}} = T$ if there is such a
     $\sigma$, \texttt{Unsolvable} otherwise
 
     \Procedure{SimpleSolve}{$\Gamma, T$}
@@ -541,11 +536,10 @@ We want to try and see
       \Statex \hfill \Call{Normalize}{$p,img(\sigma)$} $ = {T}@ xs \}$}
     \EndFor
     \EndFor
-    \If{$\exists x \in \pint{m} \text{ such that } \Sigma(x) = \emptyset$}
-    \State \Return{\texttt{Unsolvable}}
+    \If{$\exists \sigma \in \Call{UnfoldPPM}{\Sigma} : \boundary{\cont{p}{\sigma}} = T$}
+      \State \Return{$\sigma $}
     \Else
-    \State $\sigma \gets$ \Call{FstSubst}{$\Sigma$}
-    \State \Return{$(p , \sigma )$}
+    \State \Return{\texttt{Unsolvable}}
     \EndIf
     \EndProcedure
 
@@ -571,47 +565,15 @@ space in other ways.
 Try to reduce the search space going from the bottom.
 
 COMPLETENESS???
-
-% \begin{algorithm}[H]
-%   \caption{Simple solver}\label{alg:simple}
-%   \begin{algorithmic}
-%     \Require $\Gamma$ context, $T$ goal boundary
-%     \Ensure $t \in DISTORTIONS (\Gamma)$ s.t. $\boundary{t} = T$ if there is such a $t$, \texttt{Unsolvable} otherwise
-
-%     \Procedure{SimpleSolve}{$\Gamma, T$}
-%     \For{$(p,S) \gets \Gamma$} 
-%       \State $\Sigma \gets \{ x \mapsto \pint{\dim{S}} \mid x \in \pint{\dim{T}} \}$
-%       \For{$t \gets T$} \Comment{consider T as set, remove tuples}
-%         \For{$x \gets ???$} 
-%           \State{$\Sigma(x) \gets \{ v \mid v \in \Sigma(x) \text{ such that } ... \}$}
-%           \State update to ensure monotonicity
-%           \If{$\Sigma(x) = \emptyset$}
-%             \State{Continue with next $(p,S)$ / exit both for loops}
-%           \EndIf
-%         \EndFor
-%         \EndFor
-%       \State \Return{$(p, fst \Sigma)$}
-%     \EndFor
-%     \State \Return{\texttt{Unsolvable}}
-%     \EndProcedure
-%   \end{algorithmic}
-% \end{algorithm}
+It's complete. But not correct -- overapproximating results
 
 
 
-We can try this for all elements in the context, thereby have run time
-$\mathcal{O}( \ctxtdim{\Gamma} )$
+
 
 \section{Composition solver}
 
 We use Kan composition
-
-
-\section{(Un)decidability}
-
-Show how in general undecidable: Reduce to word problem
-
-Find how decidable groups carry over to decidable problems?
 
 
 
@@ -620,7 +582,7 @@ Find how decidable groups carry over to decidable problems?
 How to encode search for reversals
 
 
-\section{Connections}
+\section{Relation to different notions of cubical sets}
 
 Since the generating data is the non-degenerate cells and the face maps on them,
 we can adopt the following notation to describe cubical sets, which go under
@@ -705,5 +667,10 @@ TODO PROOF THAT THESE ARE MUTUALLY INVERSE?
 
 Have set $I = \{i , j, k , ...\}$ of names. Then give complete description for
 Cubical Agda.
+
+
+\appendix
+
+\input{algorithms}
 
 \end{document}
