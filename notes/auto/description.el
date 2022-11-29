@@ -37,6 +37,8 @@
     '("dmap" 2)
     '("smap" 1)
     '("ctxtdim" 1)
+    '("dim" 1)
+    '("hom" 2)
     '("psh" 1)
     '("image" 1)
     '("restrict" 2)
@@ -61,7 +63,7 @@
     "arraystretch")
    (LaTeX-add-labels
     "exp:int"
-    "exp:loopspace"
+    "exp:sndsphere"
     "exp:triangle"
     "alg:normalize"
     "alg:simple"

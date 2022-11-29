@@ -62,6 +62,19 @@ x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBool
 x `above` y = y `below` x
 x `dirabove` y = x `above` y && vdiff x y == 1
 
+
+
+isSubposet :: [Vert] -> Maybe (Int , Endpoint)
+isSubposet vs
+  | null (toBools (head vs)) = Nothing
+  | all ((== e1) . head . toBools) vs = Just (1 , e1)
+  | all ((== e0) . head . toBools) vs = Just (1 , e0)
+  | otherwise = case isSubposet (map (Vert . tail . toBools) vs) of
+      Nothing -> Nothing
+      Just (i , e) -> Just (i + 1 , e)
+
+
+
 -- Given a list of vertices, return the first index at which all vertices
 -- have the same value, as well as that value
 getFirstCommon :: [Vert] -> (Int , Endpoint)
@@ -69,7 +82,6 @@ getFirstCommon vs
   | all ((== e1) . head . toBools) vs = (1 , e1)
   | all ((== e0) . head . toBools) vs = (1 , e0)
   | otherwise = let (i , e) = getFirstCommon (map (Vert . tail . toBools) vs) in (i + 1 , e)
-
 
 getAllCommon :: [Vert] -> [(Int , Endpoint)]
 getAllCommon vs = if length vs > length (toBools (head vs)) -- TODO NOT CORRECT

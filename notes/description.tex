@@ -49,8 +49,8 @@
 \renewcommand{\hom}[2]{\text{Hom}({#1} , {#2})}
 \renewcommand{\dim}[1]{\mathsf{dim}({#1})}
 \newcommand{\ctxtdim}[1]{|{#1}|}
-\newcommand{\smap}[1]{s_{{#1}}}
-\newcommand{\dmap}[2]{d_{({#1} , {#2})}}
+\newcommand{\smap}[1]{s^{{#1}}}
+\newcommand{\dmap}[2]{d^{({#1} , {#2})}}
 % \newcommand{\cont}[2]{{#1}\langle{#2}\rangle}
 \newcommand{\cont}[2]{ \ifthenelse{\equal{#2}{}}{#1}{{#1}\langle{#2}\rangle} }
 
@@ -117,11 +117,13 @@ $\pint{0}$ has one element $()$. We will write $\pintrestr{n}{i}{e} \mdef
 \{ x \in \pint{n} \mid x_i = e \}$, which is a subposet of $\pint{n}$. Given
 $\pint{m} \to \pint{n}$ and a poset $P \subseteq \pint{m}$, we will denote with
 $\restrict{\sigma}{P} : P \to \pint{n}$ the restriction of $\sigma$ to $P$.
+In particular, if $P = \pintrestr{m}{i}{e}$, we might denote TODO INDEX REMOVED
+FROM IT
 
 Certain poset maps of interest are:
 \begin{align*}
-  s^i &: \pint{n} \to \pint{n-1}, (e_1 \ldots e_n) \mapsto (e_1 \ldots e_{i-1} e_{i+1} \ldots e_n) \text{ for } 1 \leq i \leq n\\
-  d^{(i,e)} &: \pint{n-1} \to \pint{n}, 
+  \smap{i} &: \pint{n} \to \pint{n-1}, (e_1 \ldots e_n) \mapsto (e_1 \ldots e_{i-1} e_{i+1} \ldots e_n) \text{ for } 1 \leq i \leq n\\
+  \dmap{i}{e} &: \pint{n-1} \to \pint{n}, 
       (e_1 \ldots e_{n-1}) \mapsto (e_1 \ldots e_{i-1} e e_{i+1} \ldots e_{n-1}) \text{ for } 1 \leq i \leq n, e \in \{\izero,\ione\}
 \end{align*}
 
@@ -129,34 +131,50 @@ Certain poset maps of interest are:
 Cubical sets are objects of $\psh{\dedekind}$, i.e., presheaves over the
 Dedekind cube category. For a cubical set $X$ write $X_n \mdef X(\pint{n})$,
 which are called the $n$-cells of $X$. Given an element $p$ of $X_n$, we call
-$\dim{p} \mdef n$ the dimension of $p$. If the cubical set $X$ is understood,
-write $\smap{i} \mdef X(s^i) : X_{n-1} \to X_n$ and $\dmap{i}{e} \mdef
-X(d^{(i,e)}) : X_n \to X_{n-1}$, these maps are called \mname{degeneracy maps}
-and \mname{face maps}, respectively.
+$\dim{p} \mdef n$ the dimension of $p$.
 
-The objects in the image of some $\smap{i}$ are called \mname{degeneracies}. If
+% If the cubical set $X$ is understood,
+% write $\smap{i} \mdef X(s^i) : X_{n-1} \to X_n$ and $\dmap{i}{e} \mdef
+% X(d^{(i,e)}) : X_n \to X_{n-1}$, these maps are called \mname{degeneracy maps}
+% and \mname{face maps}, respectively.
+
+Given an $n$-cell $p$, any poset map $\sigma : \pint{m} \to \pint{n}$ gives rise to an $m$-cell
+$X(\sigma)(p)$. We will write $\cont{p}{\sigma} \mdef X(\sigma)(p)$ and call
+$\cont{p}{\sigma}$ an $m$-contortion of $p$.
+% We will describe every cell as a contortion in the
+% following where we explicitly depict the graph of the poset map. If $\sigma :
+% \pint{n} \to \pint{n}$ is the identity map, we might write $p$ instead of
+% $\cont{p}{\sigma}$.
+
+The cell $\cont{p}{\smap{i}}$ is called a \mname{degeneracy} of the cell $p$. If
 the dimension $n$ is understood, we will sometimes denote with $\smap{m}$ the
-composite $\smap{m} \circ \smap{m-1} \circ \ldots \circ \smap{n+1}$. This gives
-the shorthand $\smap{m}(p)$ for an $n$-cell $p$ considered a degenerate
-$m$-cell.
+composite $\smap{n} \circ \smap{n+1} \circ \ldots \circ \smap{m}$. This gives
+the shorthand $\cont{p}{\smap{m}}$ for an $n$-cell $p$ considered a degenerate
+$m$-cell for $m > n$.
 
-Conversely, the cell $\dmap{i}{e}(p)$ is called the $(i,e)$-th face of $p$. We
+Conversely, the cell $\cont{p}{\dmap{i}{e}}$ is called the $(i,e)$-th face of $p$. We
 will call the collection of all faces of an $n$-cell $p$ its boundary $\boundary{p}$:
-$$\boundary{p} \mdef \mlist{ \dmap{n}{0}(p), \dmap{n}{1}(p) , \ldots , \dmap{1}{0}(p), \dmap{1}{1}(p)}$$
+$$\boundary{p} \mdef \mlist{ \cont{p}{\dmap{n}{\izero}},
+  \cont{p}{\dmap{n}{\ione}} , \ldots , \cont{p}{\dmap{n}{\izero}}, \cont{p}{\dmap{n}{\ione}} }$$
 
 The functor laws of $X$ ensure that the faces of $p$ have overlapping
-boundaries. TODO EXPLAIN/EXAMPLE
+boundaries. TODO GENERAL FORM
 
 % Note that in any non-empty cubical set $X$, we must have non-empty $X_n$ for
 % all $n$: given an $n$-cell $p$, the codomain $X_{n+1}$ of $\smap{n+1}$ as well
 % as the codomain $X_{n-1}$ of $\dmap{n}{\_}$ must be non-empty.
 
-Not all poset maps can be obtained as compositions of degeneracy and face maps
-(in contrast to simplicial sets). Therefore we will shift our attention to
-general poset maps $\sigma : \pint{m} \to \pint{n}$ in the following. 
-Given an $n$-cell $p$, any such $\sigma$ gives rise to an $m$-cell
-$X(\sigma)(p)$, which furthermore has the following faces:
-$$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
+% Not all poset maps can be obtained as compositions of degeneracy and face maps
+% $s^\_$ and $d^\_$ (in contrast to simplicial sets).
+% Therefore we will shift our attention to
+% general poset maps $\sigma$ in the following.
+
+Functoriality means that for an $n$-cell $p$, $\sigma : \pint{m} \to \pint{n}$ and $\tau : \pint{l} \to \pint{m}$ we have
+$$\cont{(\cont{p}{\sigma})}{\tau} = \cont{p}{\sigma \circ \tau}$$
+
+This means for instance
+$$\cont{\cont{p}{\sigma}}{\dmap{i}{e}} = \cont{p}{\restrict{\sigma}{\pintrestr{n}{i}{e}}}$$
+% $$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
 
 TODO EXPLAIN WHY
 Thereby we have a specified boundary.
@@ -200,22 +218,33 @@ This is not all! Kan condition
   The cubical set $\cset{Int}$ is generated by the following data: $\cset{Int}_0
   = \{ \cset{zero} , \cset{one} \}$ and $\cset{seg} \in \cset{Int}_1$ with
   $\dmap{1}{0}(\cset{seg}) = \cset{zero}$ and $\dmap{1}{1}(\cset{seg}) =
-  \cset{one}$. We have degenerate cells in higher dimensions for the $\smap{i}$
-  to have a codomain, for instance, $\smap{1}(\cset{zero})$ is a degenerate
-  1-cell which is constantly $\cset{zero}$, captured by the fact that the face
-  maps $\dmap{1}{\_}$ send
-  $\smap{1}(\cset{zero})$ back to $\cset{zero}$.
+  \cset{one}$.
+
+  $\cset{Int}$ contains all necessary contortions, for instance
+  $\cont{\cset{zero}}{\oneconst}$ is a well-defined 1-cell which is the
+  degenerately $\cset{zero}$ (which is the same as $\smap{1}(\cset{zero})$).
+
+  The identity map gives an $n$-contortion for every $n$-cell which is equal
+  to the original cell, for instance $\cont{\cset{seg}}{\oneid}$ is just the cell
+  $\cset{seg}$.
+
+
+  % We have degenerate cells in higher dimensions for the $\smap{i}$
+  % to have a codomain, for instance, $\smap{1}(\cset{zero})$ is a degenerate
+  % 1-cell which is constantly $\cset{zero}$, captured by the fact that the face
+  % maps $\dmap{1}{\_}$ send
+  % $\smap{1}(\cset{zero})$ back to $\cset{zero}$.
 
   Assuming that $\cset{Int}$ is Kan, we can obtain the reversal of $\cset{seg}$
   as follows:
   TODO Kan inversion example
 \end{example}
 
-\begin{example}\label{exp:loopspace}
-  We define the cubical set $\cset{2Loop}$ with the following data: We have a
-  single 0-cell, so $\cset{2Loop}_0 = \{
+\begin{example}\label{exp:sndsphere}
+  We define the cubical set $\cset{S2}$ with the following data: We have a
+  single 0-cell, so $\cset{S2}_0 = \{
   \cset{a} \}$. There is one non-degenerate 2-cell $\cset{\alpha} \in
-  \cset{2Loop}_2$, which has as its faces $\cset{a}$ as a degenerate 1-cell, i.e.,
+  \cset{S2}_2$, which has as its faces $\cset{a}$ as a degenerate 1-cell, i.e.,
   $\dmap{2}{0}(\cset{\alpha}) = \dmap{2}{1}(\cset{\alpha}) =
   \dmap{1}{0}(\cset{\alpha}) = \dmap{1}{1}(\cset{\alpha}) = \smap{1} (\cset{a})$.
 \end{example}
@@ -285,39 +314,36 @@ complexity of boundary computation
 
 
 
-In the following we will assume to have given a valid context $\Gamma$
+In the following we will assume a valid context $\Gamma$
 generating a cubical set $X$.
 
-There are different ways of describing a cell in a cubical set. For our
+There are different ways of describing a cell in a cubical set.
+For our
 considerations we will want a unique representation for every cell to allow for
-literal comparisons between cells. For this we introduce the following notion:
-
-\begin{definition}
-  Given a poset map $\sigma : \pint{m} \to \pint{n}$ and an $n$-cell $p$, we
-  will write $\cont{p}{\sigma} \mdef X(\sigma)(p)$ and call $\cont{p}{\sigma}$ an
-  $m$-contortion of $p$.
-\end{definition}
-
-For example, the degenerate 1-cell $\smap{1}(\cset{zero})$ from
-\autoref{exp:int} is represented in our setting by the 1-contortion
-$\cont{\cset{zero}}{\oneconst}$, where we directly depict the graph of the poset
-map. The identity map gives an $n$-contortion for every $n$-cell which is equal
-to the original cell, for instance $\cont{\cset{seg}}{\oneid}$ is just the cell
-$\cset{seg}$. Even though we describe every cell as a contortion in the
-following, we might omit the poset map if it is the identity.
-
-However, there are still multiple ways to describe the same cell: we could
-have also used $\cont{\cset{seg}}{\substtwo{0}{0}}$ to describe the degenerate
-1-cell which is constantly $\cset{zero}$. Since $\cont{\cset{zero}}{\oneconst}$
-is more basic, we will regard it as the normal form of this cell. In general:
+literal comparisons between cells.
+For instance in \autoref{exp:int}, both $\cont{\cset{zero}}{\oneconst}$ and
+$\cont{\cset{seg}}{\substtwo{0}{0}}$ describe the same cell, namely the degenerate
+1-cell which is constantly $\cset{zero}$. Since the former is more basic, 
+we will regard it as the normal form of this cell. In general:
 
 \begin{definition}
   A contortion $\cont{p}{\sigma}$ is in normal form if there is no face $q$ of
   $p$ and map $\sigma'$ such that $\cont{p}{\sigma} = \cont{q}{\sigma'}$.
 \end{definition}
 
-
-We have an algorithm reducing a contortion to normal form as follows:
+We can efficiently compute the normal form of a contortion with
+\autoref{alg:normalize}. Given a contortion $\cont{p}{\sigma}$,
+we check whether $\sigma$ sends all elements of $\pint{m}$ to a
+subposet $\pintrestr{n}{i}{e}$ of $\pint{n}$, which means that the contortion in
+fact only talks about a face of $p$. If this is not the case we already
+have been given a normal
+form. Otherwise, we retrieve the $(i,e)$-th face of $p$, which we call $q$, and
+normalize $q$ with the poset map
+$\sigma' \circ \smap{i} \circ \sigma $. This map comes about as follows: we
+know that  $\sigma(x)_i$ is the same for all $x \in \pint{m}$, so we can obtain
+$\cont{p}{\sigma}$ also as a contortion of $q$ by first applying $\sigma$, then
+forgetting about index $i$ with $s^i$ and finally applying the contortion
+of the face, $\sigma'$.
 
 \begin{algorithm}[H]
   \caption{Normalizing a contortion}
@@ -325,12 +351,12 @@ We have an algorithm reducing a contortion to normal form as follows:
   \begin{algorithmic}
     \Require $\cont{p}{\sigma}$ where $p : T \in \Gamma$ is an $n$-cell and
     $\sigma : \pint{m} \to \pint{n}$ \Ensure Normal form of $\cont{p}{\sigma}$
-    
+
     \Procedure{Normalize}{$\cont{p}{\sigma}$}
-    \If{$\image{\sigma} \subseteq \pintrestr{n}{i}{e}$ for some $1 \leq i \leq n$ and $e
-      \in \{\izero, \ione\}$}
+    \If{$\exists 1 \leq i \leq n, e
+      \in \{\izero, \ione\} : \image{\sigma} \subseteq \pintrestr{n}{i}{e}$}
     \State $\cont{q}{\sigma'} \gets T_{i=e}$
-    \State \Return{ $\Call{Normalize}{\cont{q}{\sigma' \circ \smap{i} \circ \sigma }}$ }
+    \State \Return{$\Call{Normalize}{\cont{q}{\sigma' \circ s^i \circ \sigma }}$ }
     \Else{}
     \State \Return{$\cont{p}{\sigma}$}
     \EndIf
@@ -339,20 +365,14 @@ We have an algorithm reducing a contortion to normal form as follows:
   \end{algorithmic}
 \end{algorithm}
 
-TODO EXPLAIN
-The poset map $\sigma' \circ \smap{i} \circ \sigma $ comes about as follows: We
-know that  $\sigma(x)_i = e$ for all $x \in \pint{m}$. Therefore we consider
-where the $(i,e)$-th face of $p$ is sending all elements after forgetting about
-this index.
-
-Checking whether a subset of a poset is of the form $\pintrestr{n}{i}{e}$ can be
-done in $\mathcal{O}(2^n)$ since minimal distance TODO EXPLAIN?
-
+If we compute $\image{\sigma}$ as a multiset, checking whether 
+$\image{\sigma}$ only contains elements of $\pintrestr{n}{i}{e}$ for
+some $1 \leq i \leq n$ and $e \in \{\izero,\ione\}$ takes $\mathcal{O}(2^mn)$
+(go through all $n$ indices of all $2^m$ elements of $\image{\pint{m}}$ and
+return the first index at which all elements are the same, if there is such an index).
 Since the dimension of the contortion under question is decreased by 1 in each
 normalization step, we need to run the algorithm at most $n$ times and therefore
-have an asymptotic run time of $\mathcal{O}(2^n)$.
-
-\autoref{alg:normalize}
+have a total complexity of $\mathcal{O}(2^mn^2)$.
 
 
 
@@ -378,8 +398,8 @@ have an asymptotic run time of $\mathcal{O}(2^n)$.
       \cont{\cset{zero}}{}, \cont{\cset{one}}{} }}$
 \end{examplecontd}
 
-\begin{examplecontd}{exp:loopspace}
-  The following context generates $\cset{2Loop}$:
+\begin{examplecontd}{exp:sndsphere}
+  The following context generates $\cset{S2}$:
 
   $\mlist{ \cset{a} : \mlist{} , \cset{\alpha} : \mlist{ \cont{\cset{a}}{\oneconst} , \cont{\cset{a}}{\oneconst} ,
   \cont{\cset{a}}{\oneconst}, \cont{\cset{a}}{\oneconst} }}$
@@ -425,7 +445,7 @@ above, we can phrase it as follows:
 \begin{theorem}
   \problem{CubicalCell} is undecidable.
   \begin{proof}
-    
+
     % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
     % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
     % 1-cells $\{\cset{a} , \cset{a^{-1}} ... \} \subseteq \cset{Group}_1$ and a
@@ -436,7 +456,7 @@ above, we can phrase it as follows:
     Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
     with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
     1-cells $\{\cset{a} , ... \} \subseteq \cset{Group}_1$ 
-    
+
     (there are more 2-cells that need to be added as explained in \cite[Sect. 6.3]{bezem14_model_type_theor_cubic_sets})
     % Note that this is not a set. Doesn't matter for undecidability proof?
 
@@ -486,7 +506,7 @@ Solves memory problem. We need to explore the search space cleverly.
 \begin{definition}
   A \mname{potential poset map} (\mname{ppm}) is a map $\Sigma : \pint{m} \to \pow{\pint{n}}$
   such that for all $x \leq y$ : for all $u \in \Sigma(x)$ exists $v \in
-  \Sigma(y)$ such that $u \leq v$.
+  \Sigma(y)$ such that $u \leq v$. TODO MORE
 \end{definition}
 
 The condition on poset maps means that 
@@ -521,20 +541,24 @@ We want to try and see
 \begin{algorithm}[H]
   \caption{Simple solver}\label{alg:simple}
   \begin{algorithmic}
-    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary
+    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary ($n \mdef \dim{p} , m \mdef \dim{T} $)
     \Ensure $\sigma$ s.t. $\boundary{\cont{p}{\sigma}} = T$ if there is such a
     $\sigma$, \texttt{Unsolvable} otherwise
 
-    \Procedure{SimpleSolve}{$\Gamma, T$}
-    \State $m = \dim{T} , n = \dim{S} $
+    \Procedure{SimpleSolve}{$p$} % TODO WHICH INPUT
     \State $\Sigma \gets \{ x \mapsto \pint{n} \mid x \in \pint{m} \}$
-    \For{$xs \gets (m-1)$-face} \Comment{$2 \cdot m$ such faces}
-    \State $\sigma s \gets $ \Call{UnfoldPPM}{$\restrict{\Sigma}{xs}$} \Comment{$D_{m-1}^n$}
-    \For{$x \gets xs$}
-      \State \Call{UpdatePPM}{$\Sigma, x, \{ v \mid v \in \Sigma(x) : \exists
-        \sigma \in \sigma s : \sigma(x) = v, $
-      \Statex \hfill \Call{Normalize}{$p,img(\sigma)$} $ = {T}@ xs \}$}
-    \EndFor
+    \For{$i \gets 1\leq i \leq m, e \gets \{\izero, \ione\}$}
+      \State $\Theta \gets (x : \pintrestr{m}{i}{e} )\mapsto \emptyset$
+      \For{$\sigma \gets \Call{UnfoldPPM}{\restrict{\Sigma}{\pintrestr{m}{i}{e}}}$}
+        \If{$T_{i=e} = \Call{Normalize}{\cont{p}{\sigma}}$}
+          \For{$x \in \pintrestr{m}{i}{e}$}
+            \State $\Theta(x) \gets \Theta(x) \cup \{ \sigma(x) \}$
+          \EndFor
+        \EndIf
+        \For{$x \in \pintrestr{m}{i}{e}$}
+          \State \Call{UpdatePPM}{$\Sigma, x, \Theta(x)$}
+        \EndFor
+      \EndFor
     \EndFor
     \If{$\exists \sigma \in \Call{UnfoldPPM}{\Sigma} : \boundary{\cont{p}{\sigma}} = T$}
       \State \Return{$\sigma $}
@@ -542,22 +566,37 @@ We want to try and see
     \State \Return{\texttt{Unsolvable}}
     \EndIf
     \EndProcedure
-
-    % let psubst = foldr
-    % (\xs sigma ->
-    % let a = evalBoundary cube goal xs in
-    % let gadgets = map (map snd . Map.toList) (getSubsts (sigma `restrictKeys` Set.fromList xs)) in
-    % let gadgets' = filter (\g -> evalFace cube f g == a) gadgets in
-    % let vus = map (\i -> nub (map (!!i) gadgets')) [0 .. length xs - 1] in
-    % foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
-    % )
-    % (createPSubst (dim goal) (dim ty))
-    % (getFaces (dim goal) (dim goal - 1)) in
   \end{algorithmic}
 \end{algorithm}
 
-Instead of $D_m^n$ runtime we have $2 m D_{m-1}^n$ runtime, which is a significant
-improvement.
+Instead of having to check all $D_m^n$ poset maps, we have to check in the worst
+case $2 m D_{m-1}^n$ poset mapos.
+
+\begin{algorithm}[H]
+  \caption{Simple solver recursively}\label{alg:simple}
+  \begin{algorithmic}
+    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary ($n \mdef \dim{p} , m \mdef \dim{T} $)
+    \Ensure All $\sigma$ s.t. $\boundary{\cont{p}{\sigma}} = T$
+
+    \Procedure{SimpleSolve}{$p$}
+    \State $\Sigma \gets \{ x \mapsto \pint{n} \mid x \in \pint{m} \}$
+    \For{$i \gets 1\leq i \leq m, e \gets \{\izero, \ione\}$}
+      \State $\Theta \gets (x : \pintrestr{m}{i}{e} )\mapsto \emptyset$
+      \For{$\sigma \gets \Call{SimpleSolve}{\boundary{T_{i=e}}}$}
+        \For{$x \in \pintrestr{m}{i}{e}$}
+          \State $\Theta(x) \gets \Theta(x) \cup \{ \sigma(x) \}$
+        \EndFor
+        \EndFor
+        \For{$x \in \pintrestr{m}{i}{e}$}
+          \State \Call{UpdatePPM}{$\Sigma, x, \Theta(x)$}
+        \EndFor
+    \EndFor
+    \State \Return{$\{ \sigma \mid \sigma \in \Call{UnfoldPPM}{\Sigma} :
+    \boundary{\cont{p}{\sigma}} = T \}$}
+    \EndProcedure
+  \end{algorithmic}
+\end{algorithm}
+
 
 More than that, the potential substitutions allow us to narrow down the search
 space in other ways.

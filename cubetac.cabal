@@ -50,6 +50,7 @@ executable cubetac-exe
   main-is: Main.hs
   other-modules:
       Parser
+      PathParser
       Paths_cubetac
   hs-source-dirs:
       app

@@ -8,6 +8,7 @@ import Prel
 import Data
 import Poset
 import Formula
+import SimpleSolver
 
 idSubst :: Subst
 idSubst = Map.fromList [
@@ -95,6 +96,17 @@ stretch = Map.fromList [
             , (Vert [e0, e1] , Vert [e0, e1])
             , (Vert [e1, e0] , Vert [e1, e1])
             , (Vert [e1, e1] , Vert [e1, e1])
+              ]
+
+andOrSubst3 = Map.fromList [
+              (Vert [e0, e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e0, e1] , Vert [e0, e1])
+            , (Vert [e0, e1, e0] , Vert [e0, e1])
+            , (Vert [e0, e1, e1] , Vert [e1, e1])
+            , (Vert [e1, e0, e0] , Vert [e0, e1])
+            , (Vert [e1, e0, e1] , Vert [e0, e1])
+            , (Vert [e1, e1, e0] , Vert [e0, e1])
+            , (Vert [e1, e1, e1] , Vert [e1, e1])
               ]
 
 
@@ -208,6 +220,9 @@ loopspace = Cube [
   , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
                  ]
 
+asquare :: Boundary
+asquare = Boundary [(Term "a" (constSubst 1), Term "a" (constSubst 1) ) , (Term "a" (constSubst 1), Term "a" (constSubst 1) )]
+
 loopAndOr , loopAndOr' , loopSwap, loop4Cube , loop4Cube' :: Boundary
 loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
@@ -219,3 +234,26 @@ loopSwap = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , For
 loop4Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ]
 
 loop4Cube' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3))  ]
+
+loop4Cube'' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3))   ]
+
+loop5CubeEq = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
+
+loop5Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
+
+loop5Cube' = Boundary [
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4))
+  ]
+
+loop6Cube' = Boundary [
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 4) , Term "a" (constSubst 5))
+  ]

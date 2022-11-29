@@ -28,3 +28,9 @@ anyM f xs = go xs
 log2 :: Int -> Int
 log2 1 = 0
 log2 n = 1 + log2 (n `div` 2)
+
+splitOn :: (Char) -> String -> [String]
+splitOn p s =  case dropWhile (==p) s of
+                      "" -> []
+                      s' -> w : splitOn p s''
+                            where (w, s'') = break (==p) s'

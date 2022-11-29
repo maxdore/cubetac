@@ -5,32 +5,35 @@ import Control.Monad.State
 import System.Environment
 import qualified Data.Map as Map
 import Data.Either
+import qualified Data.Text as T
+
+import System.IO
 
 import Prel
 import Data
 import Poset
 -- import Solver
--- import SimpleSolver
+import SimpleSolver
 -- import CompSolver
 import Formula
 import Examples
-import Parser
+import PathParser
 
 
 solver :: Cube -> Boundary -> Bool -> IO ()
 solver cube goal verbose = do
-  putStrLn "CUBE"
-  mapM_ print (constr cube)
-  putStrLn "GOAL"
-  print goal
+  -- putStrLn "CUBE"
+  -- mapM_ print (constr cube)
+  -- putStrLn "GOAL"
+  -- print goal
 
-  if not (wellFormed cube)
+  if not True -- (wellFormed cube)
     then return ()
     else do
-      case findDistortion cube goal of
+      case findContortion cube goal of
         Just t -> do
-          putStrLn "FOUND SIMPLE SOLUTIONS"
-          print t
+          when verbose (putStrLn "FOUND SIMPLE SOLUTIONS")
+          when verbose (print t)
           (putStrLn . agdaTerm) t
         Nothing ->
           return ()
@@ -54,18 +57,36 @@ solver cube goal verbose = do
 
   return ()
 
-
-main :: IO ()
 main = do
-  args <- getArgs
-  let file = args !! 0
-  let gid = args !! 1
-  let verbose = "verbose" `elem` args
+  stdin <- getContents
+  -- putStrLn stdin
+  (context,goal) <- parseAgdaProblem (T.pack stdin)
+  -- putStrLn $ show context
+  -- putStrLn $ show goal
+  solver context goal False
+  return ()
 
-  (cube , goals) <- loadExample file
-  case lookup gid goals of
-    Just goal -> solver cube goal verbose
-    Nothing -> error $ "Could not find definition of " ++ gid
+
+fileproblem file = do
+  stdin <- readFile file
+  putStrLn stdin
+  (context,goal) <- parseAgdaProblem (T.pack stdin)
+  putStrLn $ show context
+  putStrLn $ show goal
+  solver context goal True
+  return ()
+
+-- main :: IO ()
+-- main = do
+--   args <- getArgs
+--   let file = args !! 0
+--   let gid = args !! 1
+--   let verbose = "verbose" `elem` args
+
+--   (cube , goals) <- loadExample file
+--   case lookup gid goals of
+--     Just goal -> solver cube goal verbose
+--     Nothing -> error $ "Could not find definition of " ++ gid
 
 
 

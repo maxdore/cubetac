@@ -74,6 +74,3 @@ subst2Tele s =
         Formula normcs
 
 
-agdaTerm :: Term -> String
-agdaTerm (Term f subst) = f ++ " " ++ show (subst2Tele subst)
-agdaTerm (Comp (Box fgs b)) = "Comp [" ++ concatMap (\(f,g) -> "(" ++ agdaTerm f ++ " , " ++ agdaTerm g ++ ") ; ") fgs ++ "] " ++ agdaTerm b
