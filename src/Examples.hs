@@ -187,11 +187,25 @@ triangle = Cube [
   , Decl "g"     (Boundary [(Term "y" (constSubst 0) , Term "z" (constSubst 0))])
   , Decl "h"     (Boundary [(Term "x" (constSubst 0) , Term "z" (constSubst 0))])
   , Decl "phi"   (Boundary [(Term "f" idSubst, Term "h" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
-  , Decl "phi3"   (Boundary [(Term "f" app1Subst, Term "h" app1Subst) , (Term "phi" id2Subst , Term "phi" id2Subst) , (Term "x" (constSubst 2) , Term "g" app2Subst)])
+  -- , Decl "phi3"   (Boundary [(Term "f" app1Subst, Term "h" app1Subst) , (Term "phi" id2Subst , Term "phi" id2Subst) , (Term "x" (constSubst 2) , Term "g" app2Subst)])
            ]
 
 triangleSlide :: Boundary
 triangleSlide = Boundary [(Term "h" idSubst, Term "g" idSubst) , (Term "f" idSubst, Term "z" (constSubst 1))]
+
+fgfgcube :: Boundary
+fgfgcube = Boundary [
+    (Term "f" app1Subst ,  Term "g" app1Subst)
+  , (Term "f" app1Subst ,  Term "g" app1Subst)
+  , (Term "phi" phisubst,  Term "phi" phisubst)
+                    ]
+
+  where phisubst = Map.fromList [
+              (Vert [e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e1] , Vert [e1, e0])
+            , (Vert [e1, e0] , Vert [e1, e0])
+            , (Vert [e1, e1] , Vert [e1, e1])
+              ]
 
 
 
@@ -255,5 +269,81 @@ loop6Cube' = Boundary [
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
-  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 4) , Term "a" (constSubst 5))
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 5) , Term "a" (constSubst 5))
   ]
+
+
+
+binom n k = product [1+n-k..n] `div` product [1..k]
+
+d :: Int -> Int
+d 0 = 2
+d 1 = 3
+d 2 = 6
+d 3 = 20
+-- d 4 = 20 + 19 + 3 * 14 + 3 * 11 + 9 + 3 * 6 + 3 * 5 + 3 * 3 + 2 + 1
+d 4 = d 3 -- all 0
+      + (d 3 - (d 0 - 1)) -- a =  19
+      + 3 * (d 2 * (d 1)) -- b = 14
+      + 3 * (d 3 - (d 2 + d 1)) -- c = 11
+      + 3 + 3 + 3 -- (d 3 - (3 * (d 1 - 1) + 3 * (2 * (d 1 - 1)))) -- d = 9
+      + 3 * d 2 -- e = 6
+      + 3 * (d 2 - 1) -- f = 5
+      + 3 * d 1 -- 3 * (d 3 - 0) --  g = 3
+      + (d 0)-- h = 2
+      + 1 -- all 1
+-- d 5 = 1
+--       + 4 + binom 4 2 + binom 4 3 + 1
+--       + 6 * (binom 3 0 + binom 3 1 + binom 3 2 + binom 3 0)
+--       + (binom 6 2) * 
+
+d 5 = d 4 -- all 0
+      + (d 4 - (d 0 - 1)) -- a = 167
+      + binom 4 1 * (d 4 - d 3) -- 148
+      + binom 4 2 * (d 4 - (d 3 + (d 3 - d 2))) -- 134
+      + binom 4 3 * (d 3 * d 2 + d 1) -- 123
+      + binom 4 4 * (6 * (d 2 + d 1)) -- 114
+      + binom 6 1 * (d 3 * 4 - d 2) -- 84
+      + binom 6 1 * binom 2 1 * (78) -- 78
+      + binom 6 2 * (53) -- 53
+      + binom 6 2 * binom 1 1 * (50) -- 50
+      + binom 6 3 * (36) -- 36
+      + binom 6 4 * (27) -- 27
+      + binom 6 5 * (21) -- 21
+      + binom 6 6 * (17) -- 17
+      + 3 * d 2 -- e = 6
+      + 3 * (d 2 - 1) -- f = 5
+      + 3 * d 1 -- 3 * (d 3 - 0) --  g = 3
+      + (d 0)-- h = 2
+      + 1 -- all 1
+
+
+psubst3 = Map.fromList [
+              (Vert [e0, e0, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e0, e0, e1] , [Vert [e1]])
+            , (Vert [e0, e1, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e1, e0, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e0, e1, e1] , [Vert [e1]])
+            , (Vert [e1, e0, e1] , [Vert [e1]])
+            , (Vert [e1, e1, e0] , [Vert [e1]])
+            , (Vert [e1, e1, e1] , [Vert [e1]])
+              ]
+
+psubst4 = Map.fromList [
+              (Vert [e0, e0, e0, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e0, e0, e0, e1] , [Vert [e0] , Vert [e1]])
+            , (Vert [e0, e0, e1, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e0, e1, e0, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e0, e0, e1, e1] , [Vert [e1]])
+            , (Vert [e0, e1, e0, e1] , [Vert [e1]])
+            , (Vert [e0, e1, e1, e0] , [Vert [e1]])
+            , (Vert [e0, e1, e1, e1] , [Vert [e1]])
+            , (Vert [e1, e0, e0, e0] , [Vert [e0] , Vert [e1]])
+            , (Vert [e1, e0, e0, e1] , [Vert [e1]])
+            , (Vert [e1, e0, e1, e0] , [Vert [e1]])
+            , (Vert [e1, e1, e0, e0] , [Vert [e1]])
+            , (Vert [e1, e0, e1, e1] , [Vert [e1]])
+            , (Vert [e1, e1, e0, e1] , [Vert [e1]])
+            , (Vert [e1, e1, e1, e0] , [Vert [e1]])
+            , (Vert [e1, e1, e1, e1] , [Vert [e1]])
+              ]

@@ -19,9 +19,8 @@ import Debug.Trace
 -- These are the names of faces of a cube
 type Id = String
 
--- Use de Brujin indices for variables
+-- Use de Brujin indices for interval variables
 type IVar = Int
-
 
 -- We regard interval substitutions as poset maps
 type Subst = Map Vert Vert
@@ -34,7 +33,7 @@ instance Fct Subst where
 
 -- Constructor for a constant substitution
 constSubst :: IVar -> Subst
-constSubst dim = Map.fromList (map (\x -> (x, Vert [])) (createPoset dim))
+constSubst n = Map.fromList (map (\x -> (x, Vert [])) (createPoset n))
 
 -- Cubes
 
@@ -77,13 +76,14 @@ instance Show Cube where
 cdim :: Cube -> Int
 cdim = length . constr
 
-
 lookupDef :: Cube -> Id -> Boundary
 lookupDef cube name =
   case lookup name (map decl2pair (constr cube)) of
     Just face -> face
     Nothing -> error $ "Could not find definition of " ++ name
 
+tdim :: Cube -> Id -> Int
+tdim cube p = dim (lookupDef cube p)
 
 normalize :: Cube -> Term -> Term
 normalize ctxt (Term p sigma) =
@@ -149,7 +149,7 @@ boundariesAgree gadss =
 type PSubst = Map Vert [Vert]
 
 instance Fct PSubst where
-  domdim = length . head . Map.toList
+  domdim = length . toBools . fst . head . Map.toList
   coddim = undefined -- TODO
 
 -- A potential term is an identifier with potential substitution
@@ -166,6 +166,10 @@ pterm2term (PTerm f subst) = Term f (fstSubst subst)
 -- potential substitution
 createPSubst :: Int -> Int -> PSubst
 createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
+
+
+restrPSubst :: PSubst -> Int -> Endpoint -> PSubst
+restrPSubst sigma i e = Map.mapKeys (`removeInd` (i+1)) (Map.filterWithKey (\x _ -> e == toBools x !! i) sigma)
 
 -- Given a potential substitution, generate all possible substitutions from it
 getSubsts :: PSubst -> [Subst]
