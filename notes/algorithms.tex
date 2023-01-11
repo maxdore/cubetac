@@ -4,45 +4,45 @@ We will give pseudo-code for algorithms. We assume we have a context $\Gamma$
 generating a cubical set and a generating cell $p \in \Gamma$ with $\dim{p} = n$ in the
 following.
 
-TODO definition retrieval?
+% TODO definition retrieval?
 
-\begin{algorithm}[H]
-  \caption{Computing the face of a contortion}
-  \label{alg:boundary}
-  \begin{algorithmic}
-    \Require Contortion $\cont{p}{\sigma}$ with $\sigma : \pint{m} \to
-    \pint{n}$, $(i,e)$  $1 \leq i \leq n$, $e \in \{\izero, \ione \}$
-    \Ensure $\dmap{i}{e}(\cont{p}{\sigma})$
+% \begin{algorithm}[H]
+%   \caption{Computing the face of a contortion}
+%   \label{alg:boundary}
+%   \begin{algorithmic}
+%     \Require Contortion $\cont{p}{\sigma}$ with $\sigma : \pint{m} \to
+%     \pint{n}$, $(i,e)$  $1 \leq i \leq n$, $e \in \{\izero, \ione \}$
+%     \Ensure $\dmap{i}{e}(\cont{p}{\sigma})$
     
-    \Procedure{Face}{$\cont{p}{\sigma}, (i,e)$}
-    \State Do Something
-    % let facepos = createPoset (domdim sigma - 1) in
-    % Boundary $ map (\i -> (
-    % evalFace ctxt p (map (\x -> sigma ! insInd i e0 x) facepos),
-    % evalFace ctxt p (map (\x -> sigma ! insInd i e1 x) facepos)))
-    % (reverse [0 .. domdim sigma - 1])
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
+%     \Procedure{Face}{$\cont{p}{\sigma}, (i,e)$}
+%     \State Do Something
+%     % let facepos = createPoset (domdim sigma - 1) in
+%     % Boundary $ map (\i -> (
+%     % evalFace ctxt p (map (\x -> sigma ! insInd i e0 x) facepos),
+%     % evalFace ctxt p (map (\x -> sigma ! insInd i e1 x) facepos)))
+%     % (reverse [0 .. domdim sigma - 1])
+%     \EndProcedure
+%   \end{algorithmic}
+% \end{algorithm}
 
 
-\begin{algorithm}[H]
-  \caption{Computing the boundary of a contortion}
-  \label{alg:boundary}
-  \begin{algorithmic}
-    \Require Contortion $\cont{p}{\sigma}$ where $p$ is an $n$-cell of $X$ and $\sigma : \pint{m} \to \pint{n}$.
-    \Ensure $\boundary{\cont{p}{\sigma}}$
+% \begin{algorithm}[H]
+%   \caption{Computing the boundary of a contortion}
+%   \label{alg:boundary}
+%   \begin{algorithmic}
+%     \Require Contortion $\cont{p}{\sigma}$ where $p$ is an $n$-cell of $X$ and $\sigma : \pint{m} \to \pint{n}$.
+%     \Ensure $\boundary{\cont{p}{\sigma}}$
     
-    \Procedure{Boundary}{$\cont{p}{\sigma}$}
-    \State Do Something
-    % let facepos = createPoset (domdim sigma - 1) in
-    % Boundary $ map (\i -> (
-    % evalFace ctxt p (map (\x -> sigma ! insInd i e0 x) facepos),
-    % evalFace ctxt p (map (\x -> sigma ! insInd i e1 x) facepos)))
-    % (reverse [0 .. domdim sigma - 1])
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
+%     \Procedure{Boundary}{$\cont{p}{\sigma}$}
+%     \State Do Something
+%     % let facepos = createPoset (domdim sigma - 1) in
+%     % Boundary $ map (\i -> (
+%     % evalFace ctxt p (map (\x -> sigma ! insInd i e0 x) facepos),
+%     % evalFace ctxt p (map (\x -> sigma ! insInd i e1 x) facepos)))
+%     % (reverse [0 .. domdim sigma - 1])
+%     \EndProcedure
+%   \end{algorithmic}
+% \end{algorithm}
 
 
 
@@ -74,73 +74,77 @@ TODO definition retrieval?
 
 
 
-\begin{algorithm}[H]
-  \caption{Well-formed boundary}\label{alg:wellformedboundary}
-  \begin{algorithmic}
-    \Require $\Gamma$ context, $T$ term
-    \Ensure \texttt{OK} if $T$ well formed, \texttt{Error} otherwise
+% \begin{algorithm}[H]
+%   \caption{Well-formed boundary}\label{alg:wellformedboundary}
+%   \begin{algorithmic}
+%     \Require $\Gamma$ context, $T$ term
+%     \Ensure \texttt{OK} if $T$ well formed, \texttt{Error} otherwise
 
-    \Procedure{WellFormed}{$\Gamma, T$}
-    \State Do Something
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
+%     \Procedure{WellFormed}{$\Gamma, T$}
+%     \State Do Something
+%     \EndProcedure
+%   \end{algorithmic}
+% \end{algorithm}
 
-\begin{algorithm}[H]
-  \caption{Well-formed context}\label{alg:wellformedcontext}
-  \begin{algorithmic}
-    \Require $\Gamma$ context
-    \Ensure \texttt{OK} if $\Gamma$ well formed, \texttt{Error} otherwise
+% \begin{algorithm}[H]
+%   \caption{Well-formed context}\label{alg:wellformedcontext}
+%   \begin{algorithmic}
+%     \Require $\Gamma$ context
+%     \Ensure \texttt{OK} if $\Gamma$ well formed, \texttt{Error} otherwise
 
-    \Procedure{WellFormed}{$\Gamma$}
-    \State Gradually build up? Or is it ok to have mutually defined cells?
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
-
-
+%     \Procedure{WellFormed}{$\Gamma$}
+%     \State Gradually build up? Or is it ok to have mutually defined cells?
+%     \EndProcedure
+%   \end{algorithmic}
+% \end{algorithm}
 
 
-\begin{algorithm}[H]
-  \caption{Faces}\label{alg:faces}
-  \begin{algorithmic}
-    \Require $m$, $n$
-    \Ensure $\{ xs \}$ where $xs$ are the $n$-faces of $\pint{m}$
 
-    \Procedure{Faces}{$m,n$}
-    \If{$n = 0$}
-    \State $\{ \{ x \} \mid x \in \pint{m} \}$
-    \ElsIf{$m = n$}
-    \State $\{ \pint{m} \}$
-    \Else
-    \State $\{ \{ 0x \mid x \in xs \} , \{ 1x \mid x \in xs\} \mid xs \in $ \Call{Faces}{$m-1,n$} $ \}$
-    \Statex $\cup TODO$
-    \EndIf
-    \EndProcedure
+
+% \begin{algorithm}[H]
+%   \caption{Faces}\label{alg:faces}
+%   \begin{algorithmic}
+%     \Require $m$, $n$
+%     \Ensure $\{ xs \}$ where $xs$ are the $n$-faces of $\pint{m}$
+
+%     \Procedure{Faces}{$m,n$}
+%     \If{$n = 0$}
+%     \State $\{ \{ x \} \mid x \in \pint{m} \}$
+%     \ElsIf{$m = n$}
+%     \State $\{ \pint{m} \}$
+%     \Else
+%     \State $\{ \{ 0x \mid x \in xs \} , \{ 1x \mid x \in xs\} \mid xs \in $ \Call{Faces}{$m-1,n$} $ \}$
+%     \Statex $\cup TODO$
+%     \EndIf
+%     \EndProcedure
     
-    % getFaces :: Int -> Int -> [[Vert]]
-    % getFaces m 0 = map (: []) (createPoset m)
-    % getFaces m n | m == n = [ createPoset m ]
-    % getFaces m n =
-    % map (map (e0 `insv`)) (getFaces (m-1) n)
-    % ++ map (map (e1 `insv`)) (getFaces (m-1) n)
-    % ++ map (\l -> map (e0 `insv`) l ++ map (e1 `insv`) l) (getFaces (m-1) (n-1))
-  \end{algorithmic}
-\end{algorithm}
+%     % getFaces :: Int -> Int -> [[Vert]]
+%     % getFaces m 0 = map (: []) (createPoset m)
+%     % getFaces m n | m == n = [ createPoset m ]
+%     % getFaces m n =
+%     % map (map (e0 `insv`)) (getFaces (m-1) n)
+%     % ++ map (map (e1 `insv`)) (getFaces (m-1) n)
+%     % ++ map (\l -> map (e0 `insv`) l ++ map (e1 `insv`) l) (getFaces (m-1) (n-1))
+%   \end{algorithmic}
+% \end{algorithm}
 
 
 
-\subsection{Potential substitutions}
+% \subsection{Potential substitutions}
+
+
+
+
 
 
 \begin{algorithm}[H]
   \caption{Update potential poset map}\label{alg:updateppm}
   \begin{algorithmic}
     \Require $\Sigma : \pint{m} \to \pow{\pint{n}}$ ppm, $x \in
-    \pint{m}$, $vs \in \pow{\pint{n}} - \emptyset$
+    \pint{m}$, $vs \subseteq \Sigma(x)$ % $vs \in \pow{\pint{n}} - \emptyset$
     \Ensure Updated ppm $\Sigma' : \pint{m} \to \pint{n}$ with $\Sigma(x) = vs$.
 
-    \Procedure{UpdatePPM}{$\Sigma, (x,vs)$}
+    \Procedure{UpdatePPM}{$\Sigma, x,vs)$}
     \For{$y \gets \pint{m}$}
     \If{$x = y$}
     \State $\Sigma'(x) \gets vs$
@@ -157,6 +161,7 @@ TODO definition retrieval?
   \end{algorithmic}
 \end{algorithm}
 
+Worst case run-time of $\mathcal{O}(2^m 2^n)$
 
 
 \begin{algorithm}[H]
@@ -164,14 +169,21 @@ TODO definition retrieval?
   \begin{algorithmic}
     \Require $\Sigma : \pint{m} \to \pow{\pint{n}}$ potential poset map
     \Ensure $\{ \sigma : \pint{m} \to \pint{n} \}$ poset maps
-    
+
     \Procedure{UnfoldPPM}{$\Sigma$}
-    \State $\sigma : x \mapsto \Sigma(x) $
-    TODO
+    \State \Return $\{ x \mapsto v, \Call{UnfoldPPM}{\Call{UpdatePPM}{\Sigma,x,v} - x} \mid v \in \Sigma(x) \}$
     \EndProcedure
   \end{algorithmic}
 \end{algorithm}
 
+% getSubsts' :: [(Vert , [Vert])] -> [[(Vert , Vert)]]
+% getSubsts' [] = [[]]
+% getSubsts' ((x , vs) : ys) = [ (x , v) : r | v <- vs , r <- getSubsts' (filterRec x v ys) ]
+
+% filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
+% filterRec x v = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ]))
+
+Worst case run-time of $\mathcal{O}(D_m^n)$
 
 
 % For an efficient algorithm we instead consider an algorithm which extracts the

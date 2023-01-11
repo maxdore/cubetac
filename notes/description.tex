@@ -52,12 +52,12 @@
 \newcommand{\smap}[1]{s^{{#1}}}
 \newcommand{\dmap}[2]{d^{({#1} , {#2})}}
 % \newcommand{\cont}[2]{{#1}\langle{#2}\rangle}
-\newcommand{\cont}[2]{ \ifthenelse{\equal{#2}{}}{#1}{{#1}\langle{#2}\rangle} }
+\newcommand{\cont}[2]{\ensuremath{ \ifthenelse{\equal{#2}{}}{#1}{{#1}\langle{#2}\rangle}} }
 
 
 
 \newcommand{\pow}[1]{\mathcal{P}({#1})}
-\newcommand{\cset}[1]{\mathsf{{#1}}}
+\newcommand{\cset}[1]{\ensuremath{\mathsf{{#1}}}}
 \newcommand{\boundary}[1]{\partial({#1})}
 \newcommand{\comp}[2]{\mathsf{Comp}({#1}\ {#2})}
 
@@ -81,8 +81,59 @@
   \end{array}
 }
 
+\newcommand{\dimcube}[3]{
+  \begin{tikzpicture}[scale=0.3]
+    \draw[->,>=stealth] (0,0) -- (0,1) node [near end,right, fill=none] {$#1$};
+    \draw[->,>=stealth] (0,0) -- (1,0) node [near end,below, fill=none] {$#2$};
+    \draw[->,>=stealth] (0,0) -- (-.71,-.71) node [near end,above=.02cm, fill=none] {$#3$};
+  \end{tikzpicture}
+}
 
-\title{Searching in cubes}
+
+\newcommand{\dimsquare}[2]{
+  \begin{tikzpicture}[scale=0.30]
+    \draw[->,>=stealth] (0,0) -- (1,0) node [near end,below, fill=none] {$#1$};
+    \draw[->,>=stealth] (0,0) -- (0,1) node [near end,left, fill=none] {$#2$};
+  \end{tikzpicture}
+}
+
+\newcommand{\filledsquare}[5]{
+  \begin{tikzpicture}[scale=.5]
+    \draw[->,>=stealth] (0,0) -- (3,0) node [midway,below, fill=none] {\ensuremath{#1}};
+    \draw[->,>=stealth] (0,3) -- (3,3) node [midway,above, fill=none] {\ensuremath{#2}};
+    \draw[->,>=stealth] (0,0) -- (0,3) node [midway,left,  fill=none] {\ensuremath{#3}};
+    \draw[->,>=stealth] (3,0) -- (3,3) node [midway,right, fill=none] {\ensuremath{#4}};
+    \node [fill=none] at (1.5, 1.5) {\ensuremath{#5}};
+  \end{tikzpicture}
+}
+
+
+\newcommand{\hcompcube}[9]{
+  \begin{tikzpicture}[scale=1.4]
+    \draw[->,>=stealth] (0,0) -- (4,0) node [midway,below, fill=none] {\ensuremath{#1}};
+    \draw[->,>=stealth] (0,0) -- (0,4) node [midway,left=.2cm, fill=none] {\ensuremath{#2}};
+    \draw[->,>=stealth] (0,4) -- (4,4) node [midway,above, fill=none] {\ensuremath{#3}};
+    \draw[->,>=stealth] (4,0) -- (4,4) node [midway,right=.2cm,fill=none] {\ensuremath{#4}};
+
+    \draw[->,>=stealth] (1,1) -- (3,1);
+    \draw[->,>=stealth] (1,1) -- (1,3);
+    \draw[->,>=stealth] (3,1) -- (3,3);
+    \draw[->,>=stealth] (1,3) -- (3,3);
+
+    \draw[->,>=stealth] (1,1) -- (0,0);
+    \draw[->,>=stealth] (3,1) -- (4,0);
+    \draw[->,>=stealth] (3,3) -- (4,4);
+    \draw[->,>=stealth] (1,3) -- (0,4);
+
+    \node at (2, .5)  {\ensuremath{#5}};
+    \node at (.5, 2)  {\ensuremath{#6}};
+    \node at (2, 3.5) {\ensuremath{#7}};
+    \node at (3.5, 2) {\ensuremath{#8}};
+    \node at (2, 2)  {\ensuremath{#9}};
+  \end{tikzpicture}
+}
+
+\title{Proof Search in Kan Cubical Sets}
 \author{Maximilian Dor\'e}
 \date{\today}
 
@@ -90,19 +141,201 @@
 \begin{document}
 \maketitle	
 
-As observed by \cite{orton17_axiom_model_cubic_type_theor_topos}, do not require
-a full De Morgan structure. In particular, it suffices to consider only $\meet$
-and $\join$ forming a bounded free distributive lattice.
+The realization that identity in constructive type theory is best understood in
+analogy to homotopies as studied in algebraic topology \cite{awodey09_homot} has
+sparked the research field of homotopy type theory \cite{hott}. Recent research has been
+focused on devising a computationally well-behaved type theory making this
+analogy precise. One such type theory is cubical type theory, which takes one
+combinatorial model of homotopy types, cubical sets, as inspiration
+\cite{cohen18_cubic_type_theor}. One major contribution of cubical type theory 
+is that it gives computational meaning to the univalence 
+axiom \cite{kapulkin12_unival_simpl_sets}. In doing so, it is the
+first type theory with explicit path arithmetic allowing to reason about
+homotopy types in a synthetic way. Cubical type theory has been implemented as
+an extension to the interactive theorem prover
+Agda \cite{vezzosi19_cubic_agda}. Thereby it is a prime candidate for a
+constructive logic for higher identities. This paper will treat it as such and
+investigate how we can automate its reasoning principles.
 
-\cite{williamson12_combin_homot_theor}: we shall think geometrically, and prove
-algebraically!
+\paragraph{Proof goals in Cubical Agda}
+
+Cubical Agda implements the idea of higher inductive types
+(HIT), which are inductive types that also allow for higher path
+constructors, by treating them as freely generated cubical sets. When mapping
+into a higher inductive type, one has to respect the coherences introduced by
+these path constructors, which means that one has to show that certain cells in
+the corresponding cubical set exist. For example, we have a very simple HIT
+\cset{Int} which has three constructors: two term constructors \cset{zero} and
+\cset{one}, and a 1-dimensional path constructor \cset{seg} connecting both
+points. One proof goal one could face when mapping into \cset{Int} is that one
+has to construct a square spanned by the \cset{seg} path and the path which is
+constantly \cset{one} which we can depict as follows:
+
+\begin{center}
+  \filledsquare{\cset{seg}}{\cont{\cset{one}}{\smap{1}}}{\cset{seg}}{\cont{\cset{one}}{\smap{1}}}{}
+\end{center}
+
+We read the square as follows: Starting from the bottom left corner, which is
+the 0-dimensional cell \cset{zero}, we go with the \cset{seg} path both to the
+top left and the bottom right corner, which is then the right boundary of
+\cset{seg}, which is \cset{one}. We then have as the top and right face 
+the cell \cset{one} considered as a degenerate 1-cell, which we denote by
+\cont{\cset{one}}{\smap{1}}. Coming from our topological intuition, we would
+expect that the boundary described by the above square has a filler as it just
+stretches the \cset{seg} path into a certain square. Indeed, the cubical set
+described by the above HIT contains a 2-dimensional cell with
+this boundary. In Cubical Agda, this cell is represented by the term
+$\lambda i j .\cset{seg} (i \vee j)$. By introducing two dimensional variables
+$i$ and $j$, this term represents a path
+in two dimensions, i.e., a square. We can apply one argument to the
+1-dimensional path
+\cset{seg}, for which we take $i \vee j$. This is a formula in the theory of
+bounded distributive lattices over the interval variables in the
+context.\footnote{In Cubical Agda, one can use more general formulas, namely
+  those of a De Morgan algebra. \cite{orton17_axiom_model_cubic_type_theor_topos} has shown
+  that a distributive lattices suffices. We will discuss the
+  relationship between these two versions of cubical sets in more detail in
+  \autoref{ssec:inverses}}
+Applying this formula to a path is commonly called an interval substitution.
+
+Not all cells in Cubical Agda arise by interval substitutions. Going
+back to Kan \cite{kan55_abstr_homot}, cubical sets need to satisfy one property
+to be a model for homotopy types: If we have a box, i.e., a
+well-defined boundary of a cube with only one side missing, then the cubical set
+must contain a cell
+which fills the missing side. This cell is then called the Kan composition of
+the box. For example, we can use Kan composition to derive that a path can be reversed. 
+Treating the path \cset{seg} as a logical manifestation as a function out of the
+interval, we would expect that we can come up with a function which travels
+along the points of \cset{seg} in the other direction, i.e., that we have a path starting at
+\cset{one} going back to \cset{zero}. To show that such a path exists we use Kan
+composition on the following box:
+
+\begin{center}
+  \begin{tikzpicture}[scale=.5]
+    \draw[->,dashed,>=stealth] (0,0) -- (3,0) node [midway,below, fill=none] {``\cset{seg^{-1}}''};
+
+    \draw[->,>=stealth] (0,3) -- (3,3) node [midway,above, fill=none] {\cont{\cset{one}}{\smap{1}}};
+    \draw[->,>=stealth] (0,0) -- (0,3) node [midway,left, fill=none] {\cont{\cset{one}}{\smap{1}}};
+    \draw[->,>=stealth] (3,0) -- (3,3) node [midway,right, fill=none] {\cset{seg}};
+  \end{tikzpicture}
+\end{center}
+
+On the left and top side, the square is constantly \cset{one}. On the right hand
+side, we have the \cset{seg} path. Then the bottom left corner of the square is
+the 0-cell \cset{one}, and the bottom left corner is \cset{zero}.
+Kan composition of this open box gives us a cell with \cset{one} at its
+left and \cset{zero} at its right boundary, which we could aptly call \cset{seg^{-1}}.
+
+% TODO GOOD HERE?
+% This principle has found its manifestation as a principle of logic. More general
+% \cite{harper15_note_unifor_kan_condit_nomin_cubic_sets} by allowing multiple
+% sides of the box to be missing and by also giving a filler for the whole cube,
+% but this is not of concern for us in the following.
+
+
+\paragraph{Poset maps as interval substitutions}
+
+The above examples are common proof obligations in Cubical Agda. Searching for
+interval substitutions automatically is difficult since it is not possible to
+construct a formula of the distributive lattice by looking at the boundary which
+needs to be filled (at least according to the author's knowledge). We 
+will have to take a different perspective in the following, using a
+correspondence between $n$-tuples of formulas in the free bounded distributive
+lattice over $m$ elements and monotone
+functions between the posets  $\{ 0<1 \}^m$ and $\{ 0<1 \}^n$.
+
+% This correspondence is efficiently computable as we will see in
+% \ref{sec:cubicalcorrespondence}, where we flash out the correspondence between
+% our presentation and the one in Cubical Agda more concretely.
+
+
+For example, to the formula $i \vee j$ corresponds to the poset map $\{ 0<1 \}^2
+\to \{ 0<1 \}^1$ which sends $00$ to $0$ and everything else to $1$. A cubical set
+is a presheaf on the full subcategory of posets of the form $\{ 0<1 \}^n$, which
+means that this poset map will be sent contravariantly to a map from the 1-cells
+to the 2-cells of the cubical set. By filling in the definition of \cset{seg}
+for the 1-cell, we can depict the action of the poset map on the 1-cell
+\cset{seg} as follows:
+\begin{center}
+\begin{tikzpicture}
+  % \node (zz) at (0,1) {\textcolor{gray}{00} $\mapsto \{x\}$};
+  % \node (zo) at (-1,0) {\textcolor{gray}{01} $\mapsto \{x , y\}$};
+  % \node (oz) at (1,0) {\textcolor{gray}{10} $\mapsto \{x , y\}$};
+  % \node (oo) at (0,-1) {\textcolor{gray}{11} $\mapsto \{y\}$};
+  \node (zz) at (0,1) {00};
+  \node (zo) at (-1,0) {01};
+  \node (oz) at (1,0) {10};
+  \node (oo) at (0,-1) {11};
+  \draw (zz) -- (zo) -- (oo) -- (oz) -- (zz);
+  % \end{tikzpicture}
+  % \begin{tikzpicture}[scale=1]
+  \node (z) at (2.6,.7) {\cset{zero}};
+  \node (o) at (2.6,-.7) {\cset{one}};
+  \draw (z) -- (o) node[midway,right] {\cset{seg}};
+
+  \draw[|->] (zz) -- (z);
+  \draw[|->] (zo) -- (o);
+  \draw[|->] (oz) -- (o);
+  \draw[|->] (oo) -- (o);
+\end{tikzpicture}
+\end{center}
+
+This depiction suggests a geometrical intuition for how the boundary of $\lambda i
+j.\cset{seg} (i \vee j)$ comes about: the faces $00-01$ and $00-10$ are the
+\cset{seg} cell as $00$ is send to the left endpoint of \cset{seg} and $01$ and
+$10$, respectively, to the right endpoint of \cset{seg}. The faces $01-11$ and $10-11$
+are both constantly \cset{one} as both of its endpoints are send to the same
+0-cell. This geometric intuition will allow us to find poset maps
+efficiently, thereby solving the problem of finding interval substitutions in
+TODO RUNTIME. This is a significant improvement over na\"ive search for
+interval substitutions, as the number of interval substitutions of an
+$n$-dimensional path is the $n$-th Dedekind number.
+
+Moreover, the poset map perspective allows us to gradually build open box to
+find cells as Kan compositions. The problem of whether a cell can be filled by
+Kan composition is in general undecidable as we will show in
+\autoref{ssec:kanundecidable}. We will explore different semi-decidable
+procedures and heuristics to still come up with Kan compositions in many
+practical examples.
+
+% \cite{williamson12_combin_homot_theor}: we shall think geometrically, and prove
+% algebraically!
 
 % Allowable boundary shapes are generating cofibrations from a model categorical perspective
 
 
-\section{Cubical sets and their boundaries}
+\paragraph*{Contributions and Structure}
 
-\subsection{Background}
+The present paper is the first exploration of cubical sets from the point of
+view of automated reasoning. We give a presentation of cubical sets in terms of
+presheaves on a certain category of posets and monotone maps and give a notion
+of normal forms for cells of cubical sets in \autoref{sec:normalforms}. We
+introduce the notion of potential poset maps as a useful data structure for
+efficient search of poset maps in \autoref{sec:contortionsolver} and give an
+algorithm for finding poset maps for a given boundary with a run time of TODO RUNTIME.
+We then extend our considerations to Kan cubical sets and establish why searching for
+cells in Kan cubical sets is in general undecidable. We present efficient heuristics for
+finding Kan compositions in many practical cases in
+\autoref{sec:compositionsolver}. The findings of this paper have been used to
+implement a tactic for Cubical Agda which we will discuss alongside some case studies in
+\autoref{sec:cubicalagda} before concluding with some remarks in
+\autoref{sec:conclusions}.
+
+
+\section{Cubical Sets and Contortions}
+\label{sec:normalforms}
+
+In this section we will introduce the universe of discourse for our
+considerations. We will define cubical sets and introduce some running examples
+in \autoref{ssec:cubicalsets}. For proof search we require a finitary
+representation of cubical sets, which we will call higher inductive types and
+introduce in \autoref{ssec:hits}. We need a unique description for each cell of
+a cubical set and introduce certain normal forms for this purpose in
+\autoref{ssec:normalforms}.
+
+\subsection{Cubical sets}
+\label{ssec:cubicalsets}
 
 The Dedekind cube category $\dedekind$ is the full subcategory of the category
 of posets and monotone maps with objects $\pint{n}$ for $n \geq 0$, where $\pint{}
@@ -121,8 +354,6 @@ $\pint{0}$ has one element $()$. We will write $\pintrestr{n}{i}{e} \mdef
 % with $\restrict{\sigma}{P} : P \to \pint{n}$ the restriction of $\sigma$ to $P$.
 % In particular, if $P = \pintrestr{m}{i}{e}$, we might denote TODO INDEX REMOVED
 % FROM IT
-
-
 
 Cubical sets are objects of $\psh{\dedekind}$, i.e., presheaves over the
 Dedekind cube category. For a cubical set $X$ write $X_n \mdef X(\pint{n})$,
@@ -148,15 +379,15 @@ Certain poset maps of interest are:
 Given an $n$-cell $p$, $\cont{p}{\smap{n+1}}$ is called a \mname{degeneracy} of
 $p$. Given an $m > n$, we will write $\smap{m}$ for the composite
 $\smap{n} \circ \smap{n+1} \circ \ldots \circ \smap{m}$. This gives the shorthand
-$\cont{p}{\smap{m}}$ for $p$ considered a degenerate $m$-cell.
+$\cont{p}{\smap{m}}$ for $p$ considered as a degenerate $m$-cell.
 
 Conversely, the cell $\cont{p}{\dmap{i}{e}}$ is called the $(i,e)$-th face of $p$. We
-will call the collection/list/sequence of all faces of an $n$-cell $p$ its boundary $\boundary{p}$:
+will call the list of all faces of an $n$-cell $p$ its boundary $\boundary{p}$:
 $$\boundary{p} \mdef \mlist{ \cont{p}{\dmap{1}{\izero}},
   \cont{p}{\dmap{1}{\ione}} , \ldots , \cont{p}{\dmap{n}{\izero}}, \cont{p}{\dmap{n}{\ione}} }$$
 
-The functor laws of $X$ ensure that the faces of $p$ have overlapping
-boundaries. TODO GENERAL FORM
+% The functor laws of $X$ ensure that the faces of $p$ have overlapping
+% boundaries. TODO GENERAL FORM
 
 % Note that in any non-empty cubical set $X$, we must have non-empty $X_n$ for
 % all $n$: given an $n$-cell $p$, the codomain $X_{n+1}$ of $\smap{n+1}$ as well
@@ -167,7 +398,7 @@ boundaries. TODO GENERAL FORM
 % Therefore we will shift our attention to
 % general poset maps $\sigma$ in the following.
 
-Functoriality means that for an $n$-cell $p$, $\sigma : \pint{m} \to \pint{n}$ and $\tau : \pint{l} \to \pint{m}$ we have
+Contravariance means that for an $n$-cell $p$, $\sigma : \pint{m} \to \pint{n}$ and $\tau : \pint{l} \to \pint{m}$ we have
 $$\cont{(\cont{p}{\sigma})}{\tau} = \cont{p}{\sigma \circ \tau}$$
 
 % This means for instance
@@ -175,18 +406,12 @@ $$\cont{(\cont{p}{\sigma})}{\tau} = \cont{p}{\sigma \circ \tau}$$
 % $$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
 
 
-In the next section we will see how this consideration is turned up side down:
-Given a boundary, we want to come up with poset maps such as $\sigma$ to attain
-the cell under question. For this we will introduce some notation. An
+In this paper we will explore how one can come up with a cell given some
+boundary. For this we will introduce some notation. An
 $n$-dimensional boundary $T$ is a list of $2n$ cells $\mlist{p_{(1,\izero)},
   p_{(1,\ione)} , ... , p_{(n,\izero)}, p_{(n, \ione)}}$. We will write
-$T_{(i=e)} \mdef p_{(i,e)}$. TODO DO WE NEED THIS NOTATION
+$T_{(i=e)} \mdef p_{(i,e)}$. % TODO DO WE NEED THIS NOTATION
 
-\paragraph{Kan cubical sets}
-
-
-TODO Kan condition
-This is not all! Kan condition
 
 % In fact, we will be concerned in
 % \autoref{sec:contortionsearch} with searching for intricate poset maps which
@@ -214,7 +439,8 @@ This is not all! Kan condition
   The cubical set $\cset{Int}$ is generated by the following data: $\cset{Int}_0
   = \{ \cset{zero} , \cset{one} \}$ and $\cset{seg} \in \cset{Int}_1$ with
   $\cont{\cset{seg}}{\dmap{1}{0}} = \cset{zero}$ and $\cont{\cset{seg}}{\dmap{1}{1}} =
-  \cset{one}$.
+  \cset{one}$, which we could have written more concisely with
+  $\boundary{\cset{seg}} = \mlist{\cset{zero}, \cset{one}}$.
 
   $\cset{Int}$ contains all necessary contortions, for instance
   $\cont{\cset{zero}}{\smap{1}}$ is a well-defined 1-cell which is
@@ -229,9 +455,9 @@ This is not all! Kan condition
   % maps $\dmap{1}{\_}$ send
   % $\smap{1}(\cset{zero})$ back to $\cset{zero}$.
 
-  Assuming that $\cset{Int}$ is Kan, we can obtain the reversal of $\cset{seg}$
-  as follows:
-  TODO Kan inversion example
+  % Assuming that $\cset{Int}$ is Kan, we can obtain the reversal of $\cset{seg}$
+  % as follows:
+  % TODO Kan inversion example
 \end{example}
 
 \begin{example}\label{exp:sndsphere}
@@ -277,26 +503,22 @@ This is not all! Kan condition
 % \end{example}
 
 
+\subsection{Higher inductive types}
+\label{ssec:hits}
 
-
-
-\subsection{Cubical sets algorithmically}
-
-(Kan) cubical sets as introduced in the previous section are infinite objects:
+Cubical sets as introduced in the previous section are infinite objects:
 As soon as there is a single cell in a cubical set $X$, we have faces or
 degeneracies in all dimensions, and more generally all sorts of cells induced by
 the poset maps. In order to mechanically search for cells in a cubical set, we
 need a finitary representation of cubical sets. The examples above suggest that
 we only require a bit of generating data from which the other cells and maps can
-be inferred in a unique way. TODO BACKGROUND This is what HITs are for In
-\cite[Sect. 6.4]{bezem14_model_type_theor_cubic_sets}, strict groupoid turned
-into cubical set with general construction Higher inductive types are
-constructed as generalized pushout construction (free $\omega$-groupoid
-construction)
+be inferred in a unique way.
 
-Furthermore, we will introduce a term language to talk about the objects
-generated from this finitary representation, with normal forms. Also we consider
-complexity of boundary computation 
+% TODO BACKGROUND This is what HITs are for In
+% \cite[Sect. 6.4]{bezem14_model_type_theor_cubic_sets}, strict groupoid turned
+% into cubical set with general construction Higher inductive types are
+% constructed as generalized pushout construction (free $\omega$-groupoid
+% construction)
 
 
 \begin{definition}
@@ -307,11 +529,11 @@ complexity of boundary computation
   of the context.
 \end{definition}
 
-\todo{Define valid context and describe algorithm checking validity
-
-  Checking that a context is well-formed can be done in $\mathcal{O}(? k)$ and is
-  implemented in \autoref{alg:wellformedboundary} and
-  \autoref{alg:wellformedcontext}.
+\todo{Define validity of boundary and context descriptions and give algorithm
+  checking validity.
+  % Checking that a context is well-formed can be done in $\mathcal{O}(? k)$ and is
+  % implemented in \autoref{alg:wellformedboundary} and
+  % \autoref{alg:wellformedcontext}.
 }
 
 \begin{examplecontd}{exp:int}
@@ -347,14 +569,17 @@ complexity of boundary computation
     , \cset{\phi} : \mlist{ \cset{p} , \cset{r} ,
       \cont{\cset{x}}{\oneconst}, \cset{q} }
   }$
-  
-  The contortion $(\phi,\substfour{00}{00}{01}{01})$ has normal form $(p,\substfour{0}{0}{1}{1})$.
+
 \end{examplecontd}
 
 
 
 In the following we will assume a valid context $\Gamma$
 generating a cubical set $X$.
+
+
+\subsection{Normal forms of contortions}
+\label{ssec:normalforms}
 
 There are different ways of describing a cell in a cubical set.
 For our
@@ -422,13 +647,15 @@ some $1 \leq i \leq n$ and $e \in \{\izero,\ione\}$ takes $\mathcal{O}(2^mn)$
 return the first index at which all elements are the same, if there is such an index).
 Since the dimension of the contortion under question is decreased by 1 in each
 normalization step, we need to run the algorithm at most $n$ times and therefore
-have a total complexity of $\mathcal{O}(2^mn^2)$.
+have a total complexity of $\mathcal{O}(2^mn^2)$ for contortion normalization.
+
+\begin{examplecontd}{exp:triangle}
+  The contortion $\cont{\phi}{\substfour{00}{00}{01}{01}}$ has normal form $\cont{p}{\substfour{0}{0}{1}{1}}$.
+\end{examplecontd}
 
 
 
-\todo{where to describe \autoref{alg:boundary} }
-
-
+% \todo{where to describe \autoref{alg:boundary} }
 
 % TERM DEFINITION 
 % Given a context $\Gamma$, the set of $m$-dimensional terms over $\Gamma$, denoted $Tm_m(\Gamma)$, consists of
@@ -441,136 +668,192 @@ have a total complexity of $\mathcal{O}(2^mn^2)$.
 % \end{itemize}
 
 
-\subsection{Searching for cells}
+\section{Searching for Contortions}
+\label{sec:contortionsolver}
 
-The search problem is the following: given a cubical set and a certain boundary,
-is there a cell with that boundary. Using the finitary representation introduced
-above, we can phrase it as follows:
-  
+In this section, we will study the following search problem: given a cubical set
+and a certain boundary, we want to decide whether there is a cell in this
+cubical set with that boundary. We will set out this problem in more detail in
+\autoref{ssec:cubicalcell}. For our algorithms we introduce the notion of
+potential poset maps which are introduced in \autoref{ssec:ppm} and use them to
+devise an efficient algorithm for computing contortions in
+\autoref{ssec:contortionsolver}. 
+
+
+\subsection{The problem \problem{CubicalCell}}
+\label{ssec:cubicalcell}
+
+Using the finitary representation introduced above, we can phrase the problem of
+finding a cell with a given boundary as follows:
+
 \begin{definition}
-  Given a context $\Gamma$ and a (valid) boundary $T$, the problem
-  \problem{CubicalCell}($X$,$T$) is to find a term $t \in Tm_{\dim{T}}(\Gamma)$ such that
-  $\boundary{t} = T$.
+  Given a context $\Gamma$ and a boundary $T$, the problem
+  \problem{CubicalCell}($\Gamma$,$T$) is to find a contortion $\cont{p}{\sigma}$ such that
+  $\boundary{\cont{p}{\sigma}} = T$.
 \end{definition}
 
-(More generally, we can encode all word problems from universal algebra in our setting.)
+The problem \problem{CubicalCell} is clearly decidable since there are
+only finitely many contortions of a cell in a specific dimension. However, the
+search space grows super-exponentially: suppose we want to find an
+$m$-dimensional contortion of a 1-cell, i.e., we are looking for a poset map
+$\pint{m} \to \pint{}$. The number of such monotone maps is the $m$-th Dedekind
+number, which we will denote $D_m$. For $m = 6$, we already have $D_6 = 7828354$
+poset maps, and for 9 the exact number of possible poset maps is unknown
+\footnote{\url{http://oeis.org/A00372}}. The number of such poset maps grows
+furthermore exponentially with the dimension of the path that is contorted,
+i.e., we have $D_m^n$ many monotone maps $\pint{m} \to \pint{n}$. 
+Therefore bruteforcing the search for contortions gets quickly infeasible and we
+require something more clever to explore the search space.
 
-\begin{theorem}
-  \problem{CubicalCell} is undecidable.
-  \begin{proof}
+% A certainly decidable subproblem of \problem{CubicalCell} is to decide whether
+% there exists a cell simply by means of contorting the cells given in the
+% context: for a given goal boundary $T$ and a generating cell $p$, there are
+% finitely many poset maps $\pint{\dim{T}} \to \pint{\dim{p}}$, so we can
+% na\"ively check whether one of those maps gives rise to a fitting contortion. 
 
-    % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
-    % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
-    % 1-cells $\{\cset{a} , \cset{a^{-1}} ... \} \subseteq \cset{Group}_1$ and a
-    % 2-cell $\cset{idem_a}$ for any generator $a$ with 
-    % $\dmap{2}{0}(\cset{idem_a}) = \cset{a}$, $\dmap{1}{1}(\cset{idem_a}) =
-    % \cset{a^{-1}}$ and $\dmap{2}{1}(\cset{idem_a}) = \dmap{1}{0}(\cset{idem_a}) = \smap{1} (\cset{\star})$.
-
-    Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
-    with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
-    1-cells $\{\cset{a} , ... \} \subseteq \cset{Group}_1$ 
-
-    (there are more 2-cells that need to be added as explained in \cite[Sect. 6.3]{bezem14_model_type_theor_cubic_sets})
-    % Note that this is not a set. Doesn't matter for undecidability proof?
-
-\end{proof}
-\end{theorem}
-
-If it can be solved by a contortion, it is clearly decidable since there are
-only finitely many substitutions for each cell in the context, and the search
-space is thereby finite. However, the search space grows super-exponentially:
-Suppose we want to check if there is an $m$-dimensional contortion of a 1-cell
-satisfying a goal, i.e., we are looking for a monotone map $\pint{m} \to
-\pint{}$,. For $m = 6$, there are $7828354$ substitutions that we would have to
-check and for 9 the exact number of possible substitutions has not even been
-computed yet \url{http://oeis.org/A00372}. Therefore we need something more
-clever to explore the search space.
+% We can try this for all elements in the context, thereby have run time
+% $\mathcal{O}( \ctxtdim{\Gamma} )$
 
 
 
-\section{Decidable \problem{CubicalCell} / Searching for contortions}
-
-A certainly decidable subproblem of \problem{CubicalCell} is to decide whether
-there exists a cell simply by means of contorting the cells given in the
-context: for a given goal boundary $T$ and a generating cell $p$, there are
-finitely many poset maps $\pint{\dim{T}} \to \pint{\dim{p}}$, so we can
-na\"ively check whether one of those maps gives rise to a fitting contortion. 
-
-We can try this for all elements in the context, thereby have run time
-$\mathcal{O}( \ctxtdim{\Gamma} )$
-
-\subsection{General complexity considerations}
+% \subsection{General complexity considerations}
+% Revert characterization 
+% $$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
+% TODO WHAT DID I MEAN BY THIS
 
 
-Revert characterization 
-$$\dmap{i}{e}(X(\sigma)(p)) = X(\restrict{\sigma}{\pintrestr{n}{i}{e}})(p)$$
+\subsection{Potential poset maps}
+\label{ssec:ppm}
 
+For the following algorithms we introduce the notion of a potential poset map. In
+essence, a potential poset map keeps track of all the potential values that elements of
+the domain of the poset map might have, while making sure that there are no
+superfluous values that cannot be part of any poset map as they would otherwise
+violate monotonicity. Thereby we can represent all maps $\pint{m} \to \pint{n}$
+at once with little data.
 
-\subsection{Potential substitutions}
-
-For an effective algorithm, we turn to following notion.
-
-We introduce potential substitution, which keep track of all the potential
-values of $\pint{n}$ a poset map $\sigma$ might assign to an element of $x \in \pint{m}$.
-
-They allow to represent all maps $\pint{m} \to \pint{n}$ at once.
-Solves memory problem. We need to explore the search space cleverly.
-
+\newpage
 \begin{definition}
+  % A \mname{potential poset map} (\mname{ppm}) is a map $\Sigma : \pint{m} \to \pow{\pint{n}}$
+  % such that for all $x \leq y$ : for all $u \in \Sigma(x)$ exists $v \in
+  % \Sigma(y)$ such that $u \leq v$. TODO MORE
+
   A \mname{potential poset map} (\mname{ppm}) is a map $\Sigma : \pint{m} \to \pow{\pint{n}}$
-  such that for all $x \leq y$ : for all $u \in \Sigma(x)$ exists $v \in
-  \Sigma(y)$ such that $u \leq v$. TODO MORE
+  such that $\forall x \leq y$:
+  \begin{itemize}
+  \item $\forall u \in \Sigma(y) : \exists v \in \Sigma(x) : v \leq u$.
+  \item $\forall v \in \Sigma(x) : \exists u \in \Sigma(y) : v \leq u$.
+  \end{itemize}
+
 \end{definition}
 
-The condition on poset maps means that 
-
-
-For effectively computing with poset maps we will consider their graphs. We also
+The two conditions above mean that any possible value in a ppm will give
+rise to at least one poset map.
+We will represent ppms simply with their graphs. We also
 list the vertices such that if $x \leq y$ then $x$ is earlier than $y$ in the
 list. This allows us to traverse through the graph and know that if an element
 $x$ is at a certain position in the list, all elements below $x$ will be seen at
 a certain point.
+
+We will extend the notion of a contortion as a poset map applied to a cell to
+also incorporate potential poset maps, leading to the notion of potential contortions.
+
+\begin{examplecontd}{exp:int}
+  We have the following potential contortion
+  $\cont{\cset{seg}}{\substfour{\{0\}}{\{0, 1\}}{\{0, 1\}}{\{1\}}}$. To
+  understand its action in the cubical set \cset{Int} we again fill in the
+  definition of \cset{seg} into the poset map as follows:
+
+  \begin{center}
+      \begin{tikzpicture} %scale=1.3]
+        % \node (zz) at (0,1) {\textcolor{gray}{00} $\mapsto \{x\}$};
+        % \node (zo) at (-1,0) {\textcolor{gray}{01} $\mapsto \{x , y\}$};
+        % \node (oz) at (1,0) {\textcolor{gray}{10} $\mapsto \{x , y\}$};
+        % \node (oo) at (0,-1) {\textcolor{gray}{11} $\mapsto \{y\}$};
+        \node (zz) at (0,1) {\textcolor{gray}{00}};
+        \node (zo) at (-1,0) {\textcolor{gray}{01}};
+        \node (oz) at (1,0) {\textcolor{gray}{10}};
+        \node (oo) at (0,-1) {\textcolor{gray}{11}};
+        \draw (zz) -- (zo) -- (oo) -- (oz) -- (zz);
+        % \end{tikzpicture}
+        % \begin{tikzpicture}[scale=1]
+          \node (z) at (2.6,.7) {\cset{zero}};
+          \node (o) at (2.6,-.7) {\cset{one}};
+          \draw (z) -- (o) node[midway,right] {\cset{seg}};
+
+          \draw[|->] (zz) -- (z);
+          \draw[|->] (zo) -- (z);
+          \draw[|->] (zo) -- (o);
+          \draw[|->] (oz) -- (o);
+          \draw[|->] (oz) -- (z);
+          \draw[|->] (oo) -- (o);
+      \end{tikzpicture}
+    \end{center}
+
+  % \vspace{1em}
+      The ppm can be unfolded into four poset maps as we can choose the values
+      of $01$ and $10$ independently. The squares resulting from using these
+      poset maps for contortions of \cset{seg} are depicted below:
+
+      \filledsquare{\cset{seg}}{\cset{seg}}{}{}{\substfour{0}{0}{1}{1}}
+      \filledsquare{\phantom{\cset{seg}}}{\phantom{\cset{seg}}}{\cset{seg}}{\cset{seg}}{\substfour{0}{1}{0}{1}}
+      \filledsquare{\cset{seg}}{\phantom{\cset{seg}}}{\cset{seg}}{}{\substfour{0}{1}{1}{1}}
+      \filledsquare{\phantom{\cset{seg}}}{\cset{seg}}{}{\cset{seg}}{\substfour{0}{0}{0}{1}}
+
+      All these contortions have in common that the bottom left corner is
+      \cset{zero} and the top right corner is \cset{one}, which we could already
+      read off from the potential contortion.
+
+\end{examplecontd}
+
+Thereby ppms are a very useful notion to capture a number of poset maps with
+little data. For example, representing all $D_n$ poset maps $\pint{n} \to
+\pint{}$ requires only $2^n$ entries of $\{0,1\}$. Our goal in the following
+will be to restrict a ppm until only few poset maps remain. We can unfold a ppm
+into the set of poset maps that its representing with
+\autoref{alg:getsubsts} given in the appendix. We can restrict the values of a
+ppm with \autoref{alg:updateppm}. % me of 
+% From a potential poset map we can generate all poset maps. This has a worst-case
+% runtime of Dedekind for the full one.
 
 A non-empty potential map is one which has a non-empty set of possible values
 for any element, which can be checked in $2^m$ steps. Given a poset $xs
 \subseteq \pint{m}$, we can restrict a ppm $\Sigma : \pint{m} \to \pow{\pint{n}}$ to a
 new ppm $\restrict{\Sigma}{xs} : xs \to \pow{\pint{n}}$ just like any function.
 
-\autoref{alg:updateppm}
-Therefore we have a runtime of $\mathcal{O}(2^m 2^n)$
 
-From a potential poset map we can generate all poset maps. This has a worst-case
-runtime of Dedekind for the full one.
+\subsection{Contortion solver}
+\label{ssec:contortionsolver}
 
-
-\autoref{alg:getsubsts}
-$\mathcal{O}(D_m^n)$
-
-
-\subsection{Simple solver}
-
-We want to try and see 
+Using the notion of potential poset maps, we give the following algorithm to
+generate a contortion for a given boundary.
 
 \begin{algorithm}[H]
-  \caption{Simple solver}\label{alg:simple}
+  \caption{Contortion solver}\label{alg:simple}
   \begin{algorithmic}
-    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary ($n \mdef \dim{p} , m \mdef \dim{T} $)
+    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary with $n \mdef \dim{p} , m \mdef \dim{T} $
     \Ensure $\sigma$ s.t. $\boundary{\cont{p}{\sigma}} = T$ if there is such a
     $\sigma$, \texttt{Unsolvable} otherwise
 
-    \Procedure{SimpleSolve}{$p$} % TODO WHICH INPUT
+    \Procedure{ContortionSolve}{$p$} % TODO WHICH INPUT
     \State $\Sigma \gets \{ x \mapsto \pint{n} \mid x \in \pint{m} \}$
-    \For{$i \gets 1\leq i \leq m, e \gets \{\izero, \ione\}$}
-      \State $\Theta \gets (x : \pintrestr{m}{i}{e} )\mapsto \emptyset$
+    \For{$\cont{q}{\tau} \mdef T_{i=e} \text{ with } i \gets 1\leq i \leq m, e \gets \{\izero,
+      \ione\}, \dim{q} $ desc.}
+    % \For{$i \gets 1\leq i \leq m, e \gets \{\izero, \ione\}$}
+    \If{$p = q$}
+      \State $\Theta \gets \{ x \mapsto \tau(x) \mid x \in \pintrestr{m}{i}{e} \}$
+    \Else
+      \State $\Theta \gets \{ x \mapsto \emptyset \mid x \in \pintrestr{m}{i}{e} \}$
       \For{$\sigma \gets \Call{UnfoldPPM}{\restrict{\Sigma}{\pintrestr{m}{i}{e}}}$}
         \If{$T_{i=e} = \Call{Normalize}{\cont{p}{\sigma}}$}
           \For{$x \in \pintrestr{m}{i}{e}$}
             \State $\Theta(x) \gets \Theta(x) \cup \{ \sigma(x) \}$
           \EndFor
         \EndIf
-        \For{$x \in \pintrestr{m}{i}{e}$}
-          \State \Call{UpdatePPM}{$\Sigma, x, \Theta(x)$}
         \EndFor
+        \EndIf
+      \For{$x \in \pintrestr{m}{i}{e}$}
+      \State \Call{UpdatePPM}{$\Sigma, x, \Theta(x)$}
       \EndFor
     \EndFor
     \If{$\exists \sigma \in \Call{UnfoldPPM}{\Sigma} : \boundary{\cont{p}{\sigma}} = T$}
@@ -582,87 +865,235 @@ We want to try and see
   \end{algorithmic}
 \end{algorithm}
 
-Instead of having to check all $D_m^n$ poset maps, we have to check in the worst
-case $2 m D_{m-1}^n$ poset mapos.
+The idea of the algorithm is as follows: We first generate the most general ppm
+$\Sigma$. We then go through each face $\cont{q}{\tau}$ of the goal boundary $T$
+and use it to restrict $\Sigma$. Crucially, we order the faces by their
+dimensions as higher-dimensional faces in the boundary will restrict $\Sigma$
+more than lower-dimensional faces. In the most extreme case, $q$ will have the
+same dimension as $p$, which allows us to give a unique value for each element
+of the face $q$, i.e., each element of $\pintrestr{m}{i}{e}$ if $\cont{q}{\tau}$ was
+the $(i,e)$-th face. Otherwise, we will check for each element of $\pintrestr{m}{i}{e}$ which
+values lead to some contortion which is equal to $\cont{q}{\tau}$. To do this we
+need to unfold $\Sigma$ at this subposet and check for each resulting poset map
+if it gives rise to a valid contortion.
 
-\begin{algorithm}[H]
-  \caption{Simple solver recursively}\label{alg:simple}
-  \begin{algorithmic}
-    \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary ($n \mdef \dim{p} , m \mdef \dim{T} $)
-    \Ensure All $\sigma$ s.t. $\boundary{\cont{p}{\sigma}} = T$
+The algorithm is obviously correct since we only return a poset map $\sigma$ if
+it is indeed contorting $p$ to the correct boundary.
 
-    \Procedure{SimpleSolve}{$p$}
-    \State $\Sigma \gets \{ x \mapsto \pint{n} \mid x \in \pint{m} \}$
-    \For{$i \gets 1\leq i \leq m, e \gets \{\izero, \ione\}$}
-      \State $\Theta \gets (x : \pintrestr{m}{i}{e} )\mapsto \emptyset$
-      \For{$\sigma \gets \Call{SimpleSolve}{\boundary{T_{i=e}}}$}
-        \For{$x \in \pintrestr{m}{i}{e}$}
-          \State $\Theta(x) \gets \Theta(x) \cup \{ \sigma(x) \}$
-        \EndFor
-        \EndFor
-        \For{$x \in \pintrestr{m}{i}{e}$}
-          \State \Call{UpdatePPM}{$\Sigma, x, \Theta(x)$}
-        \EndFor
-    \EndFor
-    \State \Return{$\{ \sigma \mid \sigma \in \Call{UnfoldPPM}{\Sigma} :
-    \boundary{\cont{p}{\sigma}} = T \}$}
-    \EndProcedure
-  \end{algorithmic}
-\end{algorithm}
+% Instead of having to check all $D_m^n$ poset maps, we have to check in the worst
+% case $2 m D_{m-1}^n$ poset mapos.
+
+% \begin{algorithm}[H]
+%   \caption{Simple solver recursively}\label{alg:simple}
+%   \begin{algorithmic}
+%     \Require $\Gamma$ context, $p \in \Gamma$, $T$ goal boundary ($n \mdef \dim{p} , m \mdef \dim{T} $)
+%     \Ensure All $\sigma$ s.t. $\boundary{\cont{p}{\sigma}} = T$
+
+%     \Procedure{SimpleSolve}{$p$}
+%     \State $\Sigma \gets \{ x \mapsto \pint{n} \mid x \in \pint{m} \}$
+%     \For{$i \gets 1\leq i \leq m, e \gets \{\izero, \ione\}$}
+%       \State $\Theta \gets (x : \pintrestr{m}{i}{e} )\mapsto \emptyset$
+%       \For{$\sigma \gets \Call{SimpleSolve}{\boundary{T_{i=e}}}$}
+%         \For{$x \in \pintrestr{m}{i}{e}$}
+%           \State $\Theta(x) \gets \Theta(x) \cup \{ \sigma(x) \}$
+%         \EndFor
+%         \EndFor
+%         \For{$x \in \pintrestr{m}{i}{e}$}
+%           \State \Call{UpdatePPM}{$\Sigma, x, \Theta(x)$}
+%         \EndFor
+%     \EndFor
+%     \State \Return{$\{ \sigma \mid \sigma \in \Call{UnfoldPPM}{\Sigma} :
+%     \boundary{\cont{p}{\sigma}} = T \}$}
+%     \EndProcedure
+%   \end{algorithmic}
+% \end{algorithm}
 
 
-More than that, the potential substitutions allow us to narrow down the search
-space in other ways.
+% More than that, the potential substitutions allow us to narrow down the search
+% space in other ways.
 
-Try to reduce the search space going from the bottom.
+% Try to reduce the search space going from the bottom.
 
-COMPLETENESS???
-It's complete. But not correct -- overapproximating results
+
+\todo{Prove completeness of \autoref{alg:simple}. This is not essentially difficult to
+  see, but requires some reasoning.}
+
+\todo{Prove run time of \autoref{alg:simple}. I have not been able to come up
+  with an argument for this. Potentially, unfolding the subposet corresponding
+  to a face could lead to $D_{m-1}^n$ many poset maps which need to be checked,
+  hence we would only reduce the complexity to the previous Dedekind number.
+  However, in all examples I have encountered we have one face $q$ which is the
+  same as $p$, therefore we can significantly reduce the size of $\Sigma$ before
+we need to do any unfolding. I do not yet know if this is always the case and
+what this means for the worst-case complexity of the algorithm. }
+
+
+\begin{examplecontd}{exp:sndsphere}
+
+  We will now sketch an example run of \autoref{alg:simple}. We want to find a
+  $\sigma : \pint{3} \to \pint{2}$ such that $\cont{p}{\sigma}$ has this boundary:
+$$\mlist{ \cont{\cset{p}}{\substfour{00}{01}{01}{11}} ,
+  \cont{\cset{a}}{\smap{2}} , \cont{\cset{a}}{\smap{2}} ,
+  \cont{\cset{a}}{\smap{2}} , \cont{\cset{a}}{\smap{2}} ,
+  \cont{\cset{a}}{\smap{2}}}$$
+
+In the beginning, the total ppm $\Sigma$ is initialized with $\{ x \mapsto
+\pint{2} \mid x \in \pint{3}\}$.
+The first face of the boundary entails that the subposet $\pintrestr{3}{1}{\izero}$
+of the domain of $\Sigma$
+is mapped in a unique way to the elements of $\pint{2}$. The monotonicity
+restrictions on ppms further restrict $\Sigma$: Since $011$ is mapped to the
+bottom element $00$, also $111$ will need to be mapped to $00$. The elements
+$101$ and $110$ lie below elements which are mapped to $01$, which mean that
+there are only two possible values $\{01, 11\}$ for each of these elements. Only
+the element $001$ has the full poset $\pint{2}$ as potential values. In summary,
+we have the following potential contortion after the first restriction of $\Sigma$:
+
+\begin{center}
+\begin{tikzpicture}
+      \node (zzz) at (0,2.8) {$000$};
+      \node (zzo) at (-1.4,1.4) {$001$};
+      \node (zoz) at (0,1.4) {$010$};
+      \node (zoo) at (-1.4,0) {$011$};
+    \node (ozz) at (1.4,1.4) {$001$};
+    \node (ozo) at (0,0) {$101$};
+    \node (ooz) at (1.4,0) {$110$};
+    \node (ooo) at (0,-1.4) {$111$};
+    \draw (ooo) -- (zoo) -- (zzo) -- (zzz) -- (zoz) -- (ooz)
+    (ozo) -- (ooo) -- (ooz) -- (ozz) -- (zzz)
+    (zoo) -- (zoz);
+    \draw[preaction={draw=white, -,line width=6pt}] (zzo) -- (ozo) -- (ozz);
+
+    \begin{scope}[shift={(5,1)}]
+      \node (zz) at (0,1) {\cset{a}};
+      \node (zo) at (-1,0) {\cset{a}};
+      \node (oz) at (1,0) {\cset{a}};
+      \node (oo) at (0,-1) {\cset{a}};
+      \node (filler) at (0,0) {\cset{p}};
+      \draw (zz) -- (zo) -- (oo) -- (oz) -- (zz);
+    \end{scope}
+
+    \draw[|->] (ozo) -- (zo);
+    \draw[|->] (ozo) -- (oo);
+    \draw[|->] (ooz) -- (zo);
+    \draw[|->] (ooz) -- (oo);
+    \draw[|->] (ozz) -- (zz);
+    \draw[|->] (ozz) -- (zo);
+    \draw[|->] (ozz) -- (oz);
+    \draw[|->] (ozz) -- (oo);
+  \end{tikzpicture}
+\end{center}
+
+We then check for each of the faces which are degenerate \cset{a} whether
+$\Sigma$ gives rise to such a face. Crucially, this will be done quickly as
+there are only 10 poset maps in the ppm $\Sigma$ remaining after the reduction
+of $\Sigma$ with the first face.
+
+\end{examplecontd}
+
+
+% \begin{examplecontd}{exp:sndsphere}
+%   TODO UPDATE WITH NEW ALGORITHM
+%   5-dimensional analogue of above cube is solved in  $< 5$ seconds.
+%   Try out $\mathcal{O}(D_4^2 = 168^2 = 28224)$ poset maps for all 10 faces, combine all
+%   fitting poset maps in ppm.
+%   This ppm unfolds to 168 poset maps of type
+%   $\pint{5} \to \pint{2}$, filter which one fits.
+
+%   Brute force approach would require checking $D_5^2 = 7581^2 = 57,471,561$
+%   poset maps.
+% \end{examplecontd}
+
 
 
 
 
 
 \section{Composition solver}
+\label{sec:compositionsolver}
 
-We use Kan composition
+\todo{This section only exists as a rough scaffolding. I'm still exploring the
+  algorithms that should be explained here.}
 
+\subsection{Kan cubical sets}
 
+A cubical set $X$ satisfies the Kan condition if for any open box
+$[t_1, s_1, \ldots , t_n , s_n] \ t$ we have a cell $s$ such that $[t_1,
+s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
+  \ldots , t_n , s_n]}{t} \mdef s$. 
 
-\section{Negation}
-
-How to encode search for reversals
-
-
-\section{Relation to different notions of cubical sets}
-
-Since the generating data is the non-degenerate cells and the face maps on them,
-we can adopt the following notation to describe cubical sets, which go under
-higher inductive types in Cubical Agda:
-
-TODO also boundary description with poset maps. These correspond to specifying
-the dmaps: One index is constant, rest is given by given poset map
-
-
-\subsubsection{Relation to face formulas}
-
-The morphisms in $\dedekind$ have a succinct description as tuples of elements of a free
-distributive lattices, which we will call telescopes.
-Cubical Agda uses telescopes to describe this. However, these are hard to
-construct and have no geometric intuition. This is why we had used poset maps.
-We can go back and forth between both representations easily.
+\begin{definition}
+  Given a context $\Gamma$ and a (valid) boundary $T$, the problem
+  \problem{KanCubicalCell}($X$,$T$) is to find an open box $[t_1, s_1, \ldots ,
+  t_n , s_n] \ t$ such that $\boundary{\comp{[t_1, s_1, \ldots , t_n , s_n]}{t}} = T$.
+\end{definition}
 
 
-Given $s : \pint{m} \to \pint{n}$, we compute an $n$-tuple of elements of the
-free distributive lattice over $m$ elements as follows:
 
-The $i$-th entry is $\{ x \in \pint{m} \mid s(x)_i = 1 \}$. An element $x$ can be
-seen as a clause if we regard it as indicator of which elements of the lattice
-are used, e.g., $(1,0,1)$ represents the clause $x \meet z$ if the three
-elements of the lattice are $x$, $y$ and $z$.
+\subsection{Undecidability of finding Kan compositions}
+\label{ssec:kanundecidable}
+
+\begin{theorem}
+  \problem{KanCubicalCell} is undecidable.
+  \begin{proof} \phantom{asdx}\\
+
+    % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
+    % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
+    % 1-cells $\{\cset{a} , \cset{a^{-1}} ... \} \subseteq \cset{Group}_1$ and a
+    % 2-cell $\cset{idem_a}$ for any generator $a$ with 
+    % $\dmap{2}{0}(\cset{idem_a}) = \cset{a}$, $\dmap{1}{1}(\cset{idem_a}) =
+    % \cset{a^{-1}}$ and $\dmap{2}{1}(\cset{idem_a}) = \dmap{1}{0}(\cset{idem_a}) = \smap{1} (\cset{\star})$.
+
+    % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
+    % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
+    % 1-cells $\{\cset{a} , ... \} \subseteq \cset{Group}_1$ 
+
+    % (there are more 2-cells that need to be added as explained in \cite[Sect. 6.3]{bezem14_model_type_theor_cubic_sets})
+    % % Note that this is not a set. Doesn't matter for undecidability proof?
+
+    \todo{This can be shown by a reduction to the word problem for groups. (More
+      generally, we can encode all word problems from universal algebra with
+      cubical sets)
+}
+\end{proof}
+\end{theorem}
+
+\subsection{A semi-deciability procedure for 1-dimensional cubes}
+
+\todo{}
+
+
+
+% \section{Negation}
+
+% How to encode search for reversals
+
+
+\section{A Tactic for Cubical Agda}
+\label{sec:cubicalagda}
+
+The above algorithms have been implemented in
+\url{https://github.com/maxdore/cubetac/}. In the following we will discuss how
+our approach relates to Cubical Agda and a case study using this tactic.
+
+
+% As observed by \cite{orton17_axiom_model_cubic_type_theor_topos}, we do not require
+% a full De Morgan structure. In particular, it suffices to consider only $\meet$
+% and $\join$ forming a bounded free distributive lattice. Model structure open
+% problem, but it is conjectured that it does.
+
+
+\subsection{Translating to Cubical Agda}
+
+The morphisms in $\dedekind$ have a succinct description as tuples of formulas
+of a free distributive lattices, these formulas are also used in Cubical Agda.
+In order to use our algorithms in a tactic for Cubical Agda, we need to
+translate back and forth efficiently between both characterizations of $\dedekind$.
+
+To generate a lattice formula from a poset map we can use \autoref{alg:subst2tele}.
 
 \begin{algorithm}[H]
-  \caption{TODO}\label{alg:subst2tele}
+  \caption{Poset map to lattice formula}\label{alg:subst2tele}
   \begin{algorithmic}
     \Require $\sigma : \pint{m} \to \pint{n}$
     \Ensure $\phi$ $n$-tuple of elements of free distributive lattice over $m$ variables
@@ -677,18 +1108,23 @@ elements of the lattice are $x$, $y$ and $z$.
   \end{algorithmic}
 \end{algorithm}
 
-TODO mention set representation of DNF. Also mention normalization necessary --
-what's its runtime?
+Given $\sigma : \pint{m} \to \pint{n}$, we compute an $n$-tuple of elements of the
+free distributive lattice over $m$ elements as follows:
+The $i$-th entry is $\{ x \in \pint{m} \mid s(x)_i = 1 \}$. An element $x$ can be
+seen as a clause if we regard it as indicator of which elements of the lattice
+are used, e.g., $(1,0,1)$ represents the clause $x \meet z$ if the three
+elements of the lattice are $x$, $y$ and $z$.
 
-From an $n$-tuple of formulas over $\phi$ we can read off a poset map $s :
-\pint{m} \to \pint{n}$ as follows: Given an element $x \in \pint{m}$, $s(x) = (e_1
-, ... , e_n) $ where $e_i = \phi_i @ x$ TODO EVALUATION
+% TODO mention set representation of DNF. Also mention normalization necessary --
+% what's its runtime?
+
+For the converse we can use \autoref{alg:teletosubst}
 
 \begin{algorithm}[H]
-  \caption{TODO}\label{alg:teletosubst}
+  \caption{Lattice formula to poset map}\label{alg:teletosubst}
   \begin{algorithmic}
-    \Require TODO
-    \Ensure TODO
+    \Require $\phi$ $n$-tuple of elements of free distributive lattice over $m$ variables
+    \Ensure $\sigma : \pint{m} \to \pint{n}$
 
     \Procedure{Tele2Subst}{$p$}
     \For{$x \gets \pint{m}$} 
@@ -701,24 +1137,91 @@ From an $n$-tuple of formulas over $\phi$ we can read off a poset map $s :
   \end{algorithmic}
 \end{algorithm}
 
+From an $n$-tuple of formulas over $\phi$ we can read off a poset map $\sigma :
+\pint{m} \to \pint{n}$ as follows: Given an element $x \in \pint{m}$, $\sigma(x) = (e_1
+, ... , e_n) $ where $e_i = \phi_i @ x$. Here $\phi_i$ is the $i$-th element of
+the tuple $\phi$ and $@$ denotes evaluation of formulas: The indices of $x$
+which are set to 1 mean that the corresponding variable of $\phi$ is ``true'',
+then we check whether the formula evaluates in total to true by interpreting
+join and meet as logical operations.
+
+\todo{The above presentation is not very clean and should be streamlined.}
 
 Therefore going back and forth between formulas and poset map takes
 $\mathcal{O}(2^mn)$ many steps. This is linear in the number of elements of the
-data structures we are considering, so pretty quick and no obstruction.
+data structures we are considering, so does not pose an issue for performance of
+our tactic.
 
-\begin{example}
-  % EXAMPLE
-  % [(000,00),(001,00),(010,00),(011,01),(100,10),(101,11),(110,10),(111,11)]
-  % 1 ((2 /\ 3) \/ (1 /\ 3))
-\end{example}
+% \begin{example}
+%   % EXAMPLE
+%   % [(000,00),(001,00),(010,00),(011,01),(100,10),(101,11),(110,10),(111,11)]
+%   % 1 ((2 /\ 3) \/ (1 /\ 3))
+% \end{example}
 
-TODO PROOF THAT THESE ARE MUTUALLY INVERSE?
+% TODO PROOF THAT THESE ARE MUTUALLY INVERSE?
+\todo{Show correctness of both algorithms and that they are mutually inverse.}
+
+\subsection{Translating to PathP types}
+
+Cubical Agda uses PathP types to represent boundaries of a cube. The PathP type
+has three constructors, where the first is again a PathP type, allowing for
+nesting paths and thereby creating higher cubes. If the second and third
+parameter are $n$-dimensional paths, then the first parameter might introduce
+$n$ interval variables.
 
 
-\subsection{Nominal perspective}
+\begin{examplecontd}{exp:sndsphere}
+  
+The proof goal already introduced above:
 
-Have set $I = \{i , j, k , ...\}$ of names. Then give complete description for
-Cubical Agda.
+$$\mlist{ \cont{\cset{p}}{\substfour{00}{01}{01}{11}} ,
+  \cont{\cset{a}}{\smap{2}} , \cont{\cset{a}}{\smap{2}} ,
+  \cont{\cset{a}}{\smap{2}} , \cont{\cset{a}}{\smap{2}} ,
+  \cont{\cset{a}}{\smap{2}}}$$
+
+has the following corresponding PathP type in Cubical Agda.
+  \begin{align*}
+    \mathsf{PathP} (\lambda i \to \mathsf{PathP} &(\lambda j \to  \mathsf{Path} \ (\cset{p} \ (i \wedge
+                                                   j) \ (i \vee j))\ \cset{a})\\
+                                                 &(\lambda j \to \cset{a}) (\lambda j \to \cset{a}))
+                                                   (\lambda i j \to \cset{a}) (\lambda i j \to \cset{a})
+  \end{align*}
+\end{examplecontd}
+
+\todo{Translating between our notions and PathP types is straightforward, we
+  should still explain it here}
+
+\todo{We might want to have a prover which can take more general boundary
+  descriptions as proposed with extension types by \cite{riehl17_type_theor_synth}.}
+
+\subsection{Searching for involutions}
+\label{ssec:inverses}
+
+\todo{Cubical Agda allows formulas of a De Morgan algebra over the interval
+  variables, meaning that we can also have inverted paths primitively. Since
+  this makes many proofs shorter we will want to search for such proofs as well.}
+
+\subsection{Using the tactic}
+
+\todo{Give a case study using the tactic for a more involved proof goal}
+
+
+% \subsection{Nominal perspective}
+
+% Have set $I = \{i , j, k , ...\}$ of names. Then give complete description for
+% Cubical Agda.
+
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+\todo{}
+
+% \addcontentsline{toc}{section}{References}
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
 
 
 \appendix

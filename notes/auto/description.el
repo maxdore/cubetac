@@ -5,13 +5,13 @@
                      '(("article" "11pt")))
    (TeX-add-to-alist 'LaTeX-provided-package-options
                      '(("algpseudocodex" "noEnd=True" "indLines=True")))
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "path")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "url")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "nolinkurl")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperbaseurl")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperimage")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperref")
    (add-to-list 'LaTeX-verbatim-macros-with-braces-local "href")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperref")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperimage")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperbaseurl")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "nolinkurl")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "url")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "path")
    (add-to-list 'LaTeX-verbatim-macros-with-delims-local "path")
    (TeX-run-style-hooks
     "latex2e"
@@ -27,6 +27,10 @@
     "ifthen"
     "tcolorbox")
    (TeX-add-symbols
+    '("hcompcube" 9)
+    '("filledsquare" 5)
+    '("dimsquare" 2)
+    '("dimcube" 3)
     '("substfour" 4)
     '("substtwo" 2)
     '("comp" 2)
@@ -37,6 +41,8 @@
     '("dmap" 2)
     '("smap" 1)
     '("ctxtdim" 1)
+    '("dim" 1)
+    '("hom" 2)
     '("psh" 1)
     '("image" 1)
     '("restrict" 2)
@@ -60,15 +66,30 @@
     "algorithmautorefname"
     "arraystretch")
    (LaTeX-add-labels
+    "sec:normalforms"
+    "ssec:cubicalsets"
     "exp:int"
     "exp:sndsphere"
     "exp:triangle"
+    "ssec:hits"
+    "ssec:normalforms"
     "alg:normalize"
+    "sec:contortionsolver"
+    "ssec:cubicalcell"
+    "ssec:ppm"
+    "ssec:contortionsolver"
     "alg:simple"
+    "sec:compositionsolver"
+    "ssec:kanundecidable"
+    "sec:cubicalagda"
     "alg:subst2tele"
-    "alg:teletosubst")
+    "alg:teletosubst"
+    "ssec:inverses"
+    "sec:conclusions")
    (LaTeX-add-environments
     '("examplecontd" 1))
+   (LaTeX-add-bibliographies
+    "bibliography")
    (LaTeX-add-amsthm-newtheorems
     "definition"
     "theorem"
