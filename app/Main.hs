@@ -12,9 +12,7 @@ import System.IO
 import Prel
 import Data
 import Poset
--- import Solver
-import SimpleSolver
--- import CompSolver
+import Solver
 import Formula
 import Examples
 import PathParser
@@ -39,21 +37,6 @@ solver cube goal verbose = do
           return ()
 
 
-  -- RUN KAN COMPOSITION SOLVER
-  -- if not (null simp)
-  --   then do
-  --     putStrLn "FOUND SIMPLE SOLUTIONS"
-  --     mapM_ (putStrLn . agdaTerm) simp
-  --   else do
-  --     putStrLn "NO SIMPLE SOLUTIONS"
-  --     comp <- runExceptT $ runStateT compSolve (mkSEnv cube goal verbose)
-  --     case comp of
-  --       Right res -> do
-  --         putStrLn "FOUND COMPOSITION SOLUTIONS"
-  --         mapM_ (putStrLn . agdaTerm) (fst res)
-  --       Left _ -> do
-  --         putStrLn "NO COMPOSITION SOLUTIONS"
-  --     return ()
 
   return ()
 

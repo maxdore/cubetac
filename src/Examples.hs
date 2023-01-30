@@ -8,7 +8,6 @@ import Prel
 import Data
 import Poset
 import Formula
-import SimpleSolver
 
 idSubst :: Subst
 idSubst = Map.fromList [
@@ -46,10 +45,10 @@ deg2Subst = Map.fromList [
               ]
 deg2Subst' :: Subst
 deg2Subst' = Map.fromList [
-              (Vert [e0, e0] , Vert [e0, e0])
-            , (Vert [e0, e1] , Vert [e0, e0])
-            , (Vert [e1, e0] , Vert [e1, e0])
-            , (Vert [e1, e1] , Vert [e1, e0])
+              (Vert [e0, e0] , Vert [e0, e1])
+            , (Vert [e0, e1] , Vert [e1, e1])
+            , (Vert [e1, e0] , Vert [e1, e1])
+            , (Vert [e1, e1] , Vert [e1, e1])
               ]
 
 orSubst , andSubst :: Subst
@@ -136,8 +135,103 @@ app2Subst = Map.fromList [
 
 -- -- Constructor for a 1-path with single variable application
 idT :: Id -> IVar -> Term
-idT face i = Term face undefined
+idT face i = Term face (tele2Subst (Tele [Formula [Disj [Conj i]]]) 1)
 
+subst31 = Map.fromList [
+              (Vert [e0 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e0, e1] , Vert [e1])
+            , (Vert [e0 , e1, e0] , Vert [e1])
+            , (Vert [e0 , e1, e1] , Vert [e1])
+            , (Vert [e1 , e0, e0] , Vert [e1])
+            , (Vert [e1 , e0, e1] , Vert [e1])
+            , (Vert [e1 , e1, e0] , Vert [e1])
+            , (Vert [e1 , e1, e1] , Vert [e1])
+              ]
+
+subst41 = Map.fromList [
+              (Vert [e0 , e0 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e0 , e0, e1] , Vert [e0])
+            , (Vert [e0 , e0 , e1, e0] , Vert [e1])
+            , (Vert [e0 , e0 , e1, e1] , Vert [e1])
+            , (Vert [e0 , e1 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e1 , e0, e1] , Vert [e0])
+            , (Vert [e0 , e1 , e1, e0] , Vert [e1])
+            , (Vert [e0 , e1 , e1, e1] , Vert [e1])
+            , (Vert [e1 , e0 , e0, e0] , Vert [e0])
+            , (Vert [e1 , e0 , e0, e1] , Vert [e0])
+            , (Vert [e1 , e0 , e1, e0] , Vert [e1])
+            , (Vert [e1 , e0 , e1, e1] , Vert [e1])
+            , (Vert [e1 , e1 , e0, e0] , Vert [e0])
+            , (Vert [e1 , e1 , e0, e1] , Vert [e0])
+            , (Vert [e1 , e1 , e1, e0] , Vert [e1])
+            , (Vert [e1 , e1 , e1, e1] , Vert [e1])
+              ]
+
+subst51 = Map.fromList [
+              (Vert [e0 , e0 , e0 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e0 , e0 , e0, e1] , Vert [e0])
+            , (Vert [e0 , e0 , e0 , e1, e0] , Vert [e0])
+            , (Vert [e0 , e0 , e0 , e1, e1] , Vert [e0])
+            , (Vert [e0 , e0 , e1 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e0 , e1 , e0, e1] , Vert [e0])
+            , (Vert [e0 , e0 , e1 , e1, e0] , Vert [e0])
+            , (Vert [e0 , e0 , e1 , e1, e1] , Vert [e0])
+            , (Vert [e0 , e1 , e0 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e1 , e0 , e0, e1] , Vert [e0])
+            , (Vert [e0 , e1 , e0 , e1, e0] , Vert [e0])
+            , (Vert [e0 , e1 , e0 , e1, e1] , Vert [e0])
+            , (Vert [e0 , e1 , e1 , e0, e0] , Vert [e0])
+            , (Vert [e0 , e1 , e1 , e0, e1] , Vert [e0])
+            , (Vert [e0 , e1 , e1 , e1, e0] , Vert [e0])
+            , (Vert [e0 , e1 , e1 , e1, e1] , Vert [e0])
+            , (Vert [e1 , e0 , e0 , e0, e0] , Vert [e0])
+            , (Vert [e1 , e0 , e0 , e0, e1] , Vert [e0])
+            , (Vert [e1 , e0 , e0 , e1, e0] , Vert [e0])
+            , (Vert [e1 , e0 , e0 , e1, e1] , Vert [e0])
+            , (Vert [e1 , e0 , e1 , e0, e0] , Vert [e1])
+            , (Vert [e1 , e0 , e1 , e0, e1] , Vert [e1])
+            , (Vert [e1 , e0 , e1 , e1, e0] , Vert [e1])
+            , (Vert [e1 , e0 , e1 , e1, e1] , Vert [e1])
+            , (Vert [e1 , e1 , e0 , e0, e0] , Vert [e0])
+            , (Vert [e1 , e1 , e0 , e0, e1] , Vert [e0])
+            , (Vert [e1 , e1 , e0 , e1, e0] , Vert [e0])
+            , (Vert [e1 , e1 , e0 , e1, e1] , Vert [e0])
+            , (Vert [e1 , e1 , e1 , e0, e0] , Vert [e1])
+            , (Vert [e1 , e1 , e1 , e0, e1] , Vert [e1])
+            , (Vert [e1 , e1 , e1 , e1, e0] , Vert [e1])
+            , (Vert [e1 , e1 , e1 , e1, e1] , Vert [e1])
+              ]
+
+
+
+otherway :: PSubst
+otherway = Map.fromList [
+    (Vert [e0 , e0] , [Vert [e0 , e0]])
+  , (Vert [e0 , e1] , [Vert [e0 , e0] , Vert [e0 , e1] , Vert [e1 , e0] , Vert [e1 , e1]])
+  , (Vert [e1 , e0] , [Vert [e0 , e0] , Vert [e0 , e1] , Vert [e1 , e0] , Vert [e1 , e1]])
+  , (Vert [e1 , e1] , [Vert [e0 , e0] , Vert [e0 , e1] , Vert [e1 , e0] , Vert [e1 , e1]])
+                          ]
+
+
+
+
+circle :: Cube
+circle = Cube [
+    Decl "a" (Boundary  [])
+  , Decl "loop" (Boundary  [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+           ]
+
+circle4 = inferBoundary circle (Term "loop" subst31)
+circle5 = inferBoundary circle (Term "loop" subst41)
+circle6 = inferBoundary circle (Term "loop" subst51)
+
+circle5Cube = Boundary [
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "loop" (tele2Subst (Tele [Formula [Disj [Conj 1]]]) 4) , Term "a" (constSubst 4))
+  ]
 
 int :: Cube
 int = Cube [
@@ -147,19 +241,43 @@ int = Cube [
            ]
 
 intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2
-intApp1Boundary = Boundary [(Term "zero" (constSubst 2) , Term "one" (constSubst 2)) , (idT "seg" 1 , idT "seg" 1)]
+intApp1Boundary = Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (idT "seg" 1 , idT "seg" 1)]
 
 intAnd2Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 2]]]) 2
-intApp2Boundary = Boundary [(Term "seg" app1Subst , Term "seg" app1Subst) , (Term "zero" (constSubst 2) , Term "one" (constSubst 2))]
+intApp2Boundary = Boundary [(Term "seg" app1Subst , Term "seg" app1Subst) , (Term "zero" (constSubst 1) , Term "one" (constSubst 1))]
 
 intAndTerm = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2]]]) 2
-intAndBoundary = Boundary [(Term "zero" (constSubst 2) , idT "seg" 1) , (Term "zero" (constSubst 2) , idT "seg" 1)]
+intAndBoundary = Boundary [(Term "zero" (constSubst 1) , idT "seg" 1) , (Term "zero" (constSubst 2) , idT "seg" 1)]
 
 intOrTerm = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1], Disj [Conj 2]]]) 2
-intOrBoundary = Boundary [(Term "seg" app1Subst , Term "one" (constSubst 2)) , (Term "seg" app1Subst , Term "one" (constSubst 2))]
+intOrBoundary = Boundary [(Term "seg" app1Subst , Term "one" (constSubst 1)) , (Term "seg" app1Subst , Term "one" (constSubst 1))]
 
 intInv :: Boundary
 intInv = Boundary [(Term "one" (constSubst 0) , Term "zero" (constSubst 0))]
+
+
+
+
+
+two :: Cube
+two = Cube [
+    Decl "a"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "phi"   (Boundary [(Term "p" idSubst, Term "a" (constSubst 1)) , (Term "q" idSubst, Term "a" (constSubst 1)) ])
+           ]
+
+subst32 = Map.fromList [
+              (Vert [e0 , e0, e0] , Vert [e0 , e0])
+            , (Vert [e0 , e0, e1] , Vert [e0 , e1])
+            , (Vert [e0 , e1, e0] , Vert [e0 , e0])
+            , (Vert [e0 , e1, e1] , Vert [e0 , e1])
+            , (Vert [e1 , e0, e0] , Vert [e0 , e1])
+            , (Vert [e1 , e0, e1] , Vert [e1 , e1])
+            , (Vert [e1 , e1, e0] , Vert [e0 , e1])
+            , (Vert [e1 , e1, e1] , Vert [e1 , e1])
+              ]
+
 
 
 
@@ -251,11 +369,17 @@ loop4Cube' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (T
 
 loop4Cube'' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3))   ]
 
-loop5CubeEq = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
-
 loop5Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
 
 loop5Cube' = Boundary [
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
+  (Term "a" (constSubst 4) , Term "a" (constSubst 4))
+  ]
+
+loop5Cube'' = Boundary [
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
@@ -263,15 +387,58 @@ loop5Cube' = Boundary [
   (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4))
   ]
 
-loop6Cube' = Boundary [
+loop6Cube = Boundary [
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
-  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
-  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 5) , Term "a" (constSubst 5))
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5))
   ]
 
+loop6Cube' = Boundary [
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
+  (Term "a" (constSubst 5) , Term "a" (constSubst 5))
+  ]
+
+loop7Cube = Boundary [
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5 , Conj 6]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5] , Disj [Conj 6]]]) 6) , Term "a" (constSubst 6)) 
+  ]
+
+
+-- z2 :: Cube
+-- z2 = Cube [
+--     Decl "o"     (Boundary [])
+--   , Decl "p"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+--   , Decl "q"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+--   , Decl "r"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+--   , Decl "law"   (Boundary [(Term "p" idSubst , Term "o" (constSubst 1)) , (Term "q" idSubst , Term "r" idSubst)])
+--                    ]
+
+z2 :: Cube
+z2 = Cube [
+    Decl "o"     (Boundary [])
+  , Decl "a"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+  , Decl "b"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+  , Decl "law"   (Boundary [(Term "a" idSubst , Term "a" idSubst) , (Term "b" idSubst , Term "b" idSubst)])
+                   ]
+
+inv :: Id -> Id -> Id -> Term
+inv i0 i1 p = Comp (Box [(Term p idSubst , Term i1 (constSubst 0))] (Term i0 (constSubst 0)) )
+
+
+z2goal :: Boundary
+z2goal = Boundary [ (inv "o" "o" "b" , inv "o" "o" "b") , (Term "a" idSubst , Term "a" idSubst) ]
 
 
 binom n k = product [1+n-k..n] `div` product [1..k]
