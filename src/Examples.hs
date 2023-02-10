@@ -140,9 +140,9 @@ idT face i = Term face (tele2Subst (Tele [Formula [Disj [Conj i]]]) 1)
 subst31 = Map.fromList [
               (Vert [e0 , e0, e0] , Vert [e0])
             , (Vert [e0 , e0, e1] , Vert [e1])
-            , (Vert [e0 , e1, e0] , Vert [e1])
+            , (Vert [e0 , e1, e0] , Vert [e0])
             , (Vert [e0 , e1, e1] , Vert [e1])
-            , (Vert [e1 , e0, e0] , Vert [e1])
+            , (Vert [e1 , e0, e0] , Vert [e0])
             , (Vert [e1 , e0, e1] , Vert [e1])
             , (Vert [e1 , e1, e0] , Vert [e1])
             , (Vert [e1 , e1, e1] , Vert [e1])
@@ -203,6 +203,8 @@ subst51 = Map.fromList [
               ]
 
 
+totalPSubst :: Int -> Int -> PSubst
+totalPSubst m n = Map.fromList (map (\x -> (x , createPoset n)) (createPoset m))
 
 otherway :: PSubst
 otherway = Map.fromList [
@@ -221,7 +223,18 @@ circle = Cube [
   , Decl "loop" (Boundary  [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
            ]
 
-circle4 = inferBoundary circle (Term "loop" subst31)
+circle3Cube = Boundary [
+    (Term "loop" orSubst , Term "a" (constSubst 2))
+  , (Term "loop" orSubst , Term "a" (constSubst 2))
+  , (Term "loop" orSubst , Term "a" (constSubst 2))
+                       ]
+circle3Cube' = Boundary [
+    (Term "loop" app1Subst , Term "loop" orSubst)
+  , (Term "loop" app1Subst , Term "loop" orSubst)
+  , (Term "loop" andSubst , Term "a" (constSubst 2))
+                       ]
+-- Solution Term "loop" (fromList [(000,0),(001,1),(010,0),(011,1),(100,0),(101,1),(110,1),(111,1)])
+
 circle5 = inferBoundary circle (Term "loop" subst41)
 circle6 = inferBoundary circle (Term "loop" subst51)
 
@@ -244,7 +257,7 @@ intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2
 intApp1Boundary = Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (idT "seg" 1 , idT "seg" 1)]
 
 intAnd2Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 2]]]) 2
-intApp2Boundary = Boundary [(Term "seg" app1Subst , Term "seg" app1Subst) , (Term "zero" (constSubst 1) , Term "one" (constSubst 1))]
+intApp2Boundary = Boundary [(idT "seg" 1 , idT "seg" 1) , (Term "zero" (constSubst 1) , Term "one" (constSubst 1))]
 
 intAndTerm = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2]]]) 2
 intAndBoundary = Boundary [(Term "zero" (constSubst 1) , idT "seg" 1) , (Term "zero" (constSubst 2) , idT "seg" 1)]
@@ -406,13 +419,13 @@ loop6Cube' = Boundary [
   ]
 
 loop7Cube = Boundary [
+  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5 , Conj 6]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5] , Disj [Conj 6]]]) 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
-  (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
-  (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5 , Conj 6]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5] , Disj [Conj 6]]]) 6) , Term "a" (constSubst 6)) 
+  (Term "a" (constSubst 6) , Term "a" (constSubst 6))
   ]
 
 
@@ -433,12 +446,24 @@ z2 = Cube [
   , Decl "law"   (Boundary [(Term "a" idSubst , Term "a" idSubst) , (Term "b" idSubst , Term "b" idSubst)])
                    ]
 
-inv :: Id -> Id -> Id -> Term
-inv i0 i1 p = Comp (Box [(Term p idSubst , Term i1 (constSubst 0))] (Term i0 (constSubst 0)) )
+inv :: Id -> Id -> Id -> Box
+inv i0 i1 p = (Box [(Term p idSubst , Term i1 (constSubst 1))] (Term i0 (constSubst 1)) )
 
 
 z2goal :: Boundary
-z2goal = Boundary [ (inv "o" "o" "b" , inv "o" "o" "b") , (Term "a" idSubst , Term "a" idSubst) ]
+z2goal = Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ]
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 binom n k = product [1+n-k..n] `div` product [1..k]

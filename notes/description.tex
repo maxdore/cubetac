@@ -1,20 +1,29 @@
-\documentclass[11pt]{article}
+\documentclass{llncs}
 
 \usepackage{hyperref}
 \def\exampleautorefname{Example}
 
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{amsthm}
-\theoremstyle{definition}
-\newtheorem{definition}{Definition}
-\newtheorem{theorem}{Theorem}
-\newtheorem{example}{Example}
-\newtheorem*{expcont}{Example \continuation}
+% \usepackage{amsthm}
+% \theoremstyle{definition}
+% \newtheorem{definition}{Definition}
+% \newtheorem{theorem}{Theorem}
+% \newtheorem{lemma}{Lemma}
+% \newtheorem{example}{Example}
+% \newtheorem*{expcont}{Example \continuation}
+% \newcommand{\continuation}{??}
+% \newenvironment{examplecontd}[1]
+% {\renewcommand{\continuation}{\ref{#1}}\expcont[continued]}
+% {\endexpcont}
+
+\newtheorem{expcont}{Example \continuation}
 \newcommand{\continuation}{??}
 \newenvironment{examplecontd}[1]
 {\renewcommand{\continuation}{\ref{#1}}\expcont[continued]}
 {\endexpcont}
+
+
 \usepackage{algorithm}
 \usepackage[noEnd=True, indLines=True]{algpseudocodex}
 \algrenewcommand\algorithmicrequire{\textbf{Input:}}
@@ -31,7 +40,7 @@
 
 \newcommand{\mdef}{:=}
 \newcommand{\mname}[1]{\textit{{#1}}}
-\newcommand{\problem}[1]{\textsc{{#1}}}
+\newcommand{\myproblem}[1]{\textsc{{#1}}}
 \newcommand{\mlist}[1]{[ {#1} ]}
 
 \newcommand{\join}{\wedge}
@@ -141,6 +150,12 @@
 
 \begin{document}
 \maketitle	
+
+\begin{abstract}
+  
+\end{abstract}
+
+\keywords{One \and Two}
 
 The realization that identity in constructive type theory is best understood in
 analogy to homotopies as studied in algebraic topology \cite{awodey09_homot} has
@@ -308,6 +323,7 @@ practical examples.
 % algebraically!
 
 % Allowable boundary shapes are generating cofibrations from a model categorical perspective
+
 
 
 \paragraph*{Contributions and Structure}
@@ -658,6 +674,39 @@ have a total complexity of $\mathcal{O}(2^mn^2)$ for contortion normalization.
   The contortion $\cont{\phi}{\substfour{00}{00}{01}{01}}$ has normal form $\cont{p}{\substfour{0}{0}{1}{1}}$.
 \end{examplecontd}
 
+More results: for normal forms we do not have to worry about poset maps
+
+\begin{proposition}
+  Uniqueness of contortions: if $\boundary{\cont{p}{\sigma}} =
+  \boundary{\cont{p}{\tau}}$ TODO ABOVE WITHOUT boundary, then $\sigma = \tau$.
+
+  \begin{proof}
+    \todo{As soon as poset map differs in one point, then completely different
+      boundary??? Proof by contradiction? Or counting argument?}
+  \end{proof}
+\end{proposition}
+
+
+This lemma will be relevant when searching for contortions:
+
+\begin{proposition}
+  If $\cont{p}{\sigma}$ is in normal form for $\dim{p} = n$ and $\sigma :
+  \pint{m} \to \pint{n}$ with $m > n$, then there is a face $\cont{p}{\tau}$ of
+  $\cont{p}{\sigma}$ (with $\tau : \pint{m-1} \to \pint{n}$).
+
+  \begin{proposition}
+    \todo{For $m=n$ this does not hold: fgfg square filled with triangle. For
+      $m>n$ I wasn't able to construct a cube containing f and g but not the
+      triangle. Check with brute force this really does not hold?}
+  \end{proof}
+  
+\end{proposition}
+
+This means that if we are given a boundary of a cell, we do not have to check
+all faces: todo which not.
+
+Furthermore, we can use this cell to reduce the search space.
+
 
 
 % \todo{where to describe \autoref{alg:boundary} }
@@ -685,7 +734,7 @@ devise an efficient algorithm for computing contortions in
 \autoref{ssec:contortionsolver}. 
 
 
-\subsection{The problem \problem{CubicalCell}}
+\subsection{The problem \myproblem{CubicalCell}}
 \label{ssec:cubicalcell}
 
 Using the finitary representation introduced above, we can phrase the problem of
@@ -693,11 +742,11 @@ finding a cell with a given boundary as follows:
 
 \begin{definition}
   Given a context $\Gamma$ and a boundary $T$, the problem
-  \problem{CubicalCell}($\Gamma$,$T$) is to find a contortion $\cont{p}{\sigma}$ such that
+  \myproblem{CubicalCell}($\Gamma$,$T$) is to find a contortion $\cont{p}{\sigma}$ such that
   $\boundary{\cont{p}{\sigma}} = T$.
 \end{definition}
 
-The problem \problem{CubicalCell} is clearly decidable since there are
+The problem \myproblem{CubicalCell} is clearly decidable since there are
 only finitely many contortions of a cell in a specific dimension. However, the
 search space grows super-exponentially: suppose we want to find an
 $m$-dimensional contortion of a 1-cell, i.e., we are looking for a poset map
@@ -710,7 +759,7 @@ i.e., we have $D_m^n$ many monotone maps $\pint{m} \to \pint{n}$.
 Therefore bruteforcing the search for contortions gets quickly infeasible and we
 require something more clever to explore the search space.
 
-% A certainly decidable subproblem of \problem{CubicalCell} is to decide whether
+% A certainly decidable subproblem of \myproblem{CubicalCell} is to decide whether
 % there exists a cell simply by means of contorting the cells given in the
 % context: for a given goal boundary $T$ and a generating cell $p$, there are
 % finitely many poset maps $\pint{\dim{T}} \to \pint{\dim{p}}$, so we can
@@ -884,6 +933,8 @@ if it gives rise to a valid contortion.
 The algorithm is obviously correct since we only return a poset map $\sigma$ if
 it is indeed contorting $p$ to the correct boundary.
 
+\todo{It appears that we do not need this filter! Can we prove this?}
+
 % Instead of having to check all $D_m^n$ poset maps, we have to check in the worst
 % case $2 m D_{m-1}^n$ poset mapos.
 
@@ -1034,7 +1085,7 @@ s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
 
 \begin{definition}
   Given a context $\Gamma$ and a (valid) boundary $T$, the problem
-  \problem{KanCubicalCell}($X$,$T$) is to find an open box $[t_1, s_1, \ldots ,
+  \myproblem{KanCubicalCell}($X$,$T$) is to find an open box $[t_1, s_1, \ldots ,
   t_n , s_n] \ t$ such that $\boundary{\comp{[t_1, s_1, \ldots , t_n , s_n]}{t}} = T$.
 \end{definition}
 
@@ -1051,10 +1102,10 @@ is undecidable.
  
 
 \begin{theorem}
-  \problem{KanCubicalCell} is undecidable.
+  \myproblem{KanCubicalCell} is undecidable.
   \begin{proof} 
-    We show how the word problem for groups \problem{WordGroup} reduces to
-    \problem{KanCubicalCell}.
+    We show how the word problem for groups \myproblem{WordGroup} reduces to
+    \myproblem{KanCubicalCell}.
 
     Given a finitely generated group $G = \langle X \mid R \rangle$ with neutral
     element $e$ and where $X$ are its set of generators and $R$ relations over
@@ -1072,8 +1123,8 @@ is undecidable.
     \todo{We need to have introduced inverses as this point}
 
     Given a word $v$ in $G$, we now want to decide whether $v = e$ in $G$.
-    Suppose that \problem{KanCubicalCell} was decidable. We show that we can
-    then decide \problem{WordGroup}
+    Suppose that \myproblem{KanCubicalCell} was decidable. We show that we can
+    then decide \myproblem{WordGroup}
 
     Given $s$ = Comp such that $\boundary{s} = \mlist{ v , ... }$
     
@@ -1119,6 +1170,10 @@ to our setting?}
 
 \section{A Tactic for Cubical Agda}
 \label{sec:cubicalagda}
+
+We have reasoned about semantic objects in this paper: since syntax and semantics so
+closely linked, this gives us a syntactic solver as well. We just have to
+translate to the term language of Cubical Agda.
 
 The above algorithms have been implemented in
 \url{https://github.com/maxdore/cubetac/}. In the following we will discuss how
@@ -1264,6 +1319,8 @@ has the following corresponding PathP type in Cubical Agda.
 \label{sec:conclusions}
 
 \todo{}
+
+Check whether decidable subproblems: Only finitely many cells/ up to dim n/ ...?
 
 % \addcontentsline{toc}{section}{References}
 

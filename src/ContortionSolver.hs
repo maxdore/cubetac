@@ -15,34 +15,43 @@ import Debug.Trace
 
 
 findContortion :: Cube -> Boundary -> Maybe Term
-findContortion ctxt goal = msum (map (\(Decl id _) -> match ctxt goal id) (constr ctxt))
-
-
-match :: Cube -> Boundary -> Id -> Maybe Term
-match ctxt goal p = do
-  -- traceShowM ("MATCH " ++ show goal ++ " WITH " ++ p)
-  let pdef = lookupDef ctxt p
-  let faces = [ ((i,e) , boundaryFace goal (i+1) e) | i <- [0..dim goal-1], e <- [e1,e0]]
-  let ofaces = sortBy (\(_,Term _ s) (_,Term _ t) -> compare (coddim t) (coddim s)) faces
-  -- traceShowM ofaces
-  sigma <- foldM
-                (\sigma' ((i,e) , Term q tau)  -> do
-                  traceShowM sigma'
-                  traceShowM (i,e)
-                  PTerm _ sigmaie <- if q == p
-                      then Just $ PTerm p $ injPSubst tau
-                      else filterPSubstGen ctxt (PTerm p (restrPSubst sigma' i e)) [] [Term q tau]
-                  return $ foldl (\s x -> updatePSubst s (insInd (dim goal - i - 1) e x) (sigmaie ! x)) sigma' (createPoset (dim goal - 1))
-                    )
-                (createPSubst (dim goal) (dim pdef))
-                ofaces
-
+findContortion ctxt goal = do
+  (PTerm p sigma) <- msum (map (\(Decl id _) -> match ctxt goal (PTerm id (createPSubst (dim goal) (dim (lookupDef ctxt id)))) 0) (constr ctxt))
   let ss = getSubsts sigma
   traceM $ show (length ss) ++ " possible solutions found"
-  let res = filter (\s -> inferBoundary ctxt (Term p s) == goal) ss  -- TODO FILTER NECESSARY?
+  traceShowM ss
+  let res = filter (\s -> inferBoundary ctxt (Term p s) == goal) ss
   if null res
     then Nothing
     else Just $ Term p (head res)
+
+
+match :: Cube -> Boundary -> PTerm -> Int -> Maybe PTerm
+match ctxt goal (PTerm p sigma) depth = do
+  -- traceShowM ("MATCH " ++ show goal ++ " WITH " ++ p)
+  let pdef = lookupDef ctxt p
+  let faces = [ ((i,e) , boundaryFace goal (i,e)) | i <- [1..dim goal], e <- [e1,e0]]
+  let ofaces = sortBy (\(_,Term _ s) (_,Term _ t) -> compare (coddim t) (coddim s)) faces
+  traceShowM ofaces
+  sigmaaa <- foldM
+                (\sigma' ((i,e) , Term q tau)  -> do
+                  traceShowM sigma'
+                  traceM (show (i,e) ++ " at depth " ++ show depth)
+                  sigmaie <- if q == p
+                      then Just $ injPSubst tau
+                      else do
+                        theta <- if False -- dim goal > dim pdef && depth < 0
+                              then match ctxt (inferBoundary ctxt (Term q tau)) (PTerm p (restrPSubst sigma' (i,e))) (depth+1)
+                              else Just $ PTerm p (restrPSubst sigma' (i, e))
+                        traceShowM theta
+                        filterPSubst ctxt theta [] [Term q tau]
+                  return $ foldl (\s x -> updatePSubst s (insInd (i) e x) (sigmaie ! x)) sigma' (createPoset (dim goal - 1))
+                    )
+                sigma
+                ofaces
+  return (PTerm p sigmaaa)
+
+
 
 bruteForce :: Cube -> Boundary -> Maybe Term
 bruteForce ctxt goal = msum (map (\(Decl p  _) -> tryFace p) (constr ctxt))

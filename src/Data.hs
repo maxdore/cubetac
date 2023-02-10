@@ -73,6 +73,10 @@ dim = length . faces
 containsBox :: Boundary -> Bool
 containsBox = any (\t -> case t of {Comp _ -> True; Filler _ -> True; _ -> False}) . toList 
 
+containsFace :: Boundary -> Id -> Bool
+containsFace ty p = (any (\t -> case t of {Comp _ -> False; Filler _ -> False; Term q _ -> p == q}) . toList) ty
+
+
 data Decl = Decl Id Boundary
 
 instance Show Decl where
@@ -103,23 +107,28 @@ normalize ctxt (Term p sigma) =
   case isSubposet (Map.elems sigma) of
     Nothing -> Term p sigma
     Just (i , e) ->
-      let (Term q sigma') = boundaryFace (lookupDef ctxt p) i e in
-      normalize ctxt (Term q (Map.compose sigma' (Map.map (`removeInd` i) sigma)))
+      let (Term q tau) = boundaryFace (lookupDef ctxt p) (i,e) in
+      let si = Map.map (`removeInd` i) sigma in
+      normalize ctxt (Term q (Map.compose tau si))
+normalize _ b = b
 
-
-  -- TODO REPLACE WITH Restr
-boundaryFace :: Boundary -> Int -> Endpoint -> Term
-boundaryFace (Boundary ty) i (Endpoint e) = (if e then snd else fst) (ty !! (i - 1))
+boundaryFace :: Boundary -> Restr -> Term
+boundaryFace (Boundary ty) (i , Endpoint e) = (if e then snd else fst) (ty !! (i-1))
 
 
 termFace :: Cube -> Term -> Restr -> Term
-termFace ctxt (Term p sigma) (i,e) = normalize ctxt
-  (Term p (Map.mapKeys (`removeInd` (domdim sigma - i))
-           (sigma `restrictKeys` Set.fromList (map (insInd i e) (createPoset (domdim sigma - 1))))))
-termFace ctxt (Comp (Box pqs r)) (i,Endpoint e) = (if e then snd else fst) (pqs !! (i - 1))
+termFace ctxt (Term p sigma) (i,e) =
+  let subpos = map (insInd i e) (createPoset (domdim sigma - 1)) in
+  let subsigma = sigma `restrictKeys` Set.fromList subpos in
+  let sigma' = Map.mapKeys (`removeInd` i) subsigma in
+  normalize ctxt (Term p sigma')
+
+termFace ctxt (Comp (Box pqs r)) (i,Endpoint e) =
+  let a = (if e then snd else fst) (pqs !! (i-1)) in
+  termRestr ctxt a [(length pqs , e1)]
 termFace ctxt (Filler (Box pqs r)) (i,Endpoint e) =
   if i == 1
-    then if e then r else Comp (Box pqs r)
+    then if e then Comp (Box pqs r) else r
     else (if e then snd else fst) (pqs !! (i - 2))
 
 termRestr :: Cube -> Term -> [Restr] -> Term
@@ -128,7 +137,7 @@ termRestr ctxt t ies = normalize ctxt (foldr (flip (termFace ctxt)) t ies)
 inferBoundary :: Cube -> Term -> Boundary
 inferBoundary ctxt (Term p sigma) = Boundary $
     map (\i -> (termFace ctxt (Term p sigma) (i, e0), termFace ctxt (Term p sigma) (i, e1)))
-        (reverse [0 .. domdim sigma - 1])
+        ([1 .. domdim sigma])
 
 inferBoundary ctxt (Comp (Box pqs _)) = Boundary $ map (\(p,q) -> (termFace ctxt p (0,e0) , termFace ctxt q (0,e1)) ) pqs
 inferBoundary ctxt (Filler (Box pqs r)) = Boundary $ (Comp (Box pqs r) , r) : pqs
@@ -175,16 +184,16 @@ instance Fct PSubst where
   coddim = undefined -- TODO
 
 -- A potential term is an identifier with potential substitution
-data PTerm = PTerm Id PSubst | Fixed Term
+data PTerm = PTerm Id PSubst -- | Fixed Term
   deriving (Eq)
 
 instance Show PTerm where
   show (PTerm f part) = show f ++ " " ++ show part
-  show (Fixed t) = show t
+  -- show (Fixed t) = show t
 
 pterm2term :: PTerm -> Term
 pterm2term (PTerm f subst) = Term f (fstSubst subst)
-pterm2term (Fixed t) = t
+-- pterm2term (Fixed t) = t
 
 -- Given dimensions for domain and codomain, create the most general
 -- potential substitution
@@ -192,9 +201,9 @@ createPSubst :: Int -> Int -> PSubst
 createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
 
 
-  -- TODO REPLACE WITH Restr
-restrPSubst :: PSubst -> Int -> Endpoint -> PSubst
-restrPSubst sigma i e = Map.mapKeys (`removeInd` (i+1)) (Map.filterWithKey (\x _ -> e == toBools x !! i) sigma)
+-- Give back restriction of sigma and forget that it was a restriction
+restrPSubst :: PSubst -> Restr -> PSubst
+restrPSubst sigma (i,e) = Map.mapKeys (`removeInd` i) (Map.filterWithKey (\x _ -> e == toBools x !! (i-1)) sigma)
 
 -- Given a potential substitution, generate all possible substitutions from it
 getSubsts :: PSubst -> [Subst]
@@ -244,10 +253,11 @@ isEmptyPSubst sigma = any (null . snd) (Map.toList sigma)
 possibleFaces :: Cube -> PTerm -> [Restr] -> [(Subst , Term)]
 -- possibleFaces ctxt (PTerm p sigma) ies | trace ("myfun " ++ show (PTerm p sigma) ++ " " ++ show ies) False = undefined
 possibleFaces ctxt (PTerm p sigma) ies = let ss = getSubsts sigma in
-  trace ("UNFOLDING " ++ show (length ss)) $
+  -- trace ("UNFOLDING " ++ show (length ss)) $
   map (\s -> (s , termRestr ctxt (Term p s) ies)) ss
 
--- POSSIBLE fs: [[(fromList [(0,),(1,)],Term "one" (fromList [(,)])),(fromList [(0,1),(1,1)],Term "one" (fromList [(,)]))]]
+-- possibleFaces ctxt (Fixed t) ies = [(undefined , termRestr ctxt t ies)]
+
 
 updateGadgets :: PSubst -> [Subst] -> [Restr] -> PSubst
 updateGadgets sigma ss ies =
@@ -257,10 +267,10 @@ updateGadgets sigma ss ies =
 
 -- Given a pterm, filter it so that it some face of it is contained in a
 -- collection of terms
-filterPSubstGen :: Cube -> PTerm -> [Restr] -> [Term] -> Maybe PTerm
-filterPSubstGen ctxt (PTerm p sigma) ies qs =
-  let ss =  [ s | (s , q) <- possibleFaces ctxt (PTerm p sigma) ies , q `elem` qs ] in
+filterPSubst :: Cube -> PTerm -> [Restr] -> [Term] -> Maybe PSubst
+filterPSubst ctxt (PTerm p sigma) ies qs =
+  let ss = [ s | (s , q) <- possibleFaces ctxt (PTerm p sigma) ies , q `elem` qs ] in
   let sigma' = updateGadgets sigma ss ies in
   if isEmptyPSubst sigma'
     then Nothing
-    else Just $ PTerm p sigma'
+    else Just sigma'
