@@ -97,8 +97,11 @@ removeInd (Vert (_:es)) 1 = Vert es
 removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
 removeInd _ _ = error "This index is not part of the element"
 
+-- Insert e such that x_i = e afterwards
 insInd :: Int -> Endpoint -> Vert -> Vert
-insInd i e (Vert es) = Vert (take (length es - i) es ++ [e] ++ drop (length es - i) es)
+insInd 0 _ _ = error "Indices start from 1"
+insInd i e (Vert es) | i > length es + 1 = error "Index too large for element"
+                     | otherwise = let (f,s) = splitAt (i-1) es in Vert (f ++ [e] ++ s)
 
 -- Given a list of n^2 elements of a poset, generate map from [1]^n to the elements
 reconstrPMap :: [Vert] -> Map Vert Vert

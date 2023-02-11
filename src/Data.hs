@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances  #-}
 module Data where
 
 import Control.Monad
@@ -22,6 +22,8 @@ type Id = String
 -- Use de Brujin indices for interval variables
 type IVar = Int
 
+type Restr = (Int , Endpoint)
+
 -- We regard interval substitutions as poset maps
 type Subst = Map Vert Vert
 
@@ -37,8 +39,9 @@ constSubst n = Map.fromList (map (\x -> (x, Vert [])) (createPoset n))
 
 -- Cubes
 
-data Term = Term Id Subst | Comp Box
+data Term = Term Id Subst | Comp Box | Filler Box
   deriving (Eq , Show)
+
 
 data Box = Box [(Term , Term)] Term
   deriving (Eq , Show)
@@ -52,13 +55,27 @@ termId (Term p _) = p
 --   show (Comp b) = show b -- show sides ++ " " ++ show back
 
 newtype Boundary = Boundary { faces :: [(Term, Term)]}
-  deriving (Eq)
+  deriving (Eq )
 
 instance Show Boundary where
   show (Boundary ss) = show ss
 
+-- instance Foldable Boundary where
+--   foldr f z [] = z
+--   foldr f z ((p,q):pqs) = f p : f q : (foldr f z pqs)
+
+toList :: Boundary -> [Term]
+toList = foldr (\x xs -> fst x : snd x : xs) [] .  faces
+
 dim :: Boundary -> Int
 dim = length . faces
+
+containsBox :: Boundary -> Bool
+containsBox = any (\t -> case t of {Comp _ -> True; Filler _ -> True; _ -> False}) . toList 
+
+containsFace :: Boundary -> Id -> Bool
+containsFace ty p = (any (\t -> case t of {Comp _ -> False; Filler _ -> False; Term q _ -> p == q}) . toList) ty
+
 
 data Decl = Decl Id Boundary
 
@@ -82,34 +99,48 @@ lookupDef cube name =
     Just face -> face
     Nothing -> error $ "Could not find definition of " ++ name
 
-tdim :: Cube -> Id -> Int
-tdim cube p = dim (lookupDef cube p)
+tdim :: Term -> Int
+tdim (Term _ s) = domdim s
 
 normalize :: Cube -> Term -> Term
 normalize ctxt (Term p sigma) =
   case isSubposet (Map.elems sigma) of
     Nothing -> Term p sigma
     Just (i , e) ->
-      let (Term q sigma') = boundaryFace (lookupDef ctxt p) i e in
-      normalize ctxt (Term q (Map.compose sigma' (Map.map (`removeInd` i) sigma)))
+      let (Term q tau) = boundaryFace (lookupDef ctxt p) (i,e) in
+      let si = Map.map (`removeInd` i) sigma in
+      normalize ctxt (Term q (Map.compose tau si))
+normalize _ b = b
+
+boundaryFace :: Boundary -> Restr -> Term
+boundaryFace (Boundary ty) (i , Endpoint e) = (if e then snd else fst) (ty !! (i-1))
 
 
-boundaryFace :: Boundary -> Int -> Endpoint -> Term
-boundaryFace (Boundary ty) i (Endpoint e) = (if e then snd else fst) (ty !! (i - 1))
+termFace :: Cube -> Term -> Restr -> Term
+termFace ctxt (Term p sigma) (i,e) =
+  let subpos = map (insInd i e) (createPoset (domdim sigma - 1)) in
+  let subsigma = sigma `restrictKeys` Set.fromList subpos in
+  let sigma' = Map.mapKeys (`removeInd` i) subsigma in
+  normalize ctxt (Term p sigma')
 
+termFace ctxt (Comp (Box pqs r)) (i,Endpoint e) =
+  let a = (if e then snd else fst) (pqs !! (i-1)) in
+  termRestr ctxt a [(length pqs , e1)]
+termFace ctxt (Filler (Box pqs r)) (i,Endpoint e) =
+  if i == 1
+    then if e then Comp (Box pqs r) else r
+    else (if e then snd else fst) (pqs !! (i - 2))
 
--- d_0=0 (seg <0->0, 1->1>) 
--- seg <()->0>
-
-termFace :: Cube -> Term -> Int -> Endpoint -> Term
-termFace ctxt (Term p sigma) i e = normalize ctxt
-  (Term p (Map.mapKeys (`removeInd` (domdim sigma - i))
-           (sigma `restrictKeys` Set.fromList (map (insInd i e) (createPoset (domdim sigma - 1))))))
+termRestr :: Cube -> Term -> [Restr] -> Term
+termRestr ctxt t ies = normalize ctxt (foldr (flip (termFace ctxt)) t ies)
 
 inferBoundary :: Cube -> Term -> Boundary
 inferBoundary ctxt (Term p sigma) = Boundary $
-    map (\i -> (termFace ctxt (Term p sigma) i e0, termFace ctxt (Term p sigma) i e1))
-        (reverse [0 .. domdim sigma - 1])
+    map (\i -> (termFace ctxt (Term p sigma) (i, e0), termFace ctxt (Term p sigma) (i, e1)))
+        ([1 .. domdim sigma])
+
+inferBoundary ctxt (Comp (Box pqs _)) = Boundary $ map (\(p,q) -> (termFace ctxt p (0,e0) , termFace ctxt q (0,e1)) ) pqs
+inferBoundary ctxt (Filler (Box pqs r)) = Boundary $ (Comp (Box pqs r) , r) : pqs
 
 
 -- wellFormedDecl :: Cube -> Decl -> Bool
@@ -153,14 +184,16 @@ instance Fct PSubst where
   coddim = undefined -- TODO
 
 -- A potential term is an identifier with potential substitution
-data PTerm = PTerm Id PSubst
+data PTerm = PTerm Id PSubst -- | Fixed Term
   deriving (Eq)
 
 instance Show PTerm where
   show (PTerm f part) = show f ++ " " ++ show part
+  -- show (Fixed t) = show t
 
 pterm2term :: PTerm -> Term
 pterm2term (PTerm f subst) = Term f (fstSubst subst)
+-- pterm2term (Fixed t) = t
 
 -- Given dimensions for domain and codomain, create the most general
 -- potential substitution
@@ -168,8 +201,9 @@ createPSubst :: Int -> Int -> PSubst
 createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
 
 
-restrPSubst :: PSubst -> Int -> Endpoint -> PSubst
-restrPSubst sigma i e = Map.mapKeys (`removeInd` (i+1)) (Map.filterWithKey (\x _ -> e == toBools x !! i) sigma)
+-- Give back restriction of sigma and forget that it was a restriction
+restrPSubst :: PSubst -> Restr -> PSubst
+restrPSubst sigma (i,e) = Map.mapKeys (`removeInd` i) (Map.filterWithKey (\x _ -> e == toBools x !! (i-1)) sigma)
 
 -- Given a potential substitution, generate all possible substitutions from it
 getSubsts :: PSubst -> [Subst]
@@ -210,3 +244,33 @@ updatePSubst sigma x vs = Map.mapWithKey (\y us -> filter (\u ->
                                                         (y `above` x) --> any (u `above`) vs &&
                                                         (y `below` x) --> any (u `below`) vs
                                                       ) us) (Map.insert x vs sigma)
+
+isEmptyPSubst :: PSubst -> Bool
+isEmptyPSubst sigma = any (null . snd) (Map.toList sigma)
+
+
+-- Given a pterm, what could its faces be?
+possibleFaces :: Cube -> PTerm -> [Restr] -> [(Subst , Term)]
+-- possibleFaces ctxt (PTerm p sigma) ies | trace ("myfun " ++ show (PTerm p sigma) ++ " " ++ show ies) False = undefined
+possibleFaces ctxt (PTerm p sigma) ies = let ss = getSubsts sigma in
+  -- trace ("UNFOLDING " ++ show (length ss)) $
+  map (\s -> (s , termRestr ctxt (Term p s) ies)) ss
+
+-- possibleFaces ctxt (Fixed t) ies = [(undefined , termRestr ctxt t ies)]
+
+
+updateGadgets :: PSubst -> [Subst] -> [Restr] -> PSubst
+updateGadgets sigma ss ies =
+  let xs = createPoset (domdim sigma) in
+  let vus = map (\x -> nub (map (! x) ss)) xs in -- TODO TAKE INTO ACCOUNT RESTRICTIONS!
+  foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
+
+-- Given a pterm, filter it so that it some face of it is contained in a
+-- collection of terms
+filterPSubst :: Cube -> PTerm -> [Restr] -> [Term] -> Maybe PSubst
+filterPSubst ctxt (PTerm p sigma) ies qs =
+  let ss = [ s | (s , q) <- possibleFaces ctxt (PTerm p sigma) ies , q `elem` qs ] in
+  let sigma' = updateGadgets sigma ss ies in
+  if isEmptyPSubst sigma'
+    then Nothing
+    else Just sigma'

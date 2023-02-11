@@ -1,20 +1,29 @@
-\documentclass[11pt]{article}
+\documentclass{llncs}
 
 \usepackage{hyperref}
 \def\exampleautorefname{Example}
 
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{amsthm}
-\theoremstyle{definition}
-\newtheorem{definition}{Definition}
-\newtheorem{theorem}{Theorem}
-\newtheorem{example}{Example}
-\newtheorem*{expcont}{Example \continuation}
+% \usepackage{amsthm}
+% \theoremstyle{definition}
+% \newtheorem{definition}{Definition}
+% \newtheorem{theorem}{Theorem}
+% \newtheorem{lemma}{Lemma}
+% \newtheorem{example}{Example}
+% \newtheorem*{expcont}{Example \continuation}
+% \newcommand{\continuation}{??}
+% \newenvironment{examplecontd}[1]
+% {\renewcommand{\continuation}{\ref{#1}}\expcont[continued]}
+% {\endexpcont}
+
+\newtheorem{expcont}{Example \continuation}
 \newcommand{\continuation}{??}
 \newenvironment{examplecontd}[1]
 {\renewcommand{\continuation}{\ref{#1}}\expcont[continued]}
 {\endexpcont}
+
+
 \usepackage{algorithm}
 \usepackage[noEnd=True, indLines=True]{algpseudocodex}
 \algrenewcommand\algorithmicrequire{\textbf{Input:}}
@@ -31,7 +40,7 @@
 
 \newcommand{\mdef}{:=}
 \newcommand{\mname}[1]{\textit{{#1}}}
-\newcommand{\problem}[1]{\textsc{{#1}}}
+\newcommand{\myproblem}[1]{\textsc{{#1}}}
 \newcommand{\mlist}[1]{[ {#1} ]}
 
 \newcommand{\join}{\wedge}
@@ -68,7 +77,8 @@
     1 &\mapsto {#2}
   \end{array}
 }
-\newcommand{\oneconst}{\substtwo{()}{()}}
+% \newcommand{\oneconst}{\substtwo{()}{()}}
+\newcommand{\oneconst}{\smap{1}}
 \newcommand{\oneid}{\substtwo{0}{1}}
 
 \newcommand{\substfour}[4]{\tiny
@@ -141,6 +151,12 @@
 \begin{document}
 \maketitle	
 
+\begin{abstract}
+  
+\end{abstract}
+
+\keywords{One \and Two}
+
 The realization that identity in constructive type theory is best understood in
 analogy to homotopies as studied in algebraic topology \cite{awodey09_homot} has
 sparked the research field of homotopy type theory \cite{hott}. Recent research has been
@@ -160,20 +176,21 @@ investigate how we can automate its reasoning principles.
 \paragraph{Proof goals in Cubical Agda}
 
 Cubical Agda implements the idea of higher inductive types
-(HIT), which are inductive types that also allow for higher path
-constructors, by treating them as freely generated cubical sets. When mapping
-into a higher inductive type, one has to respect the coherences introduced by
-these path constructors, which means that one has to show that certain cells in
+(HIT) by treating them as freely generated cubical sets.
+When mapping into a HIT, one has to respect the coherences introduced by
+its path constructors, which means that one has to show that certain cells in
 the corresponding cubical set exist. For example, we have a very simple HIT
 \cset{Int} which has three constructors: two term constructors \cset{zero} and
 \cset{one}, and a 1-dimensional path constructor \cset{seg} connecting both
-points. One proof goal one could face when mapping into \cset{Int} is that one
+points. A proof goal one could face when mapping into \cset{Int} is that one
 has to construct a square spanned by the \cset{seg} path and the path which is
 constantly \cset{one} which we can depict as follows:
 
 \begin{center}
   \filledsquare{\cset{seg}}{\cont{\cset{one}}{\smap{1}}}{\cset{seg}}{\cont{\cset{one}}{\smap{1}}}{}
 \end{center}
+\todo{Give concrete Agda code leading to this proof goal, for instance when
+  constructing a function $\cset{Int} \times \cset{Int} \to \cset{Int}$}
 
 We read the square as follows: Starting from the bottom left corner, which is
 the 0-dimensional cell \cset{zero}, we go with the \cset{seg} path both to the
@@ -183,7 +200,7 @@ the cell \cset{one} considered as a degenerate 1-cell, which we denote by
 \cont{\cset{one}}{\smap{1}}. Coming from our topological intuition, we would
 expect that the boundary described by the above square has a filler as it just
 stretches the \cset{seg} path into a certain square. Indeed, the cubical set
-described by the above HIT contains a 2-dimensional cell with
+described by the HIT \cset{Int} contains a 2-dimensional cell with
 this boundary. In Cubical Agda, this cell is represented by the term
 $\lambda i j .\cset{seg} (i \vee j)$. By introducing two dimensional variables
 $i$ and $j$, this term represents a path
@@ -198,14 +215,14 @@ context.\footnote{In Cubical Agda, one can use more general formulas, namely
   \autoref{ssec:inverses}}
 Applying this formula to a path is commonly called an interval substitution.
 
-Not all cells in Cubical Agda arise by interval substitutions. Going
+Not all cells in Cubical Agda arise as interval substitutions. Going
 back to Kan \cite{kan55_abstr_homot}, cubical sets need to satisfy one property
-to be a model for homotopy types: If we have a box, i.e., a
+to be a model for homotopy types: if we have a box, i.e., a
 well-defined boundary of a cube with only one side missing, then the cubical set
 must contain a cell
 which fills the missing side. This cell is then called the Kan composition of
 the box. For example, we can use Kan composition to derive that a path can be reversed. 
-Treating the path \cset{seg} as a logical manifestation as a function out of the
+Treating the path \cset{seg} as a logical manifestation of a function out of the
 interval, we would expect that we can come up with a function which travels
 along the points of \cset{seg} in the other direction, i.e., that we have a path starting at
 \cset{one} going back to \cset{zero}. To show that such a path exists we use Kan
@@ -223,7 +240,7 @@ composition on the following box:
 
 On the left and top side, the square is constantly \cset{one}. On the right hand
 side, we have the \cset{seg} path. Then the bottom left corner of the square is
-the 0-cell \cset{one}, and the bottom left corner is \cset{zero}.
+the 0-cell \cset{one} and the bottom right corner is \cset{zero}.
 Kan composition of this open box gives us a cell with \cset{one} at its
 left and \cset{zero} at its right boundary, which we could aptly call \cset{seg^{-1}}.
 
@@ -233,6 +250,8 @@ left and \cset{zero} at its right boundary, which we could aptly call \cset{seg^
 % sides of the box to be missing and by also giving a filler for the whole cube,
 % but this is not of concern for us in the following.
 
+\todo{\cset{Int} is probably not the best motivating example. Can we find an example
+  which feels very ``logicy'' and is not directly related to homotopy theory?}
 
 \paragraph{Poset maps as interval substitutions}
 
@@ -250,8 +269,9 @@ functions between the posets  $\{ 0<1 \}^m$ and $\{ 0<1 \}^n$.
 % our presentation and the one in Cubical Agda more concretely.
 
 
-For example, to the formula $i \vee j$ corresponds to the poset map $\{ 0<1 \}^2
-\to \{ 0<1 \}^1$ which sends $00$ to $0$ and everything else to $1$. A cubical set
+For example, the formula $i \vee j$ corresponds to the poset map $\{ 0<1 \}^2
+\to \{ 0<1 \}^1$ which sends $00$ to $0$ and everything else to $1$. In our
+setting, a cubical set
 is a presheaf on the full subcategory of posets of the form $\{ 0<1 \}^n$, which
 means that this poset map will be sent contravariantly to a map from the 1-cells
 to the 2-cells of the cubical set. By filling in the definition of \cset{seg}
@@ -289,8 +309,8 @@ are both constantly \cset{one} as both of its endpoints are send to the same
 0-cell. This geometric intuition will allow us to find poset maps
 efficiently, thereby solving the problem of finding interval substitutions in
 TODO RUNTIME. This is a significant improvement over na\"ive search for
-interval substitutions, as the number of interval substitutions of an
-$n$-dimensional path is the $n$-th Dedekind number.
+interval substitutions, as the number of $n$-dimensional interval substitutions of a
+1-dimensional path is the $n$-th Dedekind number.
 
 Moreover, the poset map perspective allows us to gradually build open box to
 find cells as Kan compositions. The problem of whether a cell can be filled by
@@ -303,6 +323,7 @@ practical examples.
 % algebraically!
 
 % Allowable boundary shapes are generating cofibrations from a model categorical perspective
+
 
 
 \paragraph*{Contributions and Structure}
@@ -399,7 +420,7 @@ $$\boundary{p} \mdef \mlist{ \cont{p}{\dmap{1}{\izero}},
 % general poset maps $\sigma$ in the following.
 
 Contravariance means that for an $n$-cell $p$, $\sigma : \pint{m} \to \pint{n}$ and $\tau : \pint{l} \to \pint{m}$ we have
-$$\cont{(\cont{p}{\sigma})}{\tau} = \cont{p}{\sigma \circ \tau}$$
+$$\cont{\cont{p}{\sigma}}{\tau} = \cont{(\cont{p}{\sigma})}{\tau} = \cont{p}{\sigma \circ \tau}$$
 
 % This means for instance
 % $$\cont{\cont{p}{\sigma}}{\dmap{i}{e}} = \cont{p}{\restrict{\sigma}{\pintrestr{n}{i}{e}}}$$
@@ -507,7 +528,7 @@ $T_{(i=e)} \mdef p_{(i,e)}$. % TODO DO WE NEED THIS NOTATION
 \label{ssec:hits}
 
 Cubical sets as introduced in the previous section are infinite objects:
-As soon as there is a single cell in a cubical set $X$, we have faces or
+as soon as there is a single cell in a cubical set $X$, we have faces or
 degeneracies in all dimensions, and more generally all sorts of cells induced by
 the poset maps. In order to mechanically search for cells in a cubical set, we
 need a finitary representation of cubical sets. The examples above suggest that
@@ -587,7 +608,7 @@ considerations we will want a unique representation for every cell to allow for
 literal comparisons between cells.
 For instance in \autoref{exp:int}, both $\cont{\cset{zero}}{\oneconst}$ and
 $\cont{\cset{seg}}{\substtwo{0}{0}}$ describe the same cell, namely the degenerate
-1-cell which is constantly $\cset{zero}$. Since the former is more basic, 
+1-cell which is constantly $\cset{zero}$. Since the former has a lower dimension, 
 we will regard it as the normal form of this cell. In general:
 
 \begin{definition}
@@ -653,6 +674,39 @@ have a total complexity of $\mathcal{O}(2^mn^2)$ for contortion normalization.
   The contortion $\cont{\phi}{\substfour{00}{00}{01}{01}}$ has normal form $\cont{p}{\substfour{0}{0}{1}{1}}$.
 \end{examplecontd}
 
+More results: for normal forms we do not have to worry about poset maps
+
+\begin{proposition}
+  Uniqueness of contortions: if $\boundary{\cont{p}{\sigma}} =
+  \boundary{\cont{p}{\tau}}$ TODO ABOVE WITHOUT boundary, then $\sigma = \tau$.
+
+  \begin{proof}
+    \todo{As soon as poset map differs in one point, then completely different
+      boundary??? Proof by contradiction? Or counting argument?}
+  \end{proof}
+\end{proposition}
+
+
+This lemma will be relevant when searching for contortions:
+
+\begin{proposition}
+  If $\cont{p}{\sigma}$ is in normal form for $\dim{p} = n$ and $\sigma :
+  \pint{m} \to \pint{n}$ with $m > n$, then there is a face $\cont{p}{\tau}$ of
+  $\cont{p}{\sigma}$ (with $\tau : \pint{m-1} \to \pint{n}$).
+
+  \begin{proposition}
+    \todo{For $m=n$ this does not hold: fgfg square filled with triangle. For
+      $m>n$ I wasn't able to construct a cube containing f and g but not the
+      triangle. Check with brute force this really does not hold?}
+  \end{proof}
+  
+\end{proposition}
+
+This means that if we are given a boundary of a cell, we do not have to check
+all faces: todo which not.
+
+Furthermore, we can use this cell to reduce the search space.
+
 
 
 % \todo{where to describe \autoref{alg:boundary} }
@@ -680,7 +734,7 @@ devise an efficient algorithm for computing contortions in
 \autoref{ssec:contortionsolver}. 
 
 
-\subsection{The problem \problem{CubicalCell}}
+\subsection{The problem \myproblem{CubicalCell}}
 \label{ssec:cubicalcell}
 
 Using the finitary representation introduced above, we can phrase the problem of
@@ -688,11 +742,11 @@ finding a cell with a given boundary as follows:
 
 \begin{definition}
   Given a context $\Gamma$ and a boundary $T$, the problem
-  \problem{CubicalCell}($\Gamma$,$T$) is to find a contortion $\cont{p}{\sigma}$ such that
+  \myproblem{CubicalCell}($\Gamma$,$T$) is to find a contortion $\cont{p}{\sigma}$ such that
   $\boundary{\cont{p}{\sigma}} = T$.
 \end{definition}
 
-The problem \problem{CubicalCell} is clearly decidable since there are
+The problem \myproblem{CubicalCell} is clearly decidable since there are
 only finitely many contortions of a cell in a specific dimension. However, the
 search space grows super-exponentially: suppose we want to find an
 $m$-dimensional contortion of a 1-cell, i.e., we are looking for a poset map
@@ -705,7 +759,7 @@ i.e., we have $D_m^n$ many monotone maps $\pint{m} \to \pint{n}$.
 Therefore bruteforcing the search for contortions gets quickly infeasible and we
 require something more clever to explore the search space.
 
-% A certainly decidable subproblem of \problem{CubicalCell} is to decide whether
+% A certainly decidable subproblem of \myproblem{CubicalCell} is to decide whether
 % there exists a cell simply by means of contorting the cells given in the
 % context: for a given goal boundary $T$ and a generating cell $p$, there are
 % finitely many poset maps $\pint{\dim{T}} \to \pint{\dim{p}}$, so we can
@@ -732,7 +786,6 @@ superfluous values that cannot be part of any poset map as they would otherwise
 violate monotonicity. Thereby we can represent all maps $\pint{m} \to \pint{n}$
 at once with little data.
 
-\newpage
 \begin{definition}
   % A \mname{potential poset map} (\mname{ppm}) is a map $\Sigma : \pint{m} \to \pow{\pint{n}}$
   % such that for all $x \leq y$ : for all $u \in \Sigma(x)$ exists $v \in
@@ -810,13 +863,13 @@ Thereby ppms are a very useful notion to capture a number of poset maps with
 little data. For example, representing all $D_n$ poset maps $\pint{n} \to
 \pint{}$ requires only $2^n$ entries of $\{0,1\}$. Our goal in the following
 will be to restrict a ppm until only few poset maps remain. We can unfold a ppm
-into the set of poset maps that its representing with
+into the set of poset maps that it is representing with
 \autoref{alg:getsubsts} given in the appendix. We can restrict the values of a
 ppm with \autoref{alg:updateppm}. % me of 
 % From a potential poset map we can generate all poset maps. This has a worst-case
 % runtime of Dedekind for the full one.
 
-A non-empty potential map is one which has a non-empty set of possible values
+A non-empty ppm is one which has a non-empty set of possible values
 for any element, which can be checked in $2^m$ steps. Given a poset $xs
 \subseteq \pint{m}$, we can restrict a ppm $\Sigma : \pint{m} \to \pow{\pint{n}}$ to a
 new ppm $\restrict{\Sigma}{xs} : xs \to \pow{\pint{n}}$ just like any function.
@@ -880,6 +933,8 @@ if it gives rise to a valid contortion.
 The algorithm is obviously correct since we only return a poset map $\sigma$ if
 it is indeed contorting $p$ to the correct boundary.
 
+\todo{It appears that we do not need this filter! Can we prove this?}
+
 % Instead of having to check all $D_m^n$ poset maps, we have to check in the worst
 % case $2 m D_{m-1}^n$ poset mapos.
 
@@ -931,18 +986,23 @@ what this means for the worst-case complexity of the algorithm. }
 \begin{examplecontd}{exp:sndsphere}
 
   We will now sketch an example run of \autoref{alg:simple}. We want to find a
-  $\sigma : \pint{3} \to \pint{2}$ such that $\cont{p}{\sigma}$ has this boundary:
-$$\mlist{ \cont{\cset{p}}{\substfour{00}{01}{01}{11}} ,
+  $\sigma : \pint{3} \to \pint{2}$ such that $\cont{\alpha}{\sigma}$ has this boundary:
+$$\mlist{ \cont{\cset{\alpha}}{\substfour{00}{01}{01}{11}} ,
   \cont{\cset{a}}{\smap{2}} , \cont{\cset{a}}{\smap{2}} ,
   \cont{\cset{a}}{\smap{2}} , \cont{\cset{a}}{\smap{2}} ,
   \cont{\cset{a}}{\smap{2}}}$$
 
-In the beginning, the total ppm $\Sigma$ is initialized with $\{ x \mapsto
+In the beginning, the ppm $\Sigma$ is initialized totally with $\{ x \mapsto
 \pint{2} \mid x \in \pint{3}\}$.
-The first face of the boundary entails that the subposet $\pintrestr{3}{1}{\izero}$
+
+We then go through all faces of the goal boundary and use them to restrict
+$\Sigma$.
+The first face of the boundary is a contortion of $\alpha$, which is the
+highest-dimensional face, so we use it to restrict $\Sigma$. Since $\alpha$ is also
+the cell that we are contorting, the subposet $\pintrestr{3}{1}{\izero}$
 of the domain of $\Sigma$
 is mapped in a unique way to the elements of $\pint{2}$. The monotonicity
-restrictions on ppms further restrict $\Sigma$: Since $011$ is mapped to the
+restrictions on ppms further restrict $\Sigma$: since $011$ is mapped to the
 bottom element $00$, also $111$ will need to be mapped to $00$. The elements
 $101$ and $110$ lie below elements which are mapped to $01$, which mean that
 there are only two possible values $\{01, 11\}$ for each of these elements. Only
@@ -969,7 +1029,7 @@ we have the following potential contortion after the first restriction of $\Sigm
       \node (zo) at (-1,0) {\cset{a}};
       \node (oz) at (1,0) {\cset{a}};
       \node (oo) at (0,-1) {\cset{a}};
-      \node (filler) at (0,0) {\cset{p}};
+      \node (filler) at (0,0) {\cset{\alpha}};
       \draw (zz) -- (zo) -- (oo) -- (oz) -- (zz);
     \end{scope}
 
@@ -1012,19 +1072,20 @@ of $\Sigma$ with the first face.
 \section{Composition solver}
 \label{sec:compositionsolver}
 
-\todo{This section only exists as a rough scaffolding. I'm still exploring the
-  algorithms that should be explained here.}
+\todo{This section only exists as a rough scaffolding.}
 
 \subsection{Kan cubical sets}
 
 A cubical set $X$ satisfies the Kan condition if for any open box
 $[t_1, s_1, \ldots , t_n , s_n] \ t$ we have a cell $s$ such that $[t_1,
 s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
-  \ldots , t_n , s_n]}{t} \mdef s$. 
+  \ldots , t_n , s_n]}{t} \mdef s$ the Kan composition of the box. 
+
+\todo{Make more general to uniform Kan condition}
 
 \begin{definition}
   Given a context $\Gamma$ and a (valid) boundary $T$, the problem
-  \problem{KanCubicalCell}($X$,$T$) is to find an open box $[t_1, s_1, \ldots ,
+  \myproblem{KanCubicalCell}($X$,$T$) is to find an open box $[t_1, s_1, \ldots ,
   t_n , s_n] \ t$ such that $\boundary{\comp{[t_1, s_1, \ldots , t_n , s_n]}{t}} = T$.
 \end{definition}
 
@@ -1033,9 +1094,44 @@ s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
 \subsection{Undecidability of finding Kan compositions}
 \label{ssec:kanundecidable}
 
+Since Kan cubical sets are a model of groupoids and groupoids are a generalization
+of groups, it is no surprise that we can encode groups with cubical sets.
+Since also Kan composition is sufficient to generate concatenations of paths
+etc, we can encode word problems for groups, which can be used to show that ..
+is undecidable.
+ 
+
 \begin{theorem}
-  \problem{KanCubicalCell} is undecidable.
-  \begin{proof} \phantom{asdx}\\
+  \myproblem{KanCubicalCell} is undecidable.
+  \begin{proof} 
+    We show how the word problem for groups \myproblem{WordGroup} reduces to
+    \myproblem{KanCubicalCell}.
+
+    Given a finitely generated group $G = \langle X \mid R \rangle$ with neutral
+    element $e$ and where $X$ are its set of generators and $R$ relations over
+    $X$, i.e., $R \subseteq \{ a_1 \mathellipsis a_n \mid a_\_ \in X \cup X^{-1}
+    \}$ such that for all $w \in R$, we have $w = e$ in $G$.
+    
+
+    Construct the cubical set \cset{G} with 0-cell $\star$, 1-cells $X$ with
+    $\boundary{p} = \mlist{\star , \star}$ for any $p \in X$, and for each $w \
+    \in R$ a 2-cell $r_w$ with $\boundary{r_w} = \mlist{ w , \cont{\star}{\smap{1}} ,
+      \cont{\star}{\smap{1}} , \cont{\star}{\smap{1}}}$ where $w$ is the
+    composition of words
+
+    \todo{We need to have introduced compositions as this point}
+    \todo{We need to have introduced inverses as this point}
+
+    Given a word $v$ in $G$, we now want to decide whether $v = e$ in $G$.
+    Suppose that \myproblem{KanCubicalCell} was decidable. We show that we can
+    then decide \myproblem{WordGroup}
+
+    Given $s$ = Comp such that $\boundary{s} = \mlist{ v , ... }$
+    
+    % Finitely generated: $X$ is finite
+    % Finitely presented: $X$ and $R$ are finite
+    
+    Suppose $R$ infinite or something?
 
     % Given a set of generators $\{a, ...\}$ of a group $G$, define $\cset{Group}$
     % with a single 0-cell $\cset{Group}_0 = \{ \cset{\star} \}$, 
@@ -1051,17 +1147,20 @@ s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
     % (there are more 2-cells that need to be added as explained in \cite[Sect. 6.3]{bezem14_model_type_theor_cubic_sets})
     % % Note that this is not a set. Doesn't matter for undecidability proof?
 
-    \todo{This can be shown by a reduction to the word problem for groups. (More
-      generally, we can encode all word problems from universal algebra with
-      cubical sets)
-}
+    \todo{Give reduction Word < KanCubicalCell. For some specific group with
+      undecidable word problem or Uniform word problem? }
 \end{proof}
 \end{theorem}
 
+
 \subsection{A semi-deciability procedure for 1-dimensional cubes}
 
-\todo{}
+\todo{Only going in one side direction will always yield a proof, if it exists}
 
+\subsection{Decidability of finitely generated groups}
+
+\todo{Carry over some decidability results from the word problem for groups over
+to our setting?}
 
 
 % \section{Negation}
@@ -1071,6 +1170,10 @@ s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
 
 \section{A Tactic for Cubical Agda}
 \label{sec:cubicalagda}
+
+We have reasoned about semantic objects in this paper: since syntax and semantics so
+closely linked, this gives us a syntactic solver as well. We just have to
+translate to the term language of Cubical Agda.
 
 The above algorithms have been implemented in
 \url{https://github.com/maxdore/cubetac/}. In the following we will discuss how
@@ -1216,6 +1319,8 @@ has the following corresponding PathP type in Cubical Agda.
 \label{sec:conclusions}
 
 \todo{}
+
+Check whether decidable subproblems: Only finitely many cells/ up to dim n/ ...?
 
 % \addcontentsline{toc}{section}{References}
 

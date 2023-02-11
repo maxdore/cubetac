@@ -36,3 +36,23 @@ splitOn p s =  case dropWhile (==p) s of
                             where (w, s'') = break (==p) s'
 
 
+splitAltern :: [a] -> ([a], [a])
+splitAltern [] = ([], [])
+splitAltern (x1:x2:xs) = (x1:odds, x2:evens)   
+    where 
+        (odds, evens) = splitAltern xs
+
+
+indexOf :: (Eq a) => a -> [a] -> Int
+indexOf n xs = go 0 n xs
+    where
+        go i n [] = (-1)
+        go i n (x:xs)
+             | n == x    = i
+             | otherwise = go (i+1) n xs
+  
+foldM' :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m a
+foldM' _ z [] = return z
+foldM' f z (x:xs) = do
+  z' <- f z x
+  z' `seq` foldM' f z' xs
