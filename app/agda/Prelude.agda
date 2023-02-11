@@ -1,30 +1,10 @@
-{-# OPTIONS --cubical #-}
+{-# OPTIONS --cubical --allow-unsolved-metas --allow-exec #-}
 
 module Prelude where
 
-open import Agda.Primitive public
-open import Agda.Builtin.Cubical.Path public
-open import Agda.Builtin.Cubical.Sub public
-  renaming ( inc to inS
-           ; primSubOut to outS
-           )
-open import Agda.Primitive.Cubical renaming (primINeg to ~_; primIMax to _∨_; primIMin to _∧_;
-                                             primHComp to hcomp; primTransp to transp; primComp to comp;
-                                             itIsOne to 1=1) public
 
+open import Tactic
 
-
-
-open import Agda.Builtin.Unit public
-open import Agda.Builtin.Bool public
-open import Agda.Builtin.Sigma public
-open import Agda.Builtin.Maybe public
-open import Agda.Builtin.List public
-open import Agda.Builtin.Nat public renaming (Nat to ℕ)
-
-
-ℓ-max = _⊔_
-ℓ-suc = lsuc
 
 _[_↦_] : ∀ {ℓ} (A : Set ℓ) (φ : I) (u : Partial φ A) → _
 A [ φ ↦ u ] = Sub A φ u
@@ -149,8 +129,6 @@ isGroupoid A = ∀ a b → isSet (Path A a b)
 
 
 
-_×_ : ∀ {ℓ ℓ'} (A : Set ℓ) (B : Set ℓ') → Set (ℓ ⊔ ℓ')
-A × B = Σ A (λ _ → B)
 
 
 -- module _ {ℓ} {A : Set ℓ} where
@@ -180,6 +158,14 @@ A × B = Σ A (λ _ → B)
 --     concat : List (List A) → List A
 --       concat = {!foldr!} -- foldr _++_ []
 
+
+-- Pointed : (ℓ : Level) → Set (ℓ-suc ℓ)
+-- Pointed ℓ = Σ (Set ℓ) λ A → A
+
+-- Ω : {ℓ : Level} → Pointed ℓ → Pointed ℓ
+-- Ω (_ , a) = ((a ≡ a) , refl)
+
+
 Square :
   {a₀₀ a₀₁ : A} (a₀₋ : a₀₀ ≡ a₀₁)
   {a₁₀ a₁₁ : A} (a₁₋ : a₁₀ ≡ a₁₁)
@@ -192,9 +178,49 @@ data Interval : Set where
   zero one : Interval
   seg  : zero ≡ one
 
+appi : PathP (λ i → Path Interval (seg i) (seg i)) (λ _ → zero) λ _ → one
+appi = {!cubetac!}
 
-Pointed : (ℓ : Level) → Set (ℓ-suc ℓ)
-Pointed ℓ = Σ (Set ℓ) λ A → A
 
-Ω : {ℓ : Level} → Pointed ℓ → Pointed ℓ
-Ω (_ , a) = ((a ≡ a) , refl)
+
+data Sphere : Set where
+  a : Sphere
+  surf : PathP (λ i → a ≡ a) (λ _ → a) (λ _ → a)
+
+
+
+-- loopexp3 : PathP (λ i → PathP ((λ j → (Path Sphere (surf (i ∧ j) (i ∨ j)) a)) (λ l → a) (λ l → a))) (λ l k → a) (λ l k → a)
+loopexp3 : PathP (λ i → PathP (λ j → Path Sphere (surf (i ∧ j) (i ∨ j)) a) (λ j → a) λ j → a) (λ i j → a) λ i j → a
+loopexp3 i j k = surf (i ∧ j) (i ∨ j ∨ k)
+
+loopexp5 :
+  PathP (λ i → PathP (λ j → PathP (λ k → PathP (λ l → Path Sphere
+    (surf (i ∧ j ∧ k ∧ l) (i ∨ j ∨ k ∨ l)) a)
+    (λ l → a)       (λ l → a))
+    (λ l k → a)     (λ l k → a))
+    (λ l k j → a)   (λ l k j → a))
+    (λ l k j i → a) (λ l k j i → a)
+loopexp5 = λ i j k l m → surf ((i ∧ j ∧ k ∧ l)) ((i) ∨ (j) ∨ (k) ∨ (l) ∨ (m))
+
+
+
+loopexp6 :
+  PathP (λ i → PathP (λ j → PathP (λ k → PathP (λ l → PathP (λ m → Path Sphere
+    (surf (i ∧ j ∧ k ∧ l ∧ m) (i ∨ j ∨ k ∨ l ∨ m)) a)
+    (λ m → a)         (λ m → a))
+    (λ m l → a)       (λ m l → a))
+    (λ m l k → a)     (λ m l k → a))
+    (λ m l k j → a)   (λ m l k j → a))
+    (λ m l k j i → a) (λ m l k j i → a)
+loopexp6 = λ i j k l m n → surf ((i ∧ j ∧ k ∧ l ∧ m)) ((i) ∨ (j) ∨ (k) ∨ (l) ∨ (m) ∨ (n))
+
+loopexp7 :
+  PathP (λ i → PathP (λ j → PathP (λ k → PathP (λ l → PathP (λ m → PathP (λ o → Path Sphere
+    (surf (i ∧ j ∧ k ∧ l ∧ m ∧ o) (i ∨ j ∨ k ∨ l ∨ m ∨ o)) a)
+    (λ o → a)           (λ o → a))
+    (λ o m → a)         (λ o m → a))
+    (λ o m l → a)       (λ o m l → a))
+    (λ o m l k → a)     (λ o m l k → a))
+    (λ o m l k j → a)   (λ o m l k j → a))
+    (λ o m l k j i → a) (λ o m l k j i → a)
+loopexp7 = {!cubetac!}

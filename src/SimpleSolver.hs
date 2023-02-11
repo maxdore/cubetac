@@ -58,14 +58,14 @@ matchDive ctxt (Term q tau) p sigma =
 
 match :: Cube -> Boundary -> Id -> [Subst]
 match ctxt goal p =
-  traceShow ("MATCH " ++ show goal ++ " WITH " ++ p) $
+  -- traceShow ("MATCH " ++ show goal ++ " WITH " ++ p) $
   let faces = [ ((i,e) , boundaryFace goal (i+1) e) | i <- [0..dim goal-1], e <- [e1,e0]] in
   let ofaces = sortBy (\(_,Term r _) (_,Term s _) -> compare (tdim ctxt r) (tdim ctxt s)) faces in
-  traceShow ofaces $
+  -- traceShow ofaces $
   let sigma = foldr
                 (\((i,e) , t) sigma' ->
-                    traceShow sigma' $
-                    traceShow (i,e) $
+                    -- traceShow sigma' $
+                    -- traceShow (i,e) $
                   let sigmaie = matchDive ctxt t p (restrPSubst sigma' i e) in
                   foldl (\s x -> updatePSubst s (insInd (dim goal - i - 1) e x) (sigmaie ! x)) sigma' (createPoset (dim goal - 1))
                   )
@@ -90,14 +90,14 @@ matchRecP ctxt goal p = traceShow ("MATCH " ++ show goal ++ " WITH " ++ p) $
       let ty = lookupDef ctxt p in
       let psubst = foldr
                     (\(i,e) sigma ->
-                       traceShow (i,e) $
-                       traceShow sigma $
+                       -- traceShow (i,e) $
+                       -- traceShow sigma $
                       let Term q tau = boundaryFace goal (i+1) e in
                       let sigmaie = (if q == p
                                   then injPSubst tau
                                   else matchRecP ctxt (inferBoundary ctxt (Term q tau)) p) in
                       let sigmaieunf = getSubsts sigmaie in
-                        traceShow (length sigmaieunf) $
+                        -- traceShow (length sigmaieunf) $
                       let ss = filter (\s -> normalize ctxt (Term p s) == Term q tau) sigmaieunf in
                       let xs = createPoset (dim goal - 1) in
                       let vus = map (\x -> nub (map (! x) ss)) xs in
@@ -138,7 +138,7 @@ matchRec ctxt goal p =
 
       -- traceShow psubst $
       let ss = getSubsts psubst in
-      traceShow (length ss) $
+      -- traceShow (length ss) $
       let res = filter (\s -> inferBoundary ctxt (Term p s) == goal) ss in
       res
 
@@ -146,7 +146,7 @@ matchRec ctxt goal p =
 bruteForce :: Cube -> Boundary -> Id -> [Subst]
 bruteForce ctxt goal p = 
   let ss = getSubsts (createPSubst (dim goal) (dim (lookupDef ctxt p))) in
-    traceShow (length ss) $
+    -- traceShow (length ss) $
   filter (\s -> inferBoundary ctxt (Term p s) == goal) ss
 
 

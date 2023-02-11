@@ -1,16 +1,39 @@
-{-# OPTIONS --cubical --allow-unsolved-metas --allow-exec  #-}
+{-# OPTIONS --cubical --allow-unsolved-metas --allow-exec --allow-incomplete-matches #-}
 
 module Tactic where
 
 open import Agda.Builtin.Reflection as R
 open import Agda.Builtin.String
+open import Agda.Builtin.Unit public
+open import Agda.Builtin.Sigma public
 
 open import Cubical.Data.List
 
 open import Cubical.Data.Nat.Base
 open import Cubical.Reflection.Base as R
+open import Agda.Primitive public
+open import Agda.Builtin.Cubical.Path public
+open import Agda.Builtin.Cubical.Sub public
+  renaming ( inc to inS
+  ; primSubOut to outS
+  )
+open import Agda.Primitive.Cubical renaming (primINeg to ~_; primIMax to _∨_; primIMin to _∧_;
+  primHComp to hcomp; primTransp to transp; primComp to comp;
+  itIsOne to 1=1) public
 
-open import Prelude
+
+open import Agda.Builtin.Unit public
+open import Agda.Builtin.Bool public
+open import Agda.Builtin.Sigma public
+open import Agda.Builtin.Maybe public
+open import Agda.Builtin.List public
+open import Agda.Builtin.Nat public renaming (Nat to ℕ)
+
+ℓ-max = _⊔_
+ℓ-suc = lsuc
+
+_×_ : ∀ {ℓ ℓ'} (A : Set ℓ) (B : Set ℓ') → Set (ℓ ⊔ ℓ')
+A × B = Σ A (λ _ → B)
 
 debug! : String -> Term → TC ⊤
 debug! id tm = typeError (strErr "[" ∷ strErr id ∷ strErr "]" ∷ termErr tm ∷ [])
@@ -81,12 +104,6 @@ macro
 
 
 
-
-
-
-
-appi : PathP (λ i → Path Interval (seg i) (seg i)) (λ _ → zero) λ _ → one
-appi = λ i j → seg i
 
 
 

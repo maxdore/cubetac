@@ -19,9 +19,10 @@ import Formula
 
 
 
-type ASubst = [[Id]]
+type AFormula = [[Id]]
+type ATele = [AFormula]
 
-data ATerm = Abs Id ATerm | App Id ASubst
+data ATerm = Abs Id ATerm | App Id ATele
   deriving (Eq, Show)
 
 data APathP = PathP Id APathP ATerm ATerm | APoint
@@ -32,11 +33,16 @@ depth APoint = 0
 depth (PathP _ ty _ _ )= 1 + depth ty
 
 
+atele2tele :: Map String Int -> ATele -> Tele
+atele2tele vm fs = Tele (map (\f -> Formula (map (\c -> Disj (map (\v -> Conj (vm ! v)) c)) f)) fs)
+
 aterm2term :: Int -> Int -> Map String Int -> ATerm -> Term
 aterm2term gdim cdim vm (Abs v p) = aterm2term gdim (cdim + 1) (Map.insert v cdim vm) p
-aterm2term gdim cdim vm (App p r) = -- traceShow (cdim -1 -length r) $ -- TODO INTRODUCE VARIABLES FOR ETA EQ
+aterm2term gdim cdim vm (App p rs) = -- traceShow (cdim -1 -length r) $ -- TODO INTRODUCE VARIABLES FOR ETA EQ
   -- map (\i -> Formula [Disj [Conj i]]) undefined 
-  Term p (tele2Subst (Tele ((map (\c -> Formula (map (\v -> Disj [Conj (vm ! v)]) c)) r) ++ [])) (gdim-1))
+  -- trace ("ASDASD_" ++ show rs ++ "@" ++ show vm ++ ":" ++ show (atele2tele vm rs) ++ "_BASD") $ 
+  Term p (tele2Subst (atele2tele vm rs) (gdim-1))
+  -- Term p (tele2Subst (Tele (map (map (\c -> Formula (map (\v -> Disj [Conj (vm ! v)]) c)) r) ++ [])) (gdim-1))
 
 pathp2boundary :: APathP -> Boundary
 pathp2boundary ty = pathp2boundary' (depth ty) 1 Map.empty ty
@@ -44,7 +50,7 @@ pathp2boundary ty = pathp2boundary' (depth ty) 1 Map.empty ty
   pathp2boundary' :: Int -> Int -> Map String Int -> APathP -> Boundary
   pathp2boundary' gdim cdim vm APoint = Boundary []
   pathp2boundary' gdim cdim vm (PathP v ty p q) = let vm' = Map.insert v cdim vm in
-    Boundary $ (aterm2term gdim (cdim+1) vm p , aterm2term gdim (cdim+1) vm q) : faces (pathp2boundary' gdim cdim vm' ty)
+    Boundary $ (aterm2term gdim (cdim+1) vm p , aterm2term gdim (cdim+1) vm q) : faces (pathp2boundary' gdim (cdim+1) vm' ty)
 
 
 
@@ -69,21 +75,37 @@ parseAbs :: Parser ATerm
 parseAbs = do
   char '\955'
   spaces
-  var <- parseVar
+  vars <- parseVar `sepBy1` char ' '
   spaces
   char '\8594'
   spaces
   t <- parseTerm
-  return $ Abs var t
+  return $ foldr (\v s -> Abs v s) t vars
+  -- return $ Abs var t
 
-parseDim :: Parser ASubst
-parseDim = return []
+
+parseDisj :: Parser AFormula
+parseDisj = do
+  disj <- ident `sepBy` string " ∨ "
+  return [disj]
+
+parseConj :: Parser AFormula
+parseConj = do
+  conj <- ident `sepBy` string " ∧ "
+  return $ map singleton conj
+
+parseDim :: Parser AFormula
+parseDim =
+  (ident >>= \a -> return [[ a ]]) <|>
+  (between (char '(') (char ')') parseDisj) <|>
+  (between (char '(') (char ')') parseConj)
+
 
 parseApp :: Parser ATerm
 parseApp = do
   p <- ident
-  apps <- many (char ' ' >> ident) -- TODO dim instead of ident
-  return $ App p (map (\i -> [i]) apps)
+  apps <- many1 (char ' ' >> parseDim) -- TODO dim instead of ident
+  return $ App p apps
 
 parseAtom :: Parser ATerm
 parseAtom = do
@@ -128,7 +150,7 @@ parsePathP = do
 parsePathNP :: Parser APathP
 parsePathNP = do
   try $ string "Path "
-  r <- parsePathP
+  r <- parsePath
   spaces
   u <- parseTerm
   spaces
@@ -175,17 +197,24 @@ parseProblem = do
   spaces
   return (decls , goal)
 
-test, test2, test3 :: Text
+test, test2, test3 , test3' , test4 , test5' :: Text
 test = "zero : Interval\none : Interval\nseg : zero ≡ one\n---\none ≡ zero\n"
 test2 = "zero : Interval\none : Interval\nseg : zero ≡ one\n---\nPathP (λ i → Interval) zero one\n"
-test3 = "zero : Interval\none : Interval\nseg : zero ≡ one\n---\nPathP (λ i → PathP (λ _ → Interval) (seg i) one) seg (λ _ → one)\n"
+test3 = "zero : Interval\none : Interval\nseg : zero ≡ one\n---\nPathP (λ i → PathP (λ _ → Interval) (seg i) one) seg (λ _ _ → one)\n"
+test3' = "zero : Interval\none : Interval\nseg : zero ≡ one\n---\nPathP (λ i → PathP (λ _ → Interval) (seg i) one) (λ i → seg i) (λ _ → one)\n"
+test4 = "zero : Interval\none : Interval\nseg : zero ≡ one\n---\nPathP (λ i → PathP (λ j → PathP (λ _ → Interval) (seg (i ∨ j)) (seg (i ∧ j))) (seg i) one) seg (λ _ → one)\n"
 
+test5 = "Prelude.Sphere.a : Sphere\nPrelude.Sphere.surf : Path (a ≡ a) refl refl\n---\nPathP (λ i → PathP (λ j → PathP (λ k → PathP (λ l → PathP (λ _ → Sphere) (surf (i ∧ j ∧ k ∧ l) (i ∨ j ∨ k ∨ l)) a) (λ z → a) (λ z → a)) (λ z z → a) (λ z z → a)) (λ z z z → a) (λ z z z → a)) (λ z z z z → a) (λ z z z z → a)"
+test5' = "Prelude.Sphere.a : Sphere\nPrelude.Sphere.surf : PathP (λ i → a ≡ a) (λ _ → a) (λ _ → a)\n---\nPathP (λ i → PathP (λ j → PathP (λ k → PathP (λ l → PathP (λ _ → Sphere) (surf (i ∧ j ∧ k ∧ l) (i ∨ j ∨ k ∨ l)) a) (λ z → a) (λ z → a)) (λ z z → a) (λ z z → a)) (λ z z z → a) (λ z z z → a)) (λ z z z z → a) (λ z z z z → a)"
 
 parseAgdaProblem :: Text -> IO (Cube , Boundary)
 parseAgdaProblem input =
   case parseOnly parseProblem input of
     Left err -> error $ "PARSE ERROR " ++ err
-    Right (ctxt , goal) -> return (Cube (map (\(p,ty) -> Decl (last (splitOn '.' p)) (pathp2boundary ty)) ctxt), pathp2boundary goal)
+    Right (ctxt , goal) -> do
+      -- print ctxt
+      -- print goal
+      return (Cube (map (\(p,ty) -> Decl (last (splitOn '.' p)) (pathp2boundary ty)) ctxt), pathp2boundary goal)
 
 
 -- parseCube "PathP (\955 i \8594 seg i \8801 seg i) (\955 _ \8594 zero) (\955 _ \8594 one)"
@@ -197,12 +226,13 @@ dimNames = ["i","j","k","l","m","n"]
 
 
 agdaClause :: Disj -> String
-agdaClause (Disj ls) = concat $ intersperse "/\\" (map (\(Conj i) -> dimNames !! (i-1)) ls)
+agdaClause (Disj ls) = "(" ++ concat (intersperse " ∧ " (map (\(Conj i) -> dimNames !! (i-1)) ls)) ++ ")"
 
 agdaFormula :: Formula -> String
-agdaFormula (Formula cs) = concat (intersperse "\\/" (map agdaClause cs))
+agdaFormula (Formula cs) = "(" ++ concat (intersperse " ∨ " (map agdaClause cs)) ++ ")"
 
 agdaTerm :: Term -> String
 -- agdaTerm (Term p sigma) = "\955 "
-agdaTerm (Term p sigma) = "\955 " ++ concat (intersperse " " (take (domdim sigma) dimNames)) ++ " \8594 " ++ p ++ " " ++ (concat (intersperse " " (map agdaFormula ((formulas . subst2Tele) sigma))))
+agdaTerm (Term p sigma) = "\955 " ++ concat (intersperse " " (take (domdim sigma) dimNames)) ++ " \8594 " ++ p ++ " "
+  ++ (concat (intersperse " " (map agdaFormula ((reverse . formulas . subst2Tele) sigma))))
 
