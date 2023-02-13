@@ -3,13 +3,13 @@
  (lambda ()
    (TeX-add-to-alist 'LaTeX-provided-package-options
                      '(("algpseudocodex" "noEnd=True" "indLines=True")))
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "href")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperref")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperimage")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperbaseurl")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "nolinkurl")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "url")
    (add-to-list 'LaTeX-verbatim-macros-with-braces-local "path")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "url")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "nolinkurl")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperbaseurl")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperimage")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperref")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "href")
    (add-to-list 'LaTeX-verbatim-macros-with-delims-local "path")
    (TeX-run-style-hooks
     "latex2e"
@@ -38,6 +38,8 @@
     '("dmap" 2)
     '("smap" 1)
     '("ctxtdim" 1)
+    '("dim" 1)
+    '("hom" 2)
     '("psh" 1)
     '("image" 1)
     '("restrict" 2)
@@ -82,11 +84,9 @@
     "ssec:inverses"
     "sec:conclusions")
    (LaTeX-add-environments
-    '("proof" LaTeX-env-args ["argument"] 0)
-    '("examplecontd" 1))
+    '("examplecontd" 1)
+    "expcont")
    (LaTeX-add-bibliographies
-    "bibliography")
-   (LaTeX-add-amsthm-newtheorems
-    "expcont"))
+    "bibliography"))
  :latex)
 

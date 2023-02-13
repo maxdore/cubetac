@@ -40,11 +40,11 @@ constSubst n = Map.fromList (map (\x -> (x, Vert [])) (createPoset n))
 -- Cubes
 
 data Term = Term Id Subst | Comp Box | Filler Box
-  deriving (Eq , Show)
+  deriving (Eq , Show , Ord)
 
 
 data Box = Box [(Term , Term)] Term
-  deriving (Eq , Show)
+  deriving (Eq , Show , Ord)
 
 termId :: Term -> Id
 termId (Term p _) = p
@@ -55,7 +55,7 @@ termId (Term p _) = p
 --   show (Comp b) = show b -- show sides ++ " " ++ show back
 
 newtype Boundary = Boundary { faces :: [(Term, Term)]}
-  deriving (Eq )
+  deriving (Eq , Ord)
 
 instance Show Boundary where
   show (Boundary ss) = show ss
@@ -112,16 +112,23 @@ normalize ctxt (Term p sigma) =
       normalize ctxt (Term q (Map.compose tau si))
 normalize _ b = b
 
+inNf :: Cube -> Term -> Bool
+inNf ctxt (Term p sigma) = p == termId (normalize ctxt (Term p sigma))
+
+
 boundaryFace :: Boundary -> Restr -> Term
 boundaryFace (Boundary ty) (i , Endpoint e) = (if e then snd else fst) (ty !! (i-1))
 
 
 termFace :: Cube -> Term -> Restr -> Term
 termFace ctxt (Term p sigma) (i,e) =
-  let subpos = map (insInd i e) (createPoset (domdim sigma - 1)) in
-  let subsigma = sigma `restrictKeys` Set.fromList subpos in
-  let sigma' = Map.mapKeys (`removeInd` i) subsigma in
-  normalize ctxt (Term p sigma')
+  if i == 0
+    then error "Indices of faces start at 1"
+    else 
+      let subpos = map (insInd i e) (createPoset (domdim sigma - 1)) in
+      let subsigma = sigma `restrictKeys` Set.fromList subpos in
+      let sigma' = Map.mapKeys (`removeInd` i) subsigma in
+      normalize ctxt (Term p sigma')
 
 termFace ctxt (Comp (Box pqs r)) (i,Endpoint e) =
   let a = (if e then snd else fst) (pqs !! (i-1)) in
@@ -139,8 +146,8 @@ inferBoundary ctxt (Term p sigma) = Boundary $
     map (\i -> (termFace ctxt (Term p sigma) (i, e0), termFace ctxt (Term p sigma) (i, e1)))
         ([1 .. domdim sigma])
 
-inferBoundary ctxt (Comp (Box pqs _)) = Boundary $ map (\(p,q) -> (termFace ctxt p (0,e0) , termFace ctxt q (0,e1)) ) pqs
-inferBoundary ctxt (Filler (Box pqs r)) = Boundary $ (Comp (Box pqs r) , r) : pqs
+inferBoundary ctxt (Comp (Box pqs _)) = Boundary $ map (\(p,q) -> (termFace ctxt p (length pqs,e1) , termFace ctxt q (length pqs,e1)) ) pqs
+inferBoundary ctxt (Filler (Box pqs r)) = Boundary $ pqs ++ [(r , Comp (Box pqs r))]
 
 
 -- wellFormedDecl :: Cube -> Decl -> Bool

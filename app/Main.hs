@@ -31,9 +31,8 @@ solver cube goal verbose = do
   if not True -- (wellFormed cube)
     then return ()
     else do
-      case findContortion cube goal of
+      case solve cube goal of
         Just t -> do
-          when verbose (putStrLn "FOUND SIMPLE SOLUTIONS")
           when verbose (print t)
           (putStrLn . agdaTerm) t
         Nothing ->

@@ -92,8 +92,8 @@ andOrSubst = Map.fromList [
 
 stretch = Map.fromList [
               (Vert [e0, e0] , Vert [e0, e0])
-            , (Vert [e0, e1] , Vert [e0, e1])
-            , (Vert [e1, e0] , Vert [e1, e1])
+            , (Vert [e0, e1] , Vert [e1, e1])
+            , (Vert [e1, e0] , Vert [e0, e1])
             , (Vert [e1, e1] , Vert [e1, e1])
               ]
 
@@ -324,6 +324,9 @@ triangle = Cube [
 triangleSlide :: Boundary
 triangleSlide = Boundary [(Term "h" idSubst, Term "g" idSubst) , (Term "f" idSubst, Term "z" (constSubst 1))]
 
+
+
+
 fgfgcube :: Boundary
 fgfgcube = Boundary [
     (Term "f" app1Subst ,  Term "g" app1Subst)
@@ -367,6 +370,21 @@ loopspace = Cube [
 
 asquare :: Boundary
 asquare = Boundary [(Term "a" (constSubst 1), Term "a" (constSubst 1) ) , (Term "a" (constSubst 1), Term "a" (constSubst 1) )]
+
+
+dupTerm :: Term
+dupTerm = Term "p" (Map.fromList [
+              (Vert [e0, e0] , Vert [e0, e0])
+            , (Vert [e0, e1] , Vert [e0, e0])
+            , (Vert [e1, e0] , Vert [e0, e1])
+            , (Vert [e1, e1] , Vert [e1, e1])
+              ])
+
+dup :: Boundary
+dup = Boundary [
+  (Term "a" (constSubst 1), Term "a" (constSubst 1) ) ,
+  (Term "a" (constSubst 1), Term "p" (Map.fromList [(Vert [e0] , Vert [e0,e0]) , (Vert [e1] , Vert [e1,e1])]) )]
+
 
 loopAndOr , loopAndOr' , loopSwap, loop4Cube , loop4Cube' :: Boundary
 loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]

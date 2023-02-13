@@ -75,7 +75,6 @@ compSolve = do
   goal <- gets goal
   traceM $ show goal
   ctxt <- gets ctxt
-  traceM $ show (constr ctxt)
 
   let pterms = map (\f -> createPTerm f (dim goal)) (constr ctxt)
 
@@ -86,7 +85,7 @@ compSolve = do
           let a = boundaryFace goal (i,e) in
             case a of
               Term _ _ -> do
-                ts <- filterPSubsts pterms [(dim goal-1,e1)] [a]
+                ts <- filterPSubsts pterms [(dim goal,e1)] [a]
                 newCVar (Side i e) (map Pot ts)
               Comp box -> newCVar (Side i e) [Fix (Filler box)]
             )
@@ -97,14 +96,14 @@ compSolve = do
   traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
   -- Impose back constraints
-  mapM_ (\(i,e) -> boundaryConstraint [(dim goal-1,e0)] [(i,e)] (Side i e) Back) faceInd
+  mapM_ (\(i,e) -> boundaryConstraint [(dim goal,e0)] [(i,e)] (Side i e) Back) faceInd
 
   domains <- mapM lookupDom (sides ++ [back])
   traceM $ "AFTER BACK\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
   mapM_ (\(i,e) -> mapM_ (\(i',e') ->
                             boundaryConstraint [(i,e')] [(i,e)] (Side i e) (Side i' e')
-                            ) [ (i',e') | i' <- [i+1 .. dim goal-1] , e' <- [e0,e1]]) faceInd
+                            ) [ (i',e') | i' <- [i+1 .. dim goal] , e' <- [e0,e1]]) faceInd
 
   domains <- mapM lookupDom (sides ++ [back])
   traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
@@ -166,8 +165,8 @@ boundaryConstraint ie jf = addBinaryConstraint $ \c d -> do
 
   traceM $ show pss'
   traceM $ show qss'
-  when (null pss') $ traceM $ "EMPTY " ++ show c
-  when (null qss') $ traceM $ "EMPTY " ++ show d
+  -- when (null pss') $ traceM $ "EMPTY " ++ show c
+  -- when (null qss') $ traceM $ "EMPTY " ++ show d
   -- guard $ not $ null pss'
   -- guard $ not $ null qss'
   when (pss' /= pss) $ update c pss'

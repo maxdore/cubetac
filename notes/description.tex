@@ -407,6 +407,11 @@ will call the list of all faces of an $n$-cell $p$ its boundary $\boundary{p}$:
 $$\boundary{p} \mdef \mlist{ \cont{p}{\dmap{1}{\izero}},
   \cont{p}{\dmap{1}{\ione}} , \ldots , \cont{p}{\dmap{n}{\izero}}, \cont{p}{\dmap{n}{\ione}} }$$
 
+TODO define face more precisely:
+- also include faces of faces, i.e., make ``congruence'' closure of faces
+- make it non-reflexive. We do not want that a cell is a face of itself since
+then normal form definition needs to be changed.
+
 % The functor laws of $X$ ensure that the faces of $p$ have overlapping
 % boundaries. TODO GENERAL FORM
 
@@ -612,9 +617,10 @@ $\cont{\cset{seg}}{\substtwo{0}{0}}$ describe the same cell, namely the degenera
 we will regard it as the normal form of this cell. In general:
 
 \begin{definition}
-  A contortion $\cont{p}{\sigma}$ is in normal form if there is no face $q$ of
+  A contortion $\cont{p}{\sigma}$ is in normal form if there is no strict face $q$ of
   $p$ and map $\tau$ such that $\cont{p}{\sigma} = \cont{q}{\tau}$.
 \end{definition}
+
 
 We can efficiently compute the normal form of a contortion with
 \autoref{alg:normalize}. Given a contortion $\cont{p}{\sigma}$,
@@ -674,38 +680,36 @@ have a total complexity of $\mathcal{O}(2^mn^2)$ for contortion normalization.
   The contortion $\cont{\phi}{\substfour{00}{00}{01}{01}}$ has normal form $\cont{p}{\substfour{0}{0}{1}{1}}$.
 \end{examplecontd}
 
-More results: for normal forms we do not have to worry about poset maps
+It is worth pointing out that contortions are not necessarily unique in the
+following sense: given a boundary, there might be multiple ways to contort a
+cell to match this boundary.
 
-\begin{proposition}
-  Uniqueness of contortions: if $\boundary{\cont{p}{\sigma}} =
-  \boundary{\cont{p}{\tau}}$ TODO ABOVE WITHOUT boundary, then $\sigma = \tau$.
+% TODO GIVE EXAMPLE?
+% (Term "a" (constSubst 1), Term "a" (constSubst 1) ) ,
+% (Term "a" (constSubst 1), Term "p" (Map.fromList [(Vert [e0] , Vert [e0,e0]) , (Vert [e1] , Vert [e1,e1])]) )]
+% solvable with 
+%   (Vert [e0, e0] , [Vert [e0, e0]])
+% , (Vert [e0, e1] , [Vert [e0, e0]])
+% , (Vert [e1, e0] , [Vert [e0, e1] , Vert [e1 , e0]])
+% , (Vert [e1, e1] , [Vert [e1, e1]])
 
-  \begin{proof}
-    \todo{As soon as poset map differs in one point, then completely different
-      boundary??? Proof by contradiction? Or counting argument?}
-  \end{proof}
-\end{proposition}
 
+% Disproved results
 
-This lemma will be relevant when searching for contortions:
+% \begin{proposition}
+%   Uniqueness of contortions: if $\boundary{\cont{p}{\sigma}} =
+%   \boundary{\cont{p}{\tau}}$ TODO ABOVE WITHOUT boundary, then $\sigma = \tau$.
+% Nope. for instance for sphere we have several poset maps giving rise to
+% [a<s1>, ... , ]
+% \end{proposition}
 
-\begin{proposition}
-  If $\cont{p}{\sigma}$ is in normal form for $\dim{p} = n$ and $\sigma :
-  \pint{m} \to \pint{n}$ with $m > n$, then there is a face $\cont{p}{\tau}$ of
-  $\cont{p}{\sigma}$ (with $\tau : \pint{m-1} \to \pint{n}$).
-
-  \begin{proposition}
-    \todo{For $m=n$ this does not hold: fgfg square filled with triangle. For
-      $m>n$ I wasn't able to construct a cube containing f and g but not the
-      triangle. Check with brute force this really does not hold?}
-  \end{proof}
-  
-\end{proposition}
-
-This means that if we are given a boundary of a cell, we do not have to check
-all faces: todo which not.
-
-Furthermore, we can use this cell to reduce the search space.
+% \begin{proposition}
+%   If $\cont{p}{\sigma}$ is in normal form for $\dim{p} = n$ and $\sigma :
+%   \pint{m} \to \pint{n}$ with $m > n$, then there is a face $\cont{p}{\tau}$ of
+%   $\cont{p}{\sigma}$ (with $\tau : \pint{m-1} \to \pint{n}$).
+% Nope. Have boundary of phi contortion which has only f and g by sending 0..0
+% to 00, 1..1 to 11 and rest to 01.
+% \end{proposition}
 
 
 
@@ -1089,6 +1093,9 @@ s_1, \ldots , t_n , s_n , t, s]$ is a valid boundary. Call $\comp{[t_1, s_1,
   t_n , s_n] \ t$ such that $\boundary{\comp{[t_1, s_1, \ldots , t_n , s_n]}{t}} = T$.
 \end{definition}
 
+
+TODO INTRODUCE Composition (and filler?) in the term language. Extend definition
+of boundary to it
 
 
 \subsection{Undecidability of finding Kan compositions}
