@@ -220,19 +220,3 @@ parseAgdaProblem input =
 -- parseCube "PathP (\955 i \8594 seg i \8801 seg i) (\955 _ \8594 zero) (\955 _ \8594 one)"
 
 
-
-dimNames :: [String]
-dimNames = ["i","j","k","l","m","n"]
-
-
-agdaClause :: Disj -> String
-agdaClause (Disj ls) = "(" ++ concat (intersperse " ∧ " (map (\(Conj i) -> dimNames !! (i-1)) ls)) ++ ")"
-
-agdaFormula :: Formula -> String
-agdaFormula (Formula cs) = "(" ++ concat (intersperse " ∨ " (map agdaClause cs)) ++ ")"
-
-agdaTerm :: Term -> String
--- agdaTerm (Term p sigma) = "\955 "
-agdaTerm (Term p sigma) = "\955 " ++ concat (intersperse " " (take (domdim sigma) dimNames)) ++ " \8594 " ++ p ++ " "
-  ++ (concat (intersperse " " (map agdaFormula ((reverse . formulas . subst2Tele) sigma))))
-

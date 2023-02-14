@@ -121,8 +121,23 @@ triangle = Cube [
   , Decl "phi"   (Boundary [(Term "f" idSubst, Term "h" idSubst) , (Term "x" (constSubst 1) , Term "g" idSubst)])
            ]
 
+z2 :: Cube
+z2 = Cube [
+    Decl "o"     (Boundary [])
+  , Decl "a"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+  , Decl "law"   (Boundary [(Term "a" idSubst , Term "o" (constSubst 1)) , (Term "o" (constSubst 1) , Term "a" idSubst)])
+                   ]
 
+gp :: Cube
+gp = Cube [
+    Decl "o"     (Boundary [])
+  , Decl "a"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+  , Decl "b"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+  , Decl "law"   (Boundary [(Term "a" idSubst , Term "a" idSubst) , (Term "b" idSubst , Term "b" idSubst)])
+                   ]
 
+inv :: Id -> Id -> Id -> Box
+inv i0 i1 p = (Box [(Term p idSubst , Term i1 (constSubst 1))] (Term i0 (constSubst 1)) )
 
 loopspace :: Cube
 loopspace = Cube [
@@ -243,7 +258,9 @@ main = do
     (Boundary [(Term "h" idSubst, Term "g" idSubst) , (Term "f" idSubst, Term "z" (constSubst 1))])
     (Comp (Box [(Term "h" andSubst , Term "g" app1Subst) , (Term "f" app1Subst , Term "h" orSubst)] (Term "phi" (tele2Subst swap 2))))
 
-
+  checkSolve gp
+    (Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ])
+    (Comp (Box [(Filler (inv "o" "o" "b") , Filler (inv "o" "o" "b")) , (Term "law" (tele2Subst swap 2) , Term "a" app1Subst )] (Term "a" app1Subst)))
 
 
 -- intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2

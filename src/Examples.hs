@@ -223,6 +223,8 @@ circle = Cube [
   , Decl "loop" (Boundary  [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
            ]
 
+circleneg = Boundary [ (Comp (inv "a" "a" "loop") , Comp (inv "a" "a" "loop")) , (Term "loop" idSubst , Term "loop" idSubst) ]
+  
 circle3Cube = Boundary [
     (Term "loop" orSubst , Term "a" (constSubst 2))
   , (Term "loop" orSubst , Term "a" (constSubst 2))
@@ -447,8 +449,18 @@ loop7Cube = Boundary [
   ]
 
 
--- z2 :: Cube
--- z2 = Cube [
+
+z2 :: Cube
+z2 = Cube [
+    Decl "o"     (Boundary [])
+  , Decl "a"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
+  , Decl "law"   (Boundary [(Term "a" idSubst , Term "o" (constSubst 1)) , (Term "o" (constSubst 1) , Term "a" idSubst)])
+                   ]
+z2goal :: Boundary
+z2goal = Boundary [ (Comp (inv "o" "o" "a") , Comp (inv "o" "o" "a")) , (Term "a" idSubst , Term "a" idSubst) ]
+
+-- gp :: Cube
+-- gp = Cube [
 --     Decl "o"     (Boundary [])
 --   , Decl "p"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
 --   , Decl "q"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
@@ -456,8 +468,8 @@ loop7Cube = Boundary [
 --   , Decl "law"   (Boundary [(Term "p" idSubst , Term "o" (constSubst 1)) , (Term "q" idSubst , Term "r" idSubst)])
 --                    ]
 
-z2 :: Cube
-z2 = Cube [
+gp :: Cube
+gp = Cube [
     Decl "o"     (Boundary [])
   , Decl "a"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
   , Decl "b"     (Boundary [(Term "o" (constSubst 0) , Term "o" (constSubst 0))])
@@ -468,8 +480,8 @@ inv :: Id -> Id -> Id -> Box
 inv i0 i1 p = (Box [(Term p idSubst , Term i1 (constSubst 1))] (Term i0 (constSubst 1)) )
 
 
-z2goal :: Boundary
-z2goal = Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ]
+gpgoal :: Boundary
+gpgoal = Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ]
 
 
 

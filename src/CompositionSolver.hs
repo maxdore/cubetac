@@ -78,7 +78,7 @@ compSolve = do
 
   let pterms = map (\f -> createPTerm f (dim goal)) (constr ctxt)
 
-  let faceInd = [ (i,e) | i <- [1..dim goal], e <- [e0,e1]]-- getFaces (dim goal) (dim goal - 1)
+  let faceInd = [ (i,e) | i <- [1..dim goal], e <- [e0,e1]]
   traceM $ show faceInd
 
   sides <- mapM (\(i,e) ->
@@ -113,8 +113,8 @@ compSolve = do
 
   -- return []
   let sol = [Comp (Box (uncurry zip ress) resb)]
-  traceM "SOLVED"
-  (traceM . show) sol
+  -- traceM "SOLVED"
+  -- (traceM . show) sol
   return sol
 
 
@@ -146,25 +146,25 @@ boundaryConstraint ie jf = addBinaryConstraint $ \c d -> do
   pss <- lookupDom c
   qss <- lookupDom d
 
-  traceM $ "pss " ++ show (length pss) ++ show pss
-  traceM $ "qss " ++ show (length qss) ++ show qss
+  -- traceM $ "pss " ++ show (length pss) ++ show pss
+  -- traceM $ "qss " ++ show (length qss) ++ show qss
 
   fs <- nub . concat <$> mapM (`possibleTerms` ie) pss
   gs <- nub . concat <$> mapM (`possibleTerms` jf) qss
 
-  traceM $ "POSSIBLE fs: " ++ show fs
-  traceM $ "POSSIBLE gs: " ++ show gs
+  -- traceM $ "POSSIBLE fs: " ++ show fs
+  -- traceM $ "POSSIBLE gs: " ++ show gs
 
   -- Take intersection
   let hs = fs `intersect` gs
 
-  traceM $ "COMMON BOUNDARY: " ++ show hs
+  -- traceM $ "COMMON BOUNDARY: " ++ show hs
 
   pss' <- catMaybes <$> mapM (\ps -> filterSolution ps ie hs) pss
   qss' <- catMaybes <$> mapM (\qs -> filterSolution qs jf hs) qss
 
-  traceM $ show pss'
-  traceM $ show qss'
+  -- traceM $ show pss'
+  -- traceM $ show qss'
   -- when (null pss') $ traceM $ "EMPTY " ++ show c
   -- when (null qss') $ traceM $ "EMPTY " ++ show d
   -- guard $ not $ null pss'
@@ -314,168 +314,3 @@ firstSubst var = do
 -- TODO IMPLEMENT GUARD
 
 
--- equalVertex :: Vert -> Vert -> CVar -> CVar -> Solving s ()
--- equalVertex v u = addBinaryConstraint $ \x y -> do
---   xs <- lookupDom x
---   ys <- lookupDom y
-
---   -- Find all the points that v could be with the partial substitutions in the domain
---   pxv <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! v)) xs
---   pyu <- nub . concat <$> mapM (\(PTerm f s) -> mapM (evalPoint f) (s ! u)) ys
---   let ps = intersect pxv pyu
-
---   xs' <- filterPSubsts v ps xs
---   ys' <- filterPSubsts u ps ys
---   guard $ not $ null xs'
---   guard $ not $ null ys'
---   when (xs' /= xs) $ update x xs'
---   when (ys' /= ys) $ update y ys'
-
--- equalVertices :: CVar -> CVar -> [(Vert , Vert)] -> Solving s ()
--- equalVertices x y vus = mapM (\(v,u) -> equalVertex v u x y) vus >> return ()
-
-
-
-
--- -- Edge constraints
-
--- getEdges :: PTerm -> IVar -> Endpoint -> Solving s [Term]
--- getEdges ps i e = do
---   -- trace $ show ps ++ " | " ++ show i ++ "@" ++ show e
---   let PTerm f sigma = ps
---   let vs = sigma ! Vert (map (\j -> if i /= j then e else e0) [1..2])
---   let us = sigma ! Vert (map (\j -> if i /= j then e else e1) [1..2])
---   -- trace $ show vs ++ " --> " ++ show us
-
---   mapM (\v -> mapM (evalEdge f v) (filter (`below` v) us)) vs >>= return . catMaybes . concat
-
-
--- -- TODO COMPUTE BOUNDARY ONLY ONCE BY KEEPING TRACK OF WHICH ASSIGNMENTS GAVE RISE TO CERTAIN BOUNDARY
--- checkPTermEdge :: IVar -> Endpoint -> [Term] -> PTerm -> Solving s (Maybe PTerm)
--- checkPTermEdge i e fs (PTerm f sigma) = do
---   fdim <- dimTerm f
---   case fdim of
---     0 -> if (emptT f `elem` fs) then return $ Just (PTerm f sigma) else return Nothing
---     _ -> do
---       -- trace $ show "Restrict " ++ show (f , sigma) ++ "|" ++ show i ++ "@" ++ show e ++ " to boundaries " ++ show fs
-
---       let x = Vert (map (\j -> if i /= j then e else e0) [1..2])
---       let y = Vert (map (\j -> if i /= j then e else e1) [1..2])
-
---       let vs = sigma ! x
---       let us = sigma ! y
-
---       vs' <- filterM (\v -> anyM (\u -> evalEdge f v u >>= \g ->
---                                      case g of
---                                        Just g' -> return (g' `elem` fs)
---                                        Nothing -> return False
---                                      ) us) vs
---       us' <- filterM (\u -> anyM (\v -> evalEdge f v u >>= \g ->
---                                      case g of
---                                        Just g' -> return (g' `elem` fs)
---                                        Nothing -> return False
---                                      ) vs') us
---       if null vs' || null us'
---         then return Nothing
---         else do
---           let sigma' = Map.insert x vs' sigma
---           let sigma'' = Map.insert x vs' sigma'
---           let propagate = Map.mapWithKey (\z ws -> filter (\w ->
---                                                             (z `above` x) --> any (w `above`) vs' &&
---                                                             (z `below` x) --> any (w `below`) vs' &&
---                                                             (z `above` y) --> any (w `above`) us' &&
---                                                             (z `below` y) --> any (w `below`) us'
---                                                           ) ws) sigma''
---           return $ Just (PTerm f propagate)
-
-
-
-
-
--- filterPSubstsEdge :: IVar -> Endpoint -> [Term] -> [PTerm] -> Solving s [PTerm]
--- filterPSubstsEdge i e fs ss = mapM (checkPTermEdge i e fs) ss >>= return . catMaybes
-
--- equalEdge :: IVar -> Endpoint -> IVar -> Endpoint -> CVar -> CVar -> Solving s ()
--- equalEdge i e j e' = addBinaryConstraint $ \x y -> do
---   xs <- lookupDom x
---   ys <- lookupDom y
-
---   exs <- mapM (\sigma -> getEdges sigma i e) xs >>= return . nub . concat
---   eys <- mapM (\sigma -> getEdges sigma j e') ys >>= return . nub . concat
-
---   -- TODO rename to fs to avoid clash with endpoint lists es
---   let es = intersect exs eys
-
---   xs' <- filterPSubstsEdge i e es xs
---   ys' <- filterPSubstsEdge j e' es ys
---   guard $ not $ null xs'
---   guard $ not $ null ys'
---   when (xs' /= xs) $ update x xs'
---   when (ys' /= ys) $ update y ys'
-
-
-
--- What to do with degeneracies equivalent to a face? e.g.
--- "seg" fromList [(0,[0]),(1,[0])]
--- is the same as its left face
-
-
--- evalFace :: Term -> Vert -> Solving s Term
--- evalFace (Term f s) x = do
---   goal <- gets goal
---   let sigma = tele2Subst s (dim goal - 1)
---   trace $ show sigma
-
---   return $ emptT "asd"
-
--- evalBoundary :: Boundary -> Vert -> Solving s Term
--- evalBoundary (Boundary ((a , b) : _)) (Vert (Endpoint e : es)) =
---   evalFace (if e then b else a) (Vert es)
-
--- evalBoundary (Boundary [(Term a _ , Term b _)]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
--- evalBoundary (Boundary [(Term a _ , Term b _) , _]) (Vert [Endpoint e , Endpoint e']) =
---   evalPoint (if e then b else a) (Vert [Endpoint e'])
--- evalBoundary (Boundary [(Term a _ , Term b _) , _ , _]) (Vert (Endpoint e : es)) =
---   evalPoint (if e then b else a) (Vert es)
-
-
--- evalBoundary1 :: Boundary -> [Vert] -> Solving s Term
--- -- evalBoundary1 (Boundary [(Term a _ , Term b _)]) (Vert [Endpoint e]) (Vert [Endpoint e]) = return $ Point (if e then b else a)
--- evalBoundary1 (Boundary fs) [x , y] = do
---   let (i , Endpoint e) = getBoundary x y
---   trace $ show i ++ "|" ++ show e
---   let res = (if e then snd else fst) (fs !! (i - 1))
---   trace $ show res
---   return res
-
--- filterPTerm1 :: [Vert] -> [Term] -> PTerm -> Solving s (Maybe PTerm)
--- filterPTerm1 [x , y] fs (PTerm f sigma) = do
---   fdim <- dimTerm f
---   case fdim of
---     0 -> if (emptT f `elem` fs) then return $ Just (PTerm f sigma) else return Nothing
---     _ -> do
---       let vs = sigma ! x
---       let us = sigma ! y
-
---       vs' <- filterM (\v -> anyM (\u -> evalEdge f v u >>= \g ->
---                                      case g of
---                                        Just g' -> return (g' `elem` fs)
---                                        Nothing -> return False
---                                      ) us) vs
---       us' <- filterM (\u -> anyM (\v -> evalEdge f v u >>= \g ->
---                                      case g of
---                                        Just g' -> return (g' `elem` fs)
---                                        Nothing -> return False
---                                      ) vs') us
---       if null vs' || null us'
---         then return Nothing
---         else do
---           let sigma' = Map.insert x vs' sigma
---           let sigma'' = Map.insert x vs' sigma'
---           let propagate = Map.mapWithKey (\z ws -> filter (\w ->
---                                                             (z `above` x) --> any (w `above`) vs' &&
---                                                             (z `below` x) --> any (w `below`) vs' &&
---                                                             (z `above` y) --> any (w `above`) us' &&
---                                                             (z `below` y) --> any (w `below`) us'
---                                                           ) ws) sigma''
---           return $ Just (PTerm f propagate)

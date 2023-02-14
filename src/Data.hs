@@ -134,9 +134,9 @@ termFace ctxt (Comp (Box pqs r)) (i,Endpoint e) =
   let a = (if e then snd else fst) (pqs !! (i-1)) in
   termRestr ctxt a [(length pqs , e1)]
 termFace ctxt (Filler (Box pqs r)) (i,Endpoint e) =
-  if i == 1
+  if i == length pqs + 1
     then if e then Comp (Box pqs r) else r
-    else (if e then snd else fst) (pqs !! (i - 2))
+    else (if e then snd else fst) (pqs !! (i - 1))
 
 termRestr :: Cube -> Term -> [Restr] -> Term
 termRestr ctxt t ies = normalize ctxt (foldr (flip (termFace ctxt)) t ies)

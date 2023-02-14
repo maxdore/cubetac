@@ -14,6 +14,7 @@ import Examples
 import Data.List
 
 
+
 solve :: Cube -> Boundary -> Maybe Term
 solve ctxt goal = do
   res <- if containsBox goal
