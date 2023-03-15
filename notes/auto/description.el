@@ -3,37 +3,43 @@
  (lambda ()
    (TeX-add-to-alist 'LaTeX-provided-package-options
                      '(("algpseudocodex" "noEnd=True" "indLines=True")))
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "path")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "url")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "nolinkurl")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperbaseurl")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperimage")
-   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperref")
    (add-to-list 'LaTeX-verbatim-macros-with-braces-local "href")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperref")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperimage")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "hyperbaseurl")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "nolinkurl")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "url")
+   (add-to-list 'LaTeX-verbatim-macros-with-braces-local "path")
    (add-to-list 'LaTeX-verbatim-macros-with-delims-local "path")
    (TeX-run-style-hooks
     "latex2e"
-    "algorithms"
     "llncs"
     "llncs10"
-    "hyperref"
-    "amsmath"
     "amssymb"
+    "amsmath"
+    "hyperref"
+    "amsthm"
     "algorithm"
     "algpseudocodex"
+    "tikz-cd"
     "ifthen"
     "tcolorbox")
    (TeX-add-symbols
     '("hcompcube" 9)
     '("filledsquare" 5)
+    '("compsquare" 4)
     '("dimsquare" 2)
     '("dimcube" 3)
     '("substfour" 4)
     '("substtwo" 2)
-    '("comp" 2)
+    '("cfill" 1)
+    '("ccomp" 1)
+    '("cbox" 2)
     '("boundary" 1)
     '("cset" 1)
     '("pow" 1)
+    '("boundaryface" 3)
+    '("termface" 3)
     '("cont" 2)
     '("dmap" 2)
     '("smap" 1)
@@ -59,7 +65,6 @@
     "ivar"
     "oneconst"
     "oneid"
-    "exampleautorefname"
     "algorithmautorefname"
     "arraystretch")
    (LaTeX-add-labels
@@ -74,18 +79,25 @@
     "sec:contortionsolver"
     "ssec:cubicalcell"
     "ssec:ppm"
+    "def:ppm"
     "ssec:contortionsolver"
     "alg:simple"
+    "cont:line:initsigma"
+    "cont:line:peqq"
+    "cont:line:unfold"
+    "cont:line:update"
+    "cont:line:check"
     "sec:compositionsolver"
     "ssec:kanundecidable"
     "sec:cubicalagda"
     "alg:subst2tele"
     "alg:teletosubst"
-    "ssec:inverses"
-    "sec:conclusions")
+    "sec:conclusions"
+    "alg:updateppm"
+    "alg:getsubsts")
    (LaTeX-add-environments
-    '("examplecontd" 1)
-    "expcont")
+    "proof"
+    '("examplecontd" 1))
    (LaTeX-add-bibliographies
     "bibliography"))
  :latex)

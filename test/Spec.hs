@@ -139,6 +139,9 @@ gp = Cube [
 inv :: Id -> Id -> Id -> Box
 inv i0 i1 p = (Box [(Term p idSubst , Term i1 (constSubst 1))] (Term i0 (constSubst 1)) )
 
+comp :: Id -> Term -> Term -> Box
+comp x p q = Box [(Term x (constSubst 1) , q)] p
+
 loopspace :: Cube
 loopspace = Cube [
     Decl "a"   (Boundary [])
@@ -261,6 +264,14 @@ main = do
   checkSolve gp
     (Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ])
     (Comp (Box [(Filler (inv "o" "o" "b") , Filler (inv "o" "o" "b")) , (Term "law" (tele2Subst swap 2) , Term "a" app1Subst )] (Term "a" app1Subst)))
+
+  checkSolve int
+    (Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (Comp (comp "zero" (Term "seg" idSubst) (Term "one" (constSubst 1))) , Term "seg" idSubst)])
+    (Comp (Box [ (Term "zero" (constSubst 2), Term "one" (constSubst 2)),
+                 ((Filler (Box [(Term "zero" (constSubst 1),
+                                Term "one" (constSubst 1))]
+                           (Term "seg" idSubst))),
+                   Term "seg" app1Subst)] (Term "seg" app1Subst)))
 
 
 -- intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2

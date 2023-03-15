@@ -215,6 +215,25 @@ otherway = Map.fromList [
                           ]
 
 
+inv :: Id -> Term -> Box
+inv x p = Box [(p , Term x (constSubst 1))] (Term x (constSubst 1))
+
+comp :: Id -> Term -> Term -> Box
+comp x p q = Box [(Term x (constSubst 1) , q)] p
+
+
+
+
+vert :: Cube
+vert = Cube [ Decl "a" (Boundary [])]
+
+refleqreflinv :: Boundary
+refleqreflinv = Boundary [
+  (Term "a" (constSubst 1) , Term "a" (constSubst 1)) ,
+  (Comp (inv "a" (Term "a" (constSubst 1))) , Term "a" (constSubst 1))
+    ]
+
+
 
 
 circle :: Cube
@@ -223,8 +242,8 @@ circle = Cube [
   , Decl "loop" (Boundary  [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
            ]
 
-circleneg = Boundary [ (Comp (inv "a" "a" "loop") , Comp (inv "a" "a" "loop")) , (Term "loop" idSubst , Term "loop" idSubst) ]
-  
+circleneg = Boundary [ (Comp (inv "a" (Term "loop" idSubst)) , Comp (inv "a" (Term "loop" idSubst))) , (Term "loop" idSubst , Term "loop" idSubst) ]
+
 circle3Cube = Boundary [
     (Term "loop" orSubst , Term "a" (constSubst 2))
   , (Term "loop" orSubst , Term "a" (constSubst 2))
@@ -271,8 +290,18 @@ intInv :: Boundary
 intInv = Boundary [(Term "one" (constSubst 0) , Term "zero" (constSubst 0))]
 
 
+unitr :: Boundary
+unitr = Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (Comp (comp "zero" (Term "seg" idSubst) (Term "one" (constSubst 1))) , Term "seg" idSubst)]
+
+unitl :: Boundary
+unitl = Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (Comp (comp "zero" (Term "zero" (constSubst 1)) (Term "seg" idSubst)) , Term "seg" idSubst)]
 
 
+pinvp :: Boundary
+pinvp = Boundary [
+  (Term "one" (constSubst 1) , Term "one" (constSubst 1)) ,
+  (Term "one" (constSubst 1) , Comp (comp "one" (Comp (inv "zero" (Term "seg" idSubst))) (Term "seg" idSubst)))
+                 ]
 
 two :: Cube
 two = Cube [
@@ -347,20 +376,23 @@ fgfgcube = Boundary [
 
 composition :: Cube
 composition = Cube [
-    Decl "x"     (Boundary [])
-  , Decl "y"     (Boundary [])
-  , Decl "z"     (Boundary [])
-  , Decl "w"     (Boundary [])
-  , Decl "p"     (Boundary [(Term "x" (constSubst 1) , Term "y" (constSubst 1))])
-  , Decl "q"     (Boundary [(Term "y" (constSubst 1) , Term "z" (constSubst 1))])
-  , Decl "r"     (Boundary [(Term "z" (constSubst 1) , Term "w" (constSubst 1))])
+    Decl "a"     (Boundary [])
+  , Decl "b"     (Boundary [])
+  , Decl "c"     (Boundary [])
+  , Decl "d"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 1) , Term "b" (constSubst 1))])
+  , Decl "q"     (Boundary [(Term "b" (constSubst 1) , Term "c" (constSubst 1))])
+  , Decl "r"     (Boundary [(Term "c" (constSubst 1) , Term "d" (constSubst 1))])
                    ]
 
 compfiller :: Boundary
 compfiller = Boundary [(Term "p" app1Subst, Comp (Box [(Term "x" (constSubst 1) , Term "q" app1Subst)] (idT "p" 1))) , (Term "x" (constSubst 2) , Term "q" app1Subst)]
 
 compassoc :: Boundary
-compassoc = Boundary [(undefined , undefined) , (Term "x" (constSubst 2) , Term "w" (constSubst 2))]
+compassoc = Boundary [(
+                         (Comp (comp "a" (Comp (comp "a" (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                         (Comp (comp "a" (Term "p" idSubst) (Comp (comp "b" (Term "q" idSubst) (Term "r" idSubst)))))) ,
+                       (Term "x" (constSubst 2) , Term "w" (constSubst 2))]
 
 
 
@@ -457,7 +489,7 @@ z2 = Cube [
   , Decl "law"   (Boundary [(Term "a" idSubst , Term "o" (constSubst 1)) , (Term "o" (constSubst 1) , Term "a" idSubst)])
                    ]
 z2goal :: Boundary
-z2goal = Boundary [ (Comp (inv "o" "o" "a") , Comp (inv "o" "o" "a")) , (Term "a" idSubst , Term "a" idSubst) ]
+z2goal = Boundary [ (Comp (inv "o" (Term "a" idSubst)) , Comp (inv "o" (Term "a" idSubst))) , (Term "a" idSubst , Term "a" idSubst) ]
 
 -- gp :: Cube
 -- gp = Cube [
@@ -476,12 +508,10 @@ gp = Cube [
   , Decl "law"   (Boundary [(Term "a" idSubst , Term "a" idSubst) , (Term "b" idSubst , Term "b" idSubst)])
                    ]
 
-inv :: Id -> Id -> Id -> Box
-inv i0 i1 p = (Box [(Term p idSubst , Term i1 (constSubst 1))] (Term i0 (constSubst 1)) )
 
 
 gpgoal :: Boundary
-gpgoal = Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ]
+gpgoal = Boundary [ (Comp (inv "o" (Term "b" idSubst)) , Comp (inv "o" (Term "b" idSubst))) , (Term "a" idSubst , Term "a" idSubst) ]
 
 
 

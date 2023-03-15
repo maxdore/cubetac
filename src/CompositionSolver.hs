@@ -79,10 +79,11 @@ compSolve = do
   let pterms = map (\f -> createPTerm f (dim goal)) (constr ctxt)
 
   let faceInd = [ (i,e) | i <- [1..dim goal], e <- [e0,e1]]
-  traceM $ show faceInd
+  traceShowM faceInd
 
   sides <- mapM (\(i,e) ->
           let a = boundaryFace goal (i,e) in
+            traceShow a $
             case a of
               Term _ _ -> do
                 ts <- filterPSubsts pterms [(dim goal,e1)] [a]
@@ -98,15 +99,15 @@ compSolve = do
   -- Impose back constraints
   mapM_ (\(i,e) -> boundaryConstraint [(dim goal,e0)] [(i,e)] (Side i e) Back) faceInd
 
-  domains <- mapM lookupDom (sides ++ [back])
-  traceM $ "AFTER BACK\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  -- domains <- mapM lookupDom (sides ++ [back])
+  -- traceM $ "AFTER BACK\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
   mapM_ (\(i,e) -> mapM_ (\(i',e') ->
                             boundaryConstraint [(i,e')] [(i,e)] (Side i e) (Side i' e')
                             ) [ (i',e') | i' <- [i+1 .. dim goal] , e' <- [e0,e1]]) faceInd
 
-  domains <- mapM lookupDom (sides ++ [back])
-  traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  -- domains <- mapM lookupDom (sides ++ [back])
+  -- traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
   ress <- splitAltern <$> mapM firstSubst sides
   resb <- firstSubst back
