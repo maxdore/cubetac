@@ -33,9 +33,8 @@ data CVar = Back | Side IVar Endpoint
 type Solving s a = State (SEnv s) a
 
 
-data Solution = Pot PTerm | Fix Term
+data Domain = Pot [PContortion] | Fix Term | Open
   deriving (Show, Eq)
-type Domain = [Solution]
 
 -- For each constraint variable we save the constraints that still need to be checked as well as the current domain
 data CVarInfo a = CVarInfo { delayedConstraints :: Solving a (), values :: Domain }
@@ -61,47 +60,47 @@ lookupDef name = do
 
 
 findComposition :: Cube -> Boundary -> Maybe Term
-findComposition ctxt goal = listToMaybe (evalState compSolve (mkSEnv ctxt goal))
+findComposition ctxt goal = evalState compSolve (mkSEnv ctxt goal)
 
 
-filterPSubsts :: [PTerm] -> [Restr] -> [Term] -> Solving s [PTerm]
+filterPSubsts :: [PContortion] -> [Restr] -> [Term] -> Solving s [PContortion]
 filterPSubsts pts ies as = do
   ctxt <- gets ctxt
-  catMaybes <$> mapM (\(PTerm p sigma) -> return (PTerm p <$> filterPSubst ctxt (PTerm p sigma) ies as)) pts
+  catMaybes <$> mapM (\(PContortion p sigma) -> return (filterPSubst ctxt (PContortion p sigma) ies as)) pts
 
 
-compSolve :: Solving s [Term]
+compSolve :: Solving s (Maybe Term)
 compSolve = do
   goal <- gets goal
-  traceM $ show goal
+  -- traceM $ show goal
   ctxt <- gets ctxt
 
-  let pterms = map (\f -> createPTerm f (dim goal)) (constr ctxt)
+  let pterms = map (\f -> createPContortion f (dim goal)) (constr ctxt)
 
   let faceInd = [ (i,e) | i <- [1..dim goal], e <- [e0,e1]]
-  traceShowM faceInd
 
   sides <- mapM (\(i,e) ->
           let a = boundaryFace goal (i,e) in
-            traceShow a $
+            -- traceShow a $
             case a of
               Term _ _ -> do
                 ts <- filterPSubsts pterms [(dim goal,e1)] [a]
-                newCVar (Side i e) (map Pot ts)
-              Comp box -> newCVar (Side i e) [Fix (Filler box)]
+                newCVar (Side i e) (Pot ts)
+              -- TODO fill more cleverly -- sometimes not possible to unfold all comps
+              Comp box -> newCVar (Side i e) (Fix (Fill box))
+              Free -> newCVar (Side i e) Open
             )
         faceInd
-  back <- newCVar Back (map Pot pterms)
+  back <- newCVar Back (Pot pterms)
 
-  domains <- mapM lookupDom (sides ++ [back])
-  traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
-
-  -- Impose back constraints
-  mapM_ (\(i,e) -> boundaryConstraint [(dim goal,e0)] [(i,e)] (Side i e) Back) faceInd
+  -- TODO UPDATE WHICH FACES WE WON'T BE ABLE TO FILL?
+  -- go through all sides and check if after unfolding hcomps (and given goal boundary)
+  -- we know that some face cannot be filled with a contortion
 
   -- domains <- mapM lookupDom (sides ++ [back])
-  -- traceM $ "AFTER BACK\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  -- traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
+  -- Impose side constraints
   mapM_ (\(i,e) -> mapM_ (\(i',e') ->
                             boundaryConstraint [(i,e')] [(i,e)] (Side i e) (Side i' e')
                             ) [ (i',e') | i' <- [i+1 .. dim goal] , e' <- [e0,e1]]) faceInd
@@ -109,60 +108,49 @@ compSolve = do
   -- domains <- mapM lookupDom (sides ++ [back])
   -- traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
-  ress <- splitAltern <$> mapM firstSubst sides
+
+  -- Impose back constraints
+  mapM_ (\(i,e) -> boundaryConstraint [(dim goal,e0)] [(i,e)] (Side i e) Back) faceInd
+
+  -- domains <- mapM lookupDom (sides ++ [back])
+  -- traceM $ "AFTER BACK\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+
+
+  ress <- (splitAltern <$> mapM firstSubst sides) >>= \asd -> return $ uncurry zip asd
+  -- traceShowM ress
   resb <- firstSubst back
+  let res = Box ress resb
 
-  -- return []
-  let sol = [Comp (Box (uncurry zip ress) resb)]
-  -- traceM "SOLVED"
-  -- (traceM . show) sol
-  return sol
+  -- TODO check whether enough has been filled to just fill the rest with comps
+  let withcomps =
+        Comp $ modifyBox res (\(i,e) t ->
+          if boundaryFace goal (i,e) == Free
+            then Fill (Box
+                        (map (\j -> let ss = ress!!(j-1) in
+                                (termRestr ctxt (fst ss) [(i-1,e)] , termRestr ctxt (snd ss) [(i-1,e)])) [ j | j <- [1..dim goal], j /= i])
+                        (termFace ctxt resb (i,e)))
+            else t
+          ) id
+  return $ Just withcomps
 
 
 
-possibleTerms :: Solution -> [Restr] -> Solving s [Term]
+possibleTerms :: Domain -> [Restr] -> Solving s [Term]
 possibleTerms (Pot ps) ies = do
   ctxt <- gets ctxt
-  return $ map snd $ possibleFaces ctxt ps ies
+  return $ (nub . concat) (map (\p -> map snd (possibleFaces ctxt p ies)) ps )
 possibleTerms (Fix t) ies = do
   ctxt <- gets ctxt
   return [termRestr ctxt t ies]
 
 
-filterSolution :: Solution -> [Restr] -> [Term] -> Solving s (Maybe Solution)
-filterSolution (Pot (PTerm p sigma)) ie hs = do
+filterSolution :: Domain -> [Restr] -> [Term] -> Solving s Domain
+filterSolution (Pot ps) ie hs = do
   ctxt <- gets ctxt
-  return $ case filterPSubst ctxt (PTerm p sigma) ie hs of
-          Just sigma' -> Just $ Pot (PTerm p sigma')
-          Nothing -> Nothing
-filterSolution (Fix t) ie hs = do
-  ctxt <- gets ctxt
-  return $ if termRestr ctxt t ie `elem` hs
-          then Just $ Fix t
-          else Nothing
-
-boundaryConstraint :: [Restr] -> [Restr] -> CVar -> CVar -> Solving s ()
-boundaryConstraint ie jf = addBinaryConstraint $ \c d -> do
-  ctxt <- gets ctxt
-  pss <- lookupDom c
-  qss <- lookupDom d
-
-  -- traceM $ "pss " ++ show (length pss) ++ show pss
-  -- traceM $ "qss " ++ show (length qss) ++ show qss
-
-  fs <- nub . concat <$> mapM (`possibleTerms` ie) pss
-  gs <- nub . concat <$> mapM (`possibleTerms` jf) qss
-
-  -- traceM $ "POSSIBLE fs: " ++ show fs
-  -- traceM $ "POSSIBLE gs: " ++ show gs
-
-  -- Take intersection
-  let hs = fs `intersect` gs
-
-  -- traceM $ "COMMON BOUNDARY: " ++ show hs
-
-  pss' <- catMaybes <$> mapM (\ps -> filterSolution ps ie hs) pss
-  qss' <- catMaybes <$> mapM (\qs -> filterSolution qs jf hs) qss
+  let ps' = catMaybes $ map (\p -> filterPSubst ctxt p ie hs) ps
+  return $ if null ps'
+              then Open
+              else Pot ps'
 
   -- traceM $ show pss'
   -- traceM $ show qss'
@@ -170,8 +158,32 @@ boundaryConstraint ie jf = addBinaryConstraint $ \c d -> do
   -- when (null qss') $ traceM $ "EMPTY " ++ show d
   -- guard $ not $ null pss'
   -- guard $ not $ null qss'
-  when (pss' /= pss) $ update c pss'
-  when (qss' /= qss) $ update d qss'
+
+filterSolution (Fix t) ie hs = return $ Fix t
+-- filterSolution (Fix t) ie hs = do
+--   ctxt <- gets ctxt
+--   return $ if termRestr ctxt t ie `elem` hs
+--           then Fix t
+--           else error "AIII"
+
+boundaryConstraint :: [Restr] -> [Restr] -> CVar -> CVar -> Solving s ()
+boundaryConstraint ie jf = addBinaryConstraint $ \c d -> do
+  ctxt <- gets ctxt
+  pss <- lookupDom c
+  qss <- lookupDom d
+  if pss /= Open && qss /= Open
+    then do
+      fs <- possibleTerms pss ie
+      gs <- possibleTerms qss jf
+
+      let hs = fs `intersect` gs
+
+      pss' <- filterSolution pss ie hs
+      qss' <- filterSolution qss jf hs
+
+      when (pss' /= pss) $ update c pss'
+      when (qss' /= qss) $ update d qss'
+    else return ()
 
 
 
@@ -216,14 +228,14 @@ boundaryConstraint ie jf = addBinaryConstraint $ \c d -> do
 
 --   -- Combine all results
   -- let ps' = catMaybes $ zipWith (
-  --       \(PTerm f sigma) hs -> if null hs
+  --       \(PContortion f sigma) hs -> if null hs
   --                     then Nothing
-  --                     else Just (PTerm f (updateGadgets sigma (map fst hs) ie))
+  --                     else Just (PContortion f (updateGadgets sigma (map fst hs) ie))
   --       \()
   --       ) pss fs'
-  -- let qs' = catMaybes $ zipWith (\(PTerm f sigma) hs -> if null hs
+  -- let qs' = catMaybes $ zipWith (\(PContortion f sigma) hs -> if null hs
   --                     then Nothing
-  --                     else Just (PTerm f (updateGadgets sigma (map fst hs) ie))) qss gs'
+  --                     else Just (PContortion f (updateGadgets sigma (map fst hs) ie))) qss gs'
 
   -- TODO UPDATE POSET MAPS!!! -- WHAT DID I MEAN BY THIS?
 
@@ -303,13 +315,14 @@ addBinaryConstraint f x y = do
 -- Commit to the first substitution of a given constraint variable
 firstSubst :: CVar -> Solving s Term
 firstSubst var = do
-  vals <- lookupDom var
-  case head vals of
-    Pot (PTerm f sigma) -> do
-      let newval = PTerm f (injPSubst (fstSubst sigma))
-      when ([Pot newval] /= vals) $ update var [Pot newval]
-      return (pterm2term newval)
+  val <- lookupDom var
+  case val of
+    Pot ((PContortion f sigma) : _) -> do
+      let sol = Term f (fstSubst sigma)
+      update var (Fix sol)
+      return sol
     Fix t -> return t
+    Open -> return Free
 
 
 -- TODO IMPLEMENT GUARD

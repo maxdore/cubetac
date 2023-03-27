@@ -34,7 +34,7 @@ solver cube goal verbose = do
       case solve cube goal of
         Just t -> do
           when verbose (print t)
-          (putStrLn . agdaTerm) t
+          (putStrLn . agdaShow) t
         Nothing ->
           return ()
 

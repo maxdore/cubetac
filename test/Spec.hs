@@ -136,41 +136,47 @@ gp = Cube [
   , Decl "law"   (Boundary [(Term "a" idSubst , Term "a" idSubst) , (Term "b" idSubst , Term "b" idSubst)])
                    ]
 
-inv :: Id -> Id -> Id -> Box
-inv i0 i1 p = (Box [(Term p idSubst , Term i1 (constSubst 1))] (Term i0 (constSubst 1)) )
-
-comp :: Id -> Term -> Term -> Box
-comp x p q = Box [(Term x (constSubst 1) , q)] p
-
-loopspace :: Cube
-loopspace = Cube [
+sphere :: Cube
+sphere = Cube [
     Decl "a"   (Boundary [])
   , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
                  ]
+
+composition :: Cube
+composition = Cube [
+    Decl "a"     (Boundary [])
+  , Decl "b"     (Boundary [])
+  , Decl "c"     (Boundary [])
+  , Decl "d"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "b" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "b" (constSubst 0) , Term "c" (constSubst 0))])
+  , Decl "r"     (Boundary [(Term "c" (constSubst 0) , Term "d" (constSubst 0))])
+                   ]
+
 
 
 checkNormalize :: Cube -> Term -> Term -> IO()
 checkNormalize ctxt p q = putStrLn $
   let infq = normalize ctxt p in
-  if infq == q then "OK" else "FAIL! " ++ show p ++ " normal form given and normalized term do not match:\n" ++ show q ++ "\n" ++ show infq
+  if infq == q then "OK" else error $ "FAIL! " ++ show p ++ " normal form given and normalized term do not match:\n" ++ show q ++ "\n" ++ show infq
 
 checkTermBoundary :: Cube -> Term -> Boundary -> IO()
 checkTermBoundary ctxt p ty = putStrLn $
   let infty = inferBoundary ctxt p in
-  if infty == ty then "OK" else "FAIL! " ++ show p ++ " given type and inferred type do not match:\n" ++ show ty ++ "\n" ++ show infty
+  if infty == ty then "OK" else error $ "FAIL! " ++ show p ++ " given type and inferred type do not match:\n" ++ show ty ++ "\n" ++ show infty
 
 checkFindContortion :: Cube -> Boundary -> Term -> IO()
 checkFindContortion ctxt ty p = putStrLn $
   case findContortion ctxt ty of
-    Nothing -> "FAIL! No solution found for " ++ show ty
-    Just infp -> if infp == p then "OK" else "FAIL! " ++ show ty ++ " given and found solution do not match:\n" ++ show p ++ "\n" ++ show infp
+    Nothing -> error $ "FAIL! No solution found for " ++ show ty
+    Just infp -> if infp == p then "OK" else error $ "FAIL! " ++ show ty ++ " given and found solution do not match:\n" ++ show p ++ "\n" ++ show infp
 
 
 checkSolve :: Cube -> Boundary -> Term -> IO()
 checkSolve ctxt ty p = putStrLn $
   case solve ctxt ty of
-    Nothing -> "FAIL! No solution found for " ++ show ty
-    Just infp -> if infp == p then "OK" else "FAIL! " ++ show ty ++ " given and found solution do not match:\n" ++ show p ++ "\n" ++ show infp
+    Nothing -> error $ "FAIL! No solution found for " ++ show ty
+    Just infp -> if infp == p then "OK" else error $ "FAIL! " ++ show ty ++ " given and found solution do not match:\n" ++ show p ++ "\n" ++ show infp
 
 main :: IO ()
 main = do
@@ -195,11 +201,11 @@ main = do
               ]))
     (Term "zero" (constSubst 1))
 
-  checkNormalize loopspace
+  checkNormalize sphere
     (Term "p" andOrSubst)
     (Term "p" andOrSubst)
 
-  checkNormalize loopspace
+  checkNormalize sphere
     (Term "p" (Map.fromList [
               (Vert [e0, e0] , Vert [e0, e0])
             , (Vert [e0, e1] , Vert [e0, e1])
@@ -236,7 +242,7 @@ main = do
             , (Vert [e1] , Vert [e1, e1])
               ]), Term "g" idSubst),(Term "f" idSubst, Term "z" (constSubst 1)) ])
 
-  checkFindContortion loopspace
+  checkFindContortion sphere
     (Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ])
     (Term "p" (Map.fromList [
               (Vert [e0, e0, e0] , Vert [e0, e0])
@@ -262,16 +268,38 @@ main = do
     (Comp (Box [(Term "h" andSubst , Term "g" app1Subst) , (Term "f" app1Subst , Term "h" orSubst)] (Term "phi" (tele2Subst swap 2))))
 
   checkSolve gp
-    (Boundary [ (Comp (inv "o" "o" "b") , Comp (inv "o" "o" "b")) , (Term "a" idSubst , Term "a" idSubst) ])
-    (Comp (Box [(Filler (inv "o" "o" "b") , Filler (inv "o" "o" "b")) , (Term "law" (tele2Subst swap 2) , Term "a" app1Subst )] (Term "a" app1Subst)))
+    (Boundary [ (Comp (pinv gp (Term "b" idSubst)) , Comp (pinv gp (Term "b" idSubst))) , (Term "a" idSubst , Term "a" idSubst) ])
+    (Comp (Box [(Fill (pinv gp (Term "b" idSubst)) , Fill (pinv gp (Term "b" idSubst))) , (Term "law" (tele2Subst swap 2) , Term "a" app1Subst )] (Term "a" app1Subst)))
 
   checkSolve int
-    (Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (Comp (comp "zero" (Term "seg" idSubst) (Term "one" (constSubst 1))) , Term "seg" idSubst)])
+    (Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (Comp (pcomp int (Term "seg" idSubst) (Term "one" (constSubst 1))) , Term "seg" idSubst)])
     (Comp (Box [ (Term "zero" (constSubst 2), Term "one" (constSubst 2)),
-                 ((Filler (Box [(Term "zero" (constSubst 1),
+                 ((Fill (Box [(Term "zero" (constSubst 1),
                                 Term "one" (constSubst 1))]
                            (Term "seg" idSubst))),
                    Term "seg" app1Subst)] (Term "seg" app1Subst)))
+
+  let compassocback = (Comp (Box [
+                (Fill (pcomp composition (Term "p" idSubst) (Term "q" idSubst)), Term "p" app1Subst)
+              , (Term "a" (constSubst 2) , Fill (pinv composition (Term "q" idSubst)))]
+            (Term "p" app2Subst)))
+  checkSolve composition
+    (Boundary [(Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst)) , Term "p" idSubst) , (Term "a" (constSubst 1) , Free)])
+    compassocback
+
+  let compassocside = (Comp (Box [(Comp (Box [(Term "q" app1Subst , Term "r" andSubst) , (Term "q" app1Subst , Term "r" andSubst)] (Term "q" orSubst)) , Fill (pcomp composition (Term "q" idSubst) (Term "r" idSubst))) , (Fill (pinv composition (Term "q" idSubst)) , Term "r" app2Subst)] (Term "q" app2Subst)))
+
+  checkSolve composition
+    (Boundary [(Term "r" idSubst , Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))) , (Comp (pinv composition (Term "q" idSubst)) , Term "d" (constSubst 1))])
+    compassocside
+
+  checkSolve composition 
+    (Boundary [(  (Comp (pcomp composition (Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                         (Comp (pcomp composition (Term "p" idSubst) (Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst)))))) ,
+                       (Term "a" (constSubst 1) , Term "d" (constSubst 1))])
+    (Comp (Box [(  (Fill (pcomp composition (Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                   (Fill (pcomp composition (Term "p" idSubst) (Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))))))
+                  , (Term "a" (constSubst 2) , compassocside)] compassocback))
 
 
 -- intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2

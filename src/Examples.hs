@@ -223,7 +223,6 @@ comp x p q = Box [(Term x (constSubst 1) , q)] p
 
 
 
-
 vert :: Cube
 vert = Cube [ Decl "a" (Boundary [])]
 
@@ -274,6 +273,8 @@ int = Cube [
   , Decl "seg" (Boundary  [(Term "zero" (constSubst 0) , Term "one" (constSubst 0))])
            ]
 
+zeros1 = Boundary [(Term "zero" (constSubst 0) , Free)]
+
 intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2
 intApp1Boundary = Boundary [(Term "zero" (constSubst 1) , Term "one" (constSubst 1)) , (idT "seg" 1 , idT "seg" 1)]
 
@@ -288,6 +289,10 @@ intOrBoundary = Boundary [(Term "seg" app1Subst , Term "one" (constSubst 1)) , (
 
 intInv :: Boundary
 intInv = Boundary [(Term "one" (constSubst 0) , Term "zero" (constSubst 0))]
+
+
+intAndFree = Boundary [(Term "zero" (constSubst 1) , Term "seg" idSubst) , (Term "zero" (constSubst 1) , Free)]
+intAndFree' = Boundary [(Term "zero" (constSubst 1) , Term "seg" idSubst) , (Free , Term "seg" idSubst)]
 
 
 unitr :: Boundary
@@ -380,24 +385,35 @@ composition = Cube [
   , Decl "b"     (Boundary [])
   , Decl "c"     (Boundary [])
   , Decl "d"     (Boundary [])
-  , Decl "p"     (Boundary [(Term "a" (constSubst 1) , Term "b" (constSubst 1))])
-  , Decl "q"     (Boundary [(Term "b" (constSubst 1) , Term "c" (constSubst 1))])
-  , Decl "r"     (Boundary [(Term "c" (constSubst 1) , Term "d" (constSubst 1))])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "b" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "b" (constSubst 0) , Term "c" (constSubst 0))])
+  , Decl "r"     (Boundary [(Term "c" (constSubst 0) , Term "d" (constSubst 0))])
                    ]
 
 compfiller :: Boundary
 compfiller = Boundary [(Term "p" app1Subst, Comp (Box [(Term "x" (constSubst 1) , Term "q" app1Subst)] (idT "p" 1))) , (Term "x" (constSubst 2) , Term "q" app1Subst)]
 
+compassocback :: Boundary
+compassocback = Boundary [(Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst)) , Term "p" idSubst) , (Term "a" (constSubst 1) , Free)]
+
+compassocside = Boundary [
+  (Term "r" idSubst , Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))) ,
+  (Free , Term "d" (constSubst 1))
+  ]
+compassocside' = Boundary [
+  (Term "r" idSubst , Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))) ,
+  (Comp (pinv composition (Term "q" idSubst)) , Term "d" (constSubst 1))
+  ]
+
 compassoc :: Boundary
-compassoc = Boundary [(
-                         (Comp (comp "a" (Comp (comp "a" (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
-                         (Comp (comp "a" (Term "p" idSubst) (Comp (comp "b" (Term "q" idSubst) (Term "r" idSubst)))))) ,
-                       (Term "x" (constSubst 2) , Term "w" (constSubst 2))]
+compassoc = Boundary [(  (Comp (pcomp composition (Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                         (Comp (pcomp composition (Term "p" idSubst) (Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst)))))) ,
+                       (Term "a" (constSubst 1) , Term "d" (constSubst 1))]
 
 
 
-loopspace :: Cube
-loopspace = Cube [
+sphere :: Cube
+sphere = Cube [
     Decl "a"   (Boundary [])
   , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
                  ]
@@ -420,23 +436,23 @@ dup = Boundary [
   (Term "a" (constSubst 1), Term "p" (Map.fromList [(Vert [e0] , Vert [e0,e0]) , (Vert [e1] , Vert [e1,e1])]) )]
 
 
-loopAndOr , loopAndOr' , loopSwap, loop4Cube , loop4Cube' :: Boundary
-loopAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
+sphereAndOr , sphereAndOr' , sphereSwap, sphere4Cube , sphere4Cube' :: Boundary
+sphereAndOr = Boundary [ (Term "p" andOrSubst , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
-loopAndOr' = Boundary [ (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,(Term "p" andOrSubst , Term "a" (constSubst 2))  ]
+sphereAndOr' = Boundary [ (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,(Term "p" andOrSubst , Term "a" (constSubst 2))  ]
 
-loopSwap = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2]]]) 2), Term "p" (tele2Subst swap 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
+sphereSwap = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2]]]) 2), Term "p" (tele2Subst swap 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ]
 
 
-loop4Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ]
+sphere4Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ]
 
-loop4Cube' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3))  ]
+sphere4Cube' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3))  ]
 
-loop4Cube'' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3))   ]
+sphere4Cube'' = Boundary [ (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "a" (constSubst 3) , Term "a" (constSubst 3)) , (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3]]]) 3) , Term "a" (constSubst 3))   ]
 
-loop5Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
+sphere5Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
 
-loop5Cube' = Boundary [
+sphere5Cube' = Boundary [
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
   (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) ,
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
@@ -444,7 +460,7 @@ loop5Cube' = Boundary [
   (Term "a" (constSubst 4) , Term "a" (constSubst 4))
   ]
 
-loop5Cube'' = Boundary [
+sphere5Cube'' = Boundary [
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
   (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,
@@ -452,7 +468,7 @@ loop5Cube'' = Boundary [
   (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4))
   ]
 
-loop6Cube = Boundary [
+sphere6Cube = Boundary [
   (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
@@ -461,7 +477,7 @@ loop6Cube = Boundary [
   (Term "a" (constSubst 5) , Term "a" (constSubst 5))
   ]
 
-loop6Cube' = Boundary [
+sphere6Cube' = Boundary [
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
   (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5]]]) 5) , Term "a" (constSubst 5)) ,
   (Term "a" (constSubst 5) , Term "a" (constSubst 5)) ,
@@ -470,7 +486,7 @@ loop6Cube' = Boundary [
   (Term "a" (constSubst 5) , Term "a" (constSubst 5))
   ]
 
-loop7Cube = Boundary [
+sphere7Cube = Boundary [
   (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4 , Conj 5 , Conj 6]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4] , Disj [Conj 5] , Disj [Conj 6]]]) 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
   (Term "a" (constSubst 6) , Term "a" (constSubst 6)) ,
@@ -517,9 +533,15 @@ gpgoal = Boundary [ (Comp (inv "o" (Term "b" idSubst)) , Comp (inv "o" (Term "b"
 
 
 
+higherpq :: Cube
+higherpq = Cube [
+    Decl "a"   (Boundary [])
+  , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
+  , Decl "q"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
+                 ]
 
 
-
+pq = pcomp higherpq (Term "p" id2Subst) (Term "q" id2Subst)
 
 
 

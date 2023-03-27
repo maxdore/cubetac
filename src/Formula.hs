@@ -76,7 +76,7 @@ subst2Tele s =
 
 
 dimNames :: [String]
-dimNames = ["i","j","k","l","m","n"]
+dimNames = ["i","j","k","l","m","n","o","p","q"]
 
 
 agdaClause :: Disj -> String
@@ -86,11 +86,30 @@ agdaFormula :: Formula -> String
 agdaFormula (Formula cs) = "(" ++ concat (intersperse " ∨ " (map agdaClause cs)) ++ ")"
 
 
+agdaAbstract :: [Int] -> String
+agdaAbstract is = "\955 " ++ concat (intersperse " " (map (dimNames!!) is)) ++ " \8594 "
 
-agdaTerm :: Term -> String
--- agdaTerm (Term p sigma) = "\955 "
-agdaTerm (Term p sigma) = "\955 " ++ concat (intersperse " " (take (domdim sigma) dimNames)) ++ " \8594 " ++ p ++ " "
+agdaInd :: Int -> String
+agdaInd d = concat (replicate d "  ")
+
+agdaBox :: Int -> Box -> String
+agdaBox d (Box sts back) = "(" ++ agdaAbstract [d+1] ++ "\955 {\n" ++
+  concatMap (\(i , (s,t)) ->
+               agdaInd d ++ (if i == d-length sts+1 then "  " else "; ") ++ "(" ++
+                 (dimNames!!i) ++ " = i0) \8594 " ++ agdaTerm (d+1) s ++ "\n" ++
+               agdaInd d ++ "; (" ++
+                 (dimNames!!i) ++ " = i1) \8594 " ++ agdaTerm (d+1) t ++ "\n") (zip [d-length sts+1 .. d] sts)
+  ++ agdaInd d ++ "}) " ++ agdaTerm (d+1) back
+
+
+agdaTerm :: Int -> Term -> String
+agdaTerm d (Term p sigma) = -- "\955 " ++ concat (intersperse " " (take (domdim sigma) dimNames)) ++ " \8594 " ++
+  p ++ " "
   ++ (concat (intersperse " " (map agdaFormula ((reverse . formulas . subst2Tele) sigma))))
-agdaTerm (Comp (Box pqs back)) =
-  concatMap (\(a,b) -> agdaTerm a ++ "\n" ++ agdaTerm b ++ "\n") pqs
-  ++ agdaTerm back ++ "\n"
+  
+agdaTerm d (Comp (Box sts back)) = agdaAbstract [d .. (d+length sts-1)] ++ "hcomp " ++ agdaBox (d+length sts-1) (Box sts back)
+agdaTerm d (Fill (Box sts back)) = "hfill " ++ agdaBox (d) (Box sts back)
+
+
+agdaShow :: Term -> String
+agdaShow = agdaTerm 0

@@ -3,6 +3,7 @@
 module Solver where
 
 import Control.Applicative
+import Control.Monad
 
 import Prel
 import Data
@@ -13,18 +14,38 @@ import Formula
 import Examples
 import Data.List
 
-
+import Debug.Trace
 
 solve :: Cube -> Boundary -> Maybe Term
-solve ctxt goal = do
-  res <- if containsBox goal
+solve = solverec 0
+
+solverec :: Int -> Cube -> Boundary -> Maybe Term
+solverec depth ctxt goal = do
+  traceM $ "SOLVING (" ++ show depth ++ ") " ++ show goal
+  res@(Comp (Box sts b)) <- if containsBox goal
     then findComposition ctxt goal
     else findContortion ctxt goal <|> findComposition ctxt goal
 
-  let resty = inferBoundary ctxt res
-  if resty /= goal
-    then error $ "Solution does not match goal:\n" ++ show res ++ "\nhas boundary\n" ++ show resty
-    else return res
+  -- traceM $ "FOUND " ++ show res
+
+  b' <- if b == Free
+    then solverec (depth+1) ctxt (getBackBoundary ctxt (Box sts b))
+    else return b
+
+
+  -- TODO MAKE THIS SOME FOLD (UPDATE FACES ONE AFTER THE OTHER)
+  let res' = Comp $ modifyBox (Box sts b') (\(i,e) t ->
+                                              if t == Free
+                                                then case solverec (depth+1) ctxt (getSideBoundary ctxt goal (Box sts b') (i,e)) of
+                                                  Just t' -> t'
+                                                  Nothing -> error "Free side could not be solved"
+                                                else t) id
+
+  if not (matchesBoundary ctxt res' goal)
+    then error $ "Solution does not match goal:\n" ++ show res' ++ "\nhas boundary\n" ++ show (inferBoundary ctxt res')
+    else do
+      when (depth == 0) (traceM (agdaShow res'))
+      return res'
 
 
 

@@ -39,12 +39,42 @@ constSubst n = Map.fromList (map (\x -> (x, Vert [])) (createPoset n))
 
 -- Cubes
 
-data Term = Term Id Subst | Comp Box | Filler Box
+data Term = Term Id Subst | Comp Box | Fill Box | Free
   deriving (Eq , Show , Ord)
 
+isFree :: Term -> Bool
+isFree Free = True
+isFree _ = False
 
 data Box = Box [(Term , Term)] Term
   deriving (Eq , Show , Ord)
+
+modifyBox :: Box -> (Restr -> Term -> Term) -> (Term -> Term) -> Box
+modifyBox (Box sts b) sides back = 
+  Box (map (\i -> ( sides (i,e0) (fst (sts!!(i-1))) , sides (i,e1) (snd (sts!!(i-1))) ) ) [1..length sts]) (back b)
+
+
+-- foldBox :: Box -> (Restr -> Term -> a) -> (Term -> b) -> ([a],b)
+-- foldBox (Box sts b) sides back = let b' = back b in
+--   where
+--     foldsides :: [(Term,Term)] -> [a]
+--     foldsides [] = []
+--     foldsides 
+
+
+-- Also works if back boundary is Free
+getBackBoundary :: Cube -> Box -> Boundary
+getBackBoundary ctxt (Box sts _) = let n = length sts in
+  Boundary $ map (\(s,t) -> (termFace ctxt s (n , e0) , termFace ctxt t (n , e0))) sts
+
+getSideBoundary :: Cube -> Boundary -> Box -> Restr -> Boundary
+getSideBoundary ctxt front (Box sts b) (i,e) = let n = length sts in
+  trace (show b) $
+  Boundary $ (map (\j -> let st = sts!!(j-1) in
+                                trace (show (i,e) ++ " " ++ show j) $ 
+                                (termFace ctxt (fst st) (1,e) , termFace ctxt (snd st) (1,e))) [ j | j <- [1..n], j /= i])
+            ++ [(termFace ctxt b (i,e) , boundaryFace front (i,e))]
+
 
 termId :: Term -> Id
 termId (Term p _) = p
@@ -71,10 +101,10 @@ dim :: Boundary -> Int
 dim = length . faces
 
 containsBox :: Boundary -> Bool
-containsBox = any (\t -> case t of {Comp _ -> True; Filler _ -> True; _ -> False}) . toList 
+containsBox = any (\t -> case t of {Comp _ -> True; Fill _ -> True; _ -> False}) . toList 
 
 containsFace :: Boundary -> Id -> Bool
-containsFace ty p = (any (\t -> case t of {Comp _ -> False; Filler _ -> False; Term q _ -> p == q}) . toList) ty
+containsFace ty p = (any (\t -> case t of {Comp _ -> False; Fill _ -> False; Term q _ -> p == q}) . toList) ty
 
 
 data Decl = Decl Id Boundary
@@ -133,10 +163,13 @@ termFace ctxt (Term p sigma) (i,e) =
 termFace ctxt (Comp (Box pqs r)) (i,Endpoint e) =
   let a = (if e then snd else fst) (pqs !! (i-1)) in
   termRestr ctxt a [(length pqs , e1)]
-termFace ctxt (Filler (Box pqs r)) (i,Endpoint e) =
+
+termFace ctxt (Fill (Box pqs r)) (i,Endpoint e) =
   if i == length pqs + 1
     then if e then Comp (Box pqs r) else r
     else (if e then snd else fst) (pqs !! (i - 1))
+
+termFace _ Free _ = Free
 
 termRestr :: Cube -> Term -> [Restr] -> Term
 termRestr ctxt t ies = normalize ctxt (foldr (flip (termFace ctxt)) t ies)
@@ -147,8 +180,12 @@ inferBoundary ctxt (Term p sigma) = Boundary $
         ([1 .. domdim sigma])
 
 inferBoundary ctxt (Comp (Box pqs _)) = Boundary $ map (\(p,q) -> (termFace ctxt p (length pqs,e1) , termFace ctxt q (length pqs,e1)) ) pqs
-inferBoundary ctxt (Filler (Box pqs r)) = Boundary $ pqs ++ [(r , Comp (Box pqs r))]
+inferBoundary ctxt (Fill (Box pqs r)) = Boundary $ pqs ++ [(r , Comp (Box pqs r))]
 
+
+matchesBoundary :: Cube -> Term -> Boundary -> Bool
+matchesBoundary ctxt t goal = let ty = inferBoundary ctxt t in
+  all (\(s , t) -> s == Free || s == t) (zip (toList goal) (toList ty))
 
 -- wellFormedDecl :: Cube -> Decl -> Bool
 -- wellFormedDecl ctxt (Decl id ty) =
@@ -176,6 +213,21 @@ inferBoundary ctxt (Filler (Box pqs r)) = Boundary $ pqs ++ [(r , Comp (Box pqs 
 -- wellFormed cube = all (\i -> wellFormedDecl (Cube (take i (constr cube))) (constr cube !! i)) [0..cdim cube-1]
 
 
+-- Common term constructions
+deg :: Term -> Term
+deg (Term p sigma) = Term p $ Map.fromList (Map.toList (Map.mapKeys (insInd 1 e0) sigma) ++ Map.toList (Map.mapKeys (insInd 1 e1) sigma))
+
+pinv :: Cube -> Term -> Box
+pinv ctxt p = Box [(p , deg (termFace ctxt p (1,e0)))] (deg (termFace ctxt p (1,e0)))
+
+pcomp :: Cube -> Term -> Term -> Box
+pcomp ctxt p q | termFace ctxt p (1,e1) /= termFace ctxt q (1,e0) =
+                  error $ "Boundaries of composed paths do not match at" ++ show p ++ " . " ++ show q
+               | otherwise = Box [(deg (termFace ctxt p (1,e0)) , q)] p
+
+
+
+
 
 boundariesAgree :: [[Vert]] -> Bool
 boundariesAgree gadss =
@@ -191,15 +243,15 @@ instance Fct PSubst where
   coddim = undefined -- TODO
 
 -- A potential term is an identifier with potential substitution
-data PTerm = PTerm Id PSubst -- | Fixed Term
+data PContortion = PContortion Id PSubst
   deriving (Eq)
 
-instance Show PTerm where
-  show (PTerm f part) = show f ++ " " ++ show part
+instance Show PContortion where
+  show (PContortion f part) = show f ++ " " ++ show part
   -- show (Fixed t) = show t
 
-pterm2term :: PTerm -> Term
-pterm2term (PTerm f subst) = Term f (fstSubst subst)
+pterm2term :: PContortion -> Term
+pterm2term (PContortion f subst) = Term f (fstSubst subst)
 -- pterm2term (Fixed t) = t
 
 -- Given dimensions for domain and codomain, create the most general
@@ -237,11 +289,11 @@ fstSubst = Map.fromList . fstPSubst' . Map.toList
 injPSubst :: Subst -> PSubst
 injPSubst = Map.map (: [])
 
-createPTerm :: Decl -> Int -> PTerm
-createPTerm (Decl f ty) gdim =
+createPContortion :: Decl -> Int -> PContortion
+createPContortion (Decl f ty) gdim =
   let img = createPoset (dim ty) in
   let parts = map (\v -> (v , img)) (createPoset gdim) in
-  PTerm f (Map.fromList parts)
+  PContortion f (Map.fromList parts)
 
 
 -- Given a potential substitution, restrict the values of x to vs
@@ -257,9 +309,9 @@ isEmptyPSubst sigma = any (null . snd) (Map.toList sigma)
 
 
 -- Given a pterm, what could its faces be?
-possibleFaces :: Cube -> PTerm -> [Restr] -> [(Subst , Term)]
--- possibleFaces ctxt (PTerm p sigma) ies | trace ("myfun " ++ show (PTerm p sigma) ++ " " ++ show ies) False = undefined
-possibleFaces ctxt (PTerm p sigma) ies = let ss = getSubsts sigma in
+possibleFaces :: Cube -> PContortion -> [Restr] -> [(Subst , Term)]
+-- possibleFaces ctxt (PContortion p sigma) ies | trace ("myfun " ++ show (PContortion p sigma) ++ " " ++ show ies) False = undefined
+possibleFaces ctxt (PContortion p sigma) ies = let ss = getSubsts sigma in
   -- trace ("UNFOLDING " ++ show (length ss)) $
   map (\s -> (s , termRestr ctxt (Term p s) ies)) ss
 
@@ -274,10 +326,10 @@ updateGadgets sigma ss ies =
 
 -- Given a pterm, filter it so that it some face of it is contained in a
 -- collection of terms
-filterPSubst :: Cube -> PTerm -> [Restr] -> [Term] -> Maybe PSubst
-filterPSubst ctxt (PTerm p sigma) ies qs =
-  let ss = [ s | (s , q) <- possibleFaces ctxt (PTerm p sigma) ies , q `elem` qs ] in
+filterPSubst :: Cube -> PContortion -> [Restr] -> [Term] -> Maybe PContortion
+filterPSubst ctxt (PContortion p sigma) ies qs =
+  let ss = [ s | (s , q) <- possibleFaces ctxt (PContortion p sigma) ies , q `elem` qs ] in
   let sigma' = updateGadgets sigma ss ies in
   if isEmptyPSubst sigma'
     then Nothing
-    else Just sigma'
+    else Just (PContortion p sigma')
