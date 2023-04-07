@@ -13,16 +13,19 @@ import Poset
 import Debug.Trace
 
 
--- This data structures are used to internally represent cubes
-
-
 -- These are the names of faces of a cube
 type Id = String
 
 -- Use de Brujin indices for interval variables
 type IVar = Int
 
-type Restr = (Int , Endpoint)
+type Restr = (IVar , Endpoint)
+
+restrictions :: Int -> [Restr]
+restrictions n = [ (i,e) | i <- [1..n], e <- [e0,e1]]
+
+data BoxFace = Back | Side Restr
+  deriving (Show, Eq , Ord)
 
 -- We regard interval substitutions as poset maps
 type Subst = Map Vert Vert
@@ -33,18 +36,11 @@ instance Fct Subst where
   coddim = length . toBools . snd . head . Map.toList
 
 
--- Constructor for a constant substitution
-constSubst :: IVar -> Subst
-constSubst n = Map.fromList (map (\x -> (x, Vert [])) (createPoset n))
 
 -- Cubes
 
 data Term = Term Id Subst | Comp Box | Fill Box | Free
   deriving (Eq , Show , Ord)
-
-isFree :: Term -> Bool
-isFree Free = True
-isFree _ = False
 
 data Box = Box [(Term , Term)] Term
   deriving (Eq , Show , Ord)
@@ -76,13 +72,31 @@ getSideBoundary ctxt front (Box sts b) (i,e) = let n = length sts in
             ++ [(termFace ctxt b (i,e) , boundaryFace front (i,e))]
 
 
+checkBoundaries :: Cube -> Term -> Restr -> Term -> Restr -> Bool
+checkBoundaries ctxt s ie t jf =
+  let u = termFace ctxt s ie in
+  let v = termFace ctxt t jf in
+  if u == v || u == Free || v == Free
+    then True
+    else trace ("BOUNDARIES DONT AGREE " ++ show s ++ "@" ++ show ie ++ " AND " ++ show t ++ "@" ++ show jf ++ "\n" ++ show u ++ " IS NOT " ++ show v) False
+
+
+wellFormedBox :: Cube -> Box -> Bool
+wellFormedBox ctxt (Box sts b) = all (\(i,(s,t)) -> fits s (i,e0) && fits t (i,e1)) (zip [1..n] sts)
+  where
+    n = length sts
+    fits :: Term -> Restr -> Bool
+    fits u (i,e) = checkBoundaries ctxt u (length sts,e0) b (i,e) &&
+                   all (\j -> let (v,w) = sts!!(j) in
+                              checkBoundaries ctxt u (j,e0) v (i,e) &&
+                              checkBoundaries ctxt u (j,e1) w (i,e)
+                              ) [ j | j <- [i..n-1] ]
+
+
+
 termId :: Term -> Id
 termId (Term p _) = p
 
--- TODO pretty print for terms
--- instance Show Term where
---   show (Term id r) = show id ++ " " ++ show r
---   show (Comp b) = show b -- show sides ++ " " ++ show back
 
 newtype Boundary = Boundary { faces :: [(Term, Term)]}
   deriving (Eq , Ord)
@@ -90,21 +104,12 @@ newtype Boundary = Boundary { faces :: [(Term, Term)]}
 instance Show Boundary where
   show (Boundary ss) = show ss
 
--- instance Foldable Boundary where
---   foldr f z [] = z
---   foldr f z ((p,q):pqs) = f p : f q : (foldr f z pqs)
 
 toList :: Boundary -> [Term]
 toList = foldr (\x xs -> fst x : snd x : xs) [] .  faces
 
 dim :: Boundary -> Int
 dim = length . faces
-
-containsBox :: Boundary -> Bool
-containsBox = any (\t -> case t of {Comp _ -> True; Fill _ -> True; _ -> False}) . toList 
-
-containsFace :: Boundary -> Id -> Bool
-containsFace ty p = (any (\t -> case t of {Comp _ -> False; Fill _ -> False; Term q _ -> p == q}) . toList) ty
 
 
 data Decl = Decl Id Boundary
@@ -150,11 +155,31 @@ boundaryFace :: Boundary -> Restr -> Term
 boundaryFace (Boundary ty) (i , Endpoint e) = (if e then snd else fst) (ty !! (i-1))
 
 
+isFree , isComp :: Term -> Bool
+isFree Free = True
+isFree _ = False
+isComp (Comp _) = True
+isComp _ = False
+
+getFreeFaces :: Boundary -> [Restr]
+getFreeFaces ty = filter (\ie -> isFree (boundaryFace ty ie)) (restrictions (dim ty))
+
+getCompFaces :: Boundary -> [Restr]
+getCompFaces ty = filter (\ie -> isComp (boundaryFace ty ie)) (restrictions (dim ty))
+
+containsBox :: Boundary -> Bool
+containsBox = any (\t -> case t of {Comp _ -> True; Fill _ -> True; _ -> False}) . toList
+
+containsFace :: Boundary -> Id -> Bool
+containsFace ty p = (any (\t -> case t of {Comp _ -> False; Fill _ -> False; Term q _ -> p == q}) . toList) ty
+
+
+
 termFace :: Cube -> Term -> Restr -> Term
 termFace ctxt (Term p sigma) (i,e) =
   if i == 0
     then error "Indices of faces start at 1"
-    else 
+    else
       let subpos = map (insInd i e) (createPoset (domdim sigma - 1)) in
       let subsigma = sigma `restrictKeys` Set.fromList subpos in
       let sigma' = Map.mapKeys (`removeInd` i) subsigma in
@@ -186,6 +211,14 @@ inferBoundary ctxt (Fill (Box pqs r)) = Boundary $ pqs ++ [(r , Comp (Box pqs r)
 matchesBoundary :: Cube -> Term -> Boundary -> Bool
 matchesBoundary ctxt t goal = let ty = inferBoundary ctxt t in
   all (\(s , t) -> s == Free || s == t) (zip (toList goal) (toList ty))
+
+
+-- boundariesAgree :: [[Vert]] -> Bool
+-- boundariesAgree gadss =
+--   all (\(xs , overlaps) -> True)
+--   (zip (getFaces (length gadss) (length gadss -2)) $ map getAllCommon $ getFaces (length gadss) (length gadss -2))
+
+
 
 -- wellFormedDecl :: Cube -> Decl -> Bool
 -- wellFormedDecl ctxt (Decl id ty) =
@@ -226,13 +259,13 @@ pcomp ctxt p q | termFace ctxt p (1,e1) /= termFace ctxt q (1,e0) =
                | otherwise = Box [(deg (termFace ctxt p (1,e0)) , q)] p
 
 
+-- Constructor for a constant substitution
+constSubst :: IVar -> Subst
+constSubst n = Map.fromList (map (\x -> (x, Vert [])) (createPoset n))
 
 
 
-boundariesAgree :: [[Vert]] -> Bool
-boundariesAgree gadss =
-  all (\(xs , overlaps) -> True) 
-  (zip (getFaces (length gadss) (length gadss -2)) $ map getAllCommon $ getFaces (length gadss) (length gadss -2))
+
 
 
 -- Potential substitutions have for each element in the domain a list of possible values

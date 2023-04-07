@@ -108,6 +108,16 @@ andOrSubst3 = Map.fromList [
             , (Vert [e1, e1, e1] , Vert [e1, e1])
               ]
 
+id3Subst = Map.fromList [
+              (Vert [e0, e0, e0] , Vert [e0, e0, e0])
+            , (Vert [e0, e0, e1] , Vert [e0, e0, e1])
+            , (Vert [e0, e1, e0] , Vert [e0, e1, e0])
+            , (Vert [e0, e1, e1] , Vert [e0, e1, e1])
+            , (Vert [e1, e0, e0] , Vert [e1, e0, e0])
+            , (Vert [e1, e0, e1] , Vert [e1, e0, e1])
+            , (Vert [e1, e1, e0] , Vert [e1, e1, e0])
+            , (Vert [e1, e1, e1] , Vert [e1, e1, e1])
+              ]
 
 idTele , id2Tele , orTele , andTele :: Tele
 idTele = Tele [Formula [Disj [Conj 1]]]
@@ -410,6 +420,45 @@ compassoc = Boundary [(  (Comp (pcomp composition (Comp (pcomp composition (Term
                          (Comp (pcomp composition (Term "p" idSubst) (Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst)))))) ,
                        (Term "a" (constSubst 1) , Term "d" (constSubst 1))]
 
+compassocdirback :: Boundary
+compassocdirback = Boundary [(Term "p" idSubst , Term "q" idSubst),(Term "p" idSubst , Free)]
+
+compassocdir :: Boundary
+compassocdir = Boundary[
+  (Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst)) , Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))) ,
+  (Term "p" idSubst , Term "r" idSubst)
+                       ]
+
+
+
+compsimp :: Cube
+compsimp = Cube [
+    Decl "a"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "r"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+                   ]
+
+compsimpassocback = Boundary [(Comp (pcomp compsimp (Term "p" idSubst) (Term "q" idSubst)) , Term "p" idSubst)
+                             , (Term "a" (constSubst 1) , Free)]
+
+phi = Boundary [(Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst)) , Term "p" idSubst) , (Term "a" (constSubst 1) , Free)]
+phisimp = Boundary [(Comp (pcomp compsimp (Term "p" idSubst) (Term "q" idSubst)) , Term "p" idSubst) , (Term "a" (constSubst 1) , Free)]
+
+
+-- p . (q . r)-1 = (p . r-1) . q-1
+compcompinv :: Boundary
+compcompinv = Boundary [
+  (Comp (pcomp compsimp (Term "p" idSubst) (Comp (pinv compsimp (Comp (pcomp compsimp (Term "q" idSubst) (Term "r" idSubst)))))) ,
+   (Comp (pcomp compsimp (Comp (pcomp compsimp (Term "p" idSubst) (Comp (pinv compsimp (Term "r" idSubst))))) (Comp (pinv compsimp (Term "q" idSubst)))))) ,
+                       (Term "a" (constSubst 1) , Term "a" (constSubst 1))]
+
+
+
+compsimpassoc :: Boundary
+compsimpassoc = Boundary [(  (Comp (pcomp compsimp (Comp (pcomp compsimp (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                         (Comp (pcomp compsimp (Term "p" idSubst) (Comp (pcomp compsimp (Term "q" idSubst) (Term "r" idSubst)))))) ,
+                       (Term "a" (constSubst 1) , Term "a" (constSubst 1))]
 
 
 sphere :: Cube
@@ -498,6 +547,22 @@ sphere7Cube = Boundary [
 
 
 
+sphere4 :: Cube
+sphere4 = Cube [
+    Decl "a"   (Boundary [])
+  , Decl "p"   (Boundary [
+                   (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,
+                   (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ,
+                   (Term "a" (constSubst 2) , Term "a" (constSubst 2))])
+                 ]
+
+permvar = Boundary [(Term "p" id3Subst , Term "p" (tele2Subst (Tele [Formula [Disj [Conj 2]] , Formula [Disj [Conj 3]] , Formula [Disj [Conj 1]]]) 3)),
+                    (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ,
+                    (Term "a" (constSubst 3) , Term "a" (constSubst 3)) ,
+                    (Term "a" (constSubst 3) , Term "a" (constSubst 3))
+                   ]
+
+
 z2 :: Cube
 z2 = Cube [
     Decl "o"     (Boundary [])
@@ -541,7 +606,71 @@ higherpq = Cube [
                  ]
 
 
-pq = pcomp higherpq (Term "p" id2Subst) (Term "q" id2Subst)
+pq = Box [(Term "a" (constSubst 2) , Term "q" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ] (Term "p" id2Subst)
+qp = Box [(Term "a" (constSubst 2) , Term "p" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ] (Term "q" id2Subst)
+
+eckmannHilton :: Boundary
+eckmannHilton = Boundary [(Comp pq , Comp qp) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))]
+
+
+ehSimpler :: Boundary
+ehSimpler = Boundary [(Term "p" id2Subst , Term "p" id2Subst) , (Term "q" id2Subst , Term "q" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))]
+
+
+
+ehpsubst :: Subst
+ehpsubst = Map.fromList [
+   (Vert [e0,e0,e0],Vert [e0,e0])
+  ,(Vert [e0,e0,e1],Vert [e0,e0])
+  ,(Vert [e0,e1,e0],Vert [e0,e0])
+  ,(Vert [e0,e1,e1],Vert [e0,e1])
+  ,(Vert [e1,e0,e0],Vert [e0,e0])
+  ,(Vert [e1,e0,e1],Vert [e1,e0])
+  ,(Vert [e1,e1,e0],Vert [e0,e0])
+  ,(Vert [e1,e1,e1],Vert [e1,e1])
+                        ]
+
+
+
+
+
+
+pqpq :: Cube
+pqpq = Cube [
+    Decl "a"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "law"     (Boundary [(Term "p" idSubst , Term "p" idSubst) , (Term "q" idSubst , Term "q" idSubst)])
+  ]
+
+switcharoo = Boundary [
+  (Comp (pcomp pqpq (Term "p" idSubst) (Term "q" idSubst)),
+   Comp (pcomp pqpq (Term "q" idSubst) (Term "p" idSubst))),
+  (Term "a" (constSubst 1) , Term "a" (constSubst 1))
+  ]
+
+pqpq' :: Cube
+pqpq' = Cube [
+    Decl "a"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "r"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "s"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "law"     (Boundary [(Term "p" idSubst , Term "s" idSubst) , (Term "r" idSubst , Term "q" idSubst)])
+  ]
+
+switcharoo' = Boundary [
+  (Comp (pcomp pqpq' (Term "p" idSubst) (Term "q" idSubst)),
+   Comp (pcomp pqpq' (Term "r" idSubst) (Term "s" idSubst))),
+  (Term "a" (constSubst 1) , Term "a" (constSubst 1))
+  ]
+
+
+
+
+
+
+
 
 
 

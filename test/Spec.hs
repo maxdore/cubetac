@@ -153,6 +153,20 @@ composition = Cube [
   , Decl "r"     (Boundary [(Term "c" (constSubst 0) , Term "d" (constSubst 0))])
                    ]
 
+compsimp :: Cube
+compsimp = Cube [
+    Decl "a"     (Boundary [])
+  , Decl "p"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "q"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+  , Decl "r"     (Boundary [(Term "a" (constSubst 0) , Term "a" (constSubst 0))])
+                   ]
+
+higherpq :: Cube
+higherpq = Cube [
+    Decl "a"   (Boundary [])
+  , Decl "p"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
+  , Decl "q"   (Boundary [(Term "a" (constSubst 1) , Term "a" (constSubst 1)) , (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
+                 ]
 
 
 checkNormalize :: Cube -> Term -> Term -> IO()
@@ -279,6 +293,7 @@ main = do
                            (Term "seg" idSubst))),
                    Term "seg" app1Subst)] (Term "seg" app1Subst)))
 
+  -- Composition with several 0-dimensional cells
   let compassocback = (Comp (Box [
                 (Fill (pcomp composition (Term "p" idSubst) (Term "q" idSubst)), Term "p" app1Subst)
               , (Term "a" (constSubst 2) , Fill (pinv composition (Term "q" idSubst)))]
@@ -301,6 +316,47 @@ main = do
                    (Fill (pcomp composition (Term "p" idSubst) (Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))))))
                   , (Term "a" (constSubst 2) , compassocside)] compassocback))
 
+  checkSolve composition
+    (Boundary [
+      (Comp (pcomp composition (Term "p" idSubst) (Term "q" idSubst)) , Comp (pcomp composition (Term "q" idSubst) (Term "r" idSubst))) ,
+      (Term "p" idSubst , Term "r" idSubst)
+                       ])
+    (Comp (Box [
+              (Fill (pcomp composition (Term "p" idSubst) (Term "q" idSubst)) , Fill (pcomp composition (Term "q" idSubst) (Term "r" idSubst))),
+              (Term "p" app1Subst , Comp (Box [(Term "q" app1Subst , Term "r" andSubst) , (Term "q" app1Subst , Term "r" andSubst)] (Term "q" orSubst)))
+               ] (Comp (Box [(Term "p" app1Subst , Term "q" andSubst) , (Term "p" app1Subst , Term "q" andSubst)] (Term "p" orSubst)))))
+
+
+  -- Composition with only 1 0-dimensional cell
+  let compsimpassocback = (Comp (Box [
+                (Fill (pcomp compsimp (Term "p" idSubst) (Term "q" idSubst)), Term "p" app1Subst)
+              , (Term "a" (constSubst 2) , Fill (pinv compsimp (Term "q" idSubst)))]
+            (Term "p" app2Subst)))
+
+  let compsimpassocside = (Comp (Box [(Comp (Box [(Term "q" app1Subst , Term "r" andSubst) , (Term "q" app1Subst , Term "r" andSubst)] (Term "q" orSubst)) , Fill (pcomp compsimp (Term "q" idSubst) (Term "r" idSubst))) , (Fill (pinv compsimp (Term "q" idSubst)) , Term "r" app2Subst)] (Term "q" app2Subst)))
+
+  checkSolve compsimp
+    (Boundary [(  (Comp (pcomp compsimp (Comp (pcomp compsimp (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                         (Comp (pcomp compsimp (Term "p" idSubst) (Comp (pcomp compsimp (Term "q" idSubst) (Term "r" idSubst)))))) ,
+                       (Term "a" (constSubst 1) , Term "a" (constSubst 1))])
+    (Comp (Box [(  (Fill (pcomp compsimp (Comp (pcomp compsimp (Term "p" idSubst) (Term "q" idSubst))) (Term "r" idSubst))) ,
+                   (Fill (pcomp compsimp (Term "p" idSubst) (Comp (pcomp compsimp (Term "q" idSubst) (Term "r" idSubst))))))
+                  , (Term "a" (constSubst 2) , compsimpassocside)] compsimpassocback))
+
+
+  -- Simplified Eckmann-Hilton
+  checkSolve higherpq
+    (Boundary [(Term "p" id2Subst , Term "p" id2Subst) , (Term "q" id2Subst , Term "q" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))])
+    (Comp (Box [
+              (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2 , Conj 3]]]) 3),
+               Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2 , Conj 3]]]) 3)),
+              (Term "q" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2]]]) 3),
+               Term "q" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 2]]]) 3)),
+              (Term "a" (constSubst 3),
+               Term "p" (tele2Subst (Tele [Formula [Disj [Conj 2]] , Formula [Disj [Conj 3]]]) 3))
+               ]
+            (Term "q" (tele2Subst (Tele [Formula [Disj [Conj 1]] , Formula [Disj [Conj 3]]]) 3))
+          ))
 
 -- intApp1Term = Term "seg" $ tele2Subst (Tele [Formula [Disj [Conj 1]]]) 2
 -- intApp1Boundary = Boundary [(Term "zero" (constSubst 2) , Term "one" (constSubst 2)) , (idT "seg" 1 , idT "seg" 1)]

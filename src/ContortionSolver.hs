@@ -16,6 +16,8 @@ import Debug.Trace
 
 findContortion :: Cube -> Boundary -> Maybe Term
 findContortion ctxt goal = do
+  when (containsBox goal) Nothing
+
   (PContortion p sigma) <- msum (map (\(Decl id _) -> match ctxt goal (PContortion id (createPSubst (dim goal) (dim (lookupDef ctxt id))))) (constr ctxt))
   -- traceShowM sigma
   let ss = getSubsts sigma
