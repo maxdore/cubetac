@@ -613,8 +613,8 @@ eckmannHilton :: Boundary
 eckmannHilton = Boundary [(Comp pq , Comp qp) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))]
 
 
-ehSimpler :: Boundary
-ehSimpler = Boundary [(Term "p" id2Subst , Term "p" id2Subst) , (Term "q" id2Subst , Term "q" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))]
+ehSquare :: Boundary
+ehSquare = Boundary [(Term "p" id2Subst , Term "p" id2Subst) , (Term "q" id2Subst , Term "q" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))]
 
 
 

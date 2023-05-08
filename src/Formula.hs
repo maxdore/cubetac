@@ -103,7 +103,8 @@ agdaBox d skip (Box sts back) = "(" ++ agdaAbstract [d+1] ++ "\955 {\n" ++
                agdaInd d ++ (if i == d-length sts+1 then "  " else "; ") ++ "(" ++
                  (dimName i []) ++ " = i0) \8594 " ++ agdaTerm (d+1) (i:skip) s ++ "\n" ++
                agdaInd d ++ "; (" ++
-                 (dimName i []) ++ " = i1) \8594 " ++ agdaTerm (d+1) (i:skip) t ++ "\n") (zip [d-length sts+1 .. d] sts)
+                 (dimName i []) ++ " = i1) \8594 " ++ agdaTerm (d+1) (i:skip) t ++ "\n")
+     (zip [d-length sts+1 .. d] sts)
   ++ agdaInd d ++ "}) (" ++ agdaTerm (d+1) skip back ++ ")"
 
 
@@ -112,7 +113,7 @@ agdaTerm d skip (Term p sigma) = -- "\955 " ++ concat (intersperse " " (take (do
   p ++ " "
   ++ (concat (intersperse " " (map (\f -> agdaFormula f skip) ((reverse . formulas . subst2Tele) sigma))))
 agdaTerm d skip (Comp (Box sts back)) = agdaAbstract [d .. (d+length sts-1)] ++ "hcomp " ++ agdaBox (d+length sts-1) skip (Box sts back)
-agdaTerm d skip (Fill (Box sts back)) = "hfill " ++ agdaBox (d) skip (Box sts back)
+agdaTerm d skip (Fill (Box sts back)) = "_" -- "hfill " ++ agdaBox (d) skip (Box sts back)
 agdaTerm _ skip Free = "???"
 
 agdaShow :: Term -> String
