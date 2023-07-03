@@ -28,6 +28,7 @@ library
       CompositionSolver
       ContortionSolver
       Data
+      Deg
       Examples
       Formula
       Poset
