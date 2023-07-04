@@ -259,7 +259,7 @@ runCS = do
 
   -- traceM $ "SOLVE IN " ++ show (gi,ge) ++ " FOR " ++ show ty ++ " WITH OPEN SIDES " ++ show open
 
-  let pterms = allDeg ctxt d ++ allFill ctxt d
+  let pterms = allDeg ctxt d ++ allFill ctxt d ++ [ Fill d t | (_ , Comp d t) <- fs ]
   let faceInd = restrictions d ++ [(gi,negI ge)]
 
   sides <- mapM (\f@(i,e) ->
