@@ -1,8 +1,6 @@
 module Prel where
 
 import Data.List
-import Control.Monad
-import Data.Ord
 
 
 x --> y   = not x || y
@@ -60,5 +58,3 @@ foldM' f z (x:xs) = do
   z' `seq` foldM' f z' xs
 
 
-incps :: [a] -> [[a]]
-incps = (sortBy (comparing (length))) . (filterM (const [True, False]))
