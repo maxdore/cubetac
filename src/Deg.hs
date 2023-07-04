@@ -150,7 +150,7 @@ findComp c ty = head (concatMap (findCompBounded c ty) [0..])
 findCompBounded :: Ctxt -> Ty -> Int -> [Term]
 findCompBounded c ty 0 = constrOpenComp c ty [[]] 0
 findCompBounded c ty@(Ty d _) depth =
-  let sides = restrictions (d + 1) ++ [(d + 1, I0)] in
+  let sides = restrictions d ++ [(d + 1, I0)] in
   constrOpenComp c ty (incps sides) depth
     where
     -- Generates the powerset of a list in ascending cardinality
