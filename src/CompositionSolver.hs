@@ -62,8 +62,6 @@ lookupDef name = do
     Nothing -> error $ "Could not find definition of " ++ name
 
 
-incps :: [a] -> [[a]]
-incps = (sortBy (comparing (length))) . (filterM (const [True, False]))
 
 
 findComposition :: Cube -> Boundary -> Maybe Term

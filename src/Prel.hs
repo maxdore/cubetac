@@ -1,6 +1,8 @@
 module Prel where
 
 import Data.List
+import Control.Monad
+import Data.Ord
 
 
 x --> y   = not x || y
@@ -50,9 +52,13 @@ indexOf n xs = go 0 n xs
         go i n (x:xs)
              | n == x    = i
              | otherwise = go (i+1) n xs
-  
+
 foldM' :: (Monad m) => (a -> b -> m a) -> a -> [b] -> m a
 foldM' _ z [] = return z
 foldM' f z (x:xs) = do
   z' <- f z x
   z' `seq` foldM' f z' xs
+
+
+incps :: [a] -> [[a]]
+incps = (sortBy (comparing (length))) . (filterM (const [True, False]))
