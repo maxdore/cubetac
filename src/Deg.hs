@@ -101,10 +101,9 @@ computeOpenBoundary c (Ty d fs) (oi,oe) =
 -- Type inference
 inferTy :: Ctxt -> Term -> Ty
 inferTy c (Var p) = getDef c p
-inferTy c (Deg t i) = let Ty d _ = inferTy c t in
-  Ty (d+1) (   [ (j,e) +> Deg (termFace c t (j,e)) d | j <- [1..i-1] , e <- [I0,I1] ]
-            ++ [ (i,e) +> t | e <- [I0,I1] ]
-            ++ [ (j+1,e) +> Deg (termFace c t (j,e)) d | j <- [i..d] , e <- [I0,I1] ])
+inferTy c (Deg t i) = let Ty n _ = inferTy c t in
+  Ty (n+1) ([ (i,e) +> t | e <- [I0,I1] ]
+        ++ [ ((if j < i then j else j+1),e) +> Deg (termFace c t (j,e)) j | j <- [1..n] , e <- [I0,I1] ])
 inferTy _ (Fill o (Ty d fs)) = Ty d ((o +> Comp o (Ty d fs)) : fs)
 inferTy c (Comp o ty) = computeOpenBoundary c ty o
 
