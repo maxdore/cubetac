@@ -9,6 +9,9 @@ import Data.Map ((!), Map)
 import Data.Maybe
 import Data.Ord
 
+import Debug.Trace
+-- trace _ = id
+-- traceM _ = return ()
 
 
 -- basic type synonyms
@@ -74,10 +77,10 @@ getDef c name =
     Nothing -> error $ "Could not find definition of " ++ name
 
 getFace :: Ty -> Restr -> Term
-getFace (Ty _ fs) f =
+getFace ty@(Ty _ fs) f =
   case lookup f fs of
     Just face -> face
-    Nothing -> error $ "Could not find face " ++ show f
+    Nothing -> error $ "Could not find face " ++ show f ++ " of " ++ show ty
 
 termFace :: Ctxt -> Term -> Restr -> Term
 termFace c t = getFace (inferTy c t)
@@ -96,6 +99,7 @@ validTerm c (Fill f ty) = not (sideSpec ty f) && validTy c ty
 
 computeOpenBoundary :: Ctxt -> Ty -> Restr -> Ty
 computeOpenBoundary c (Ty d fs) (oi,oe) =
+  -- trace ("COMPUTE BOUNDARY OF " ++ show (Ty d fs) ++ " AT " ++ show (oi,oe)) $
   Ty (d-1) [ (if i < oi then i else i-1 , e) +> termFace c t (if oi > i then oi-1 else oi,oe) | ((i,e),t) <- fs , i /= oi ]
 
 -- Type inference
@@ -137,6 +141,21 @@ allFill c d =
       return $ Fill ie (Ty d fs))
 
 
+unspecSides :: Ty -> [Restr]
+unspecSides (Ty d fs) = restrictions d \\ (map fst fs)
+
+
+fillable :: Ctxt -> Ty -> [Term]
+fillable c ty@(Ty d fs)
+  | length fs == 2*d = [ Fill cd (Ty d fs') | f@(_ , Comp cd (Ty _ gs)) <- fs , let fs' = delete f fs , gs == fs'  ]
+  -- | length fs < 2*d = let sol = map (\s -> Fill s ty) (unspecSides ty) in
+  --     trace ("CAN FILL " ++ show sol) sol
+  | length fs == 2*d - 1 = let sol = Fill (head (unspecSides ty)) ty in
+      if validTerm c sol
+        -- then trace ("CAN FILL " ++ show sol) [sol]
+        then [sol]
+        else []
+                        | otherwise = []
 
 
 
@@ -146,15 +165,31 @@ allFill c d =
 findComp :: Ctxt -> Ty -> Term
 findComp c ty = head (concatMap (findCompBounded c ty) [0..])
 
+ps :: [a] -> [[a]]
+ps = filterM (const [True, False])
+
+psord :: [a] -> [[a]]
+psord = concat . map permutations . ps
+
+incps :: [a] -> [[a]]
+incps = sortBy (comparing length) . ps
+
+incpsbound :: Int -> [a] -> [[a]]
+incpsbound d = (filter (\s -> length s <= d)) . incps
+
+incpsord :: [a] -> [[a]]
+incpsord = sortBy (comparing length) . psord
+
+incpsordbound :: Int -> [a] -> [[a]]
+incpsordbound d = (filter (\s -> length s <= d)) . incpsord
+
 findCompBounded :: Ctxt -> Ty -> Int -> [Term]
 findCompBounded c ty 0 = constrOpenComp c ty [[]] 0
 findCompBounded c ty@(Ty d _) depth =
   let sides = restrictions d ++ [(d + 1, I0)] in
-  constrOpenComp c ty (incps sides) depth
+  constrOpenComp c ty (incpsordbound (depth+1) sides) depth
     where
     -- Generates the powerset of a list in ascending cardinality
-    incps :: [a] -> [[a]]
-    incps = sortBy (comparing length) . filterM (const [True, False])
 
 -- opens specifies which combinations of sides of the cube can be left open
 constrOpenComp :: Ctxt -> Ty -> [[Restr]] -> Int -> [Term]
@@ -164,9 +199,12 @@ constrOpenComp c ty@(Ty d _) opens depth = do
   sol <- evalStateT runCS (SEnv c ty cdir ope Map.empty)
   full <- foldM
     (\s o -> do
-        let wty = Ty (d + 1) (s ++ [(d + 1 , I1) +> Fill cdir ty])
+        -- traceM $ "TRYING TO FILL " ++ show o
+        let gobdy = if sideSpec ty o then [(d + 1 , I1) +> Fill cdir ty] else []
+        let wty = Ty (d + 1) (s ++ gobdy)
         let fty = computeOpenBoundary c wty o
-        fsol <- findCompBounded c fty (depth - 1)
+        -- traceM $ "TRYING TO FILL " ++ show o ++ " : " ++ show fty
+        fsol <- fillable c fty ++ findCompBounded c fty (depth - 1)
         return $ s ++ [o +> fsol]
         )
     sol
@@ -203,22 +241,24 @@ runCS = do
   (gi,ge) <- gets dir
   ope <- gets open
 
-  -- traceM $ "SOLVE IN " ++ show (gi,ge) ++ " FOR " ++ show ty ++ " WITH OPEN SIDES " ++ show open
+  -- traceM $ "SOLVE IN " ++ show (gi,ge) ++ " FOR " ++ show ty ++ " WITH OPEN SIDES " ++ show ope
+  traceM $ "OPE " ++ show ope
 
-  let pterms = allDeg c d ++ allFill c d ++ [ Fill cd t | (_ , Comp cd t) <- fs ]
-  let faceInd = restrictions d ++ [(gi,negI ge)]
+  -- TODO remove fillers below as well?
+  let pterms = allDeg c d ++ [ Fill cd t | (_ , Comp cd t) <- fs ] -- ++ allFill c d
+  let solv = (restrictions d ++ [(gi,negI ge)]) \\ ope
 
   sides <- mapM (\f@(i,_) ->
                       if i == gi || not (sideSpec ty f)
                         then newCVar f pterms -- if the side of the goal is not specified, we fill it in any way we want
                         else newCVar f (filter (\pt -> termFace c pt (gi-1,ge) == getFace ty f) pterms)
             )
-        (faceInd \\ ope)
+        solv
 
   -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
   -- traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
-  mapM_ (uncurry boundaryConstraint) [ (f,g) | (f:ys) <- tails (faceInd \\ ope), g <- ys , fst f /= fst g ]
+  mapM_ (uncurry boundaryConstraint) [ (f,g) | (f:ys) <- tails solv, g <- ys , fst f /= fst g ]
 
   -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
   -- traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
@@ -312,6 +352,13 @@ getSol var = do
 -- EXAMPLES
 -- to run solver use findComp function, e.g., prove associativity with
 -- > findComp threep assoc
+
+tinv :: Ctxt -> Term -> Term
+tinv c t =
+  Comp (2, I1) (Ty (termDim c t + 1) [
+                     (1,I0) +> t
+                   , (1,I1) +> Deg (termFace c t (1,I0)) 1
+                   , (2,I0) +> Deg (termFace c t (1,I0)) 1 ])
 
 tcomp :: Ctxt -> Term -> Term -> Term
 tcomp c t t' = -- TODO CHECK IF COMPOSABLE
@@ -459,3 +506,22 @@ assoc' = Ty 2 [
   , (2,I0) +> Deg (Var "x") 1
   , (2,I1) +> Deg (Var "x") 1
       ]
+
+
+eqsq :: Ctxt
+eqsq = [
+    ("x" , Ty 0 [])
+  , ("p" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
+  , ("q" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
+  -- , ("alpha" , Ty 2 [ (1,I0) +> Var "p"
+  --                   , (1,I1) +> Var "q"
+  --                   -- , (2,I0) +> Deg (Var "x") 1
+  --                   -- , (2,I1) +> Deg (Var "x") 1
+  --                   ])
+    ]
+
+eqsqinv = Ty 2 [ (1,I0) +> Var "q"
+              , (1,I1) +> Var "p"
+              -- , (2,I0) +> Deg (Var "x") 1
+              -- , (2,I1) +> Deg (Var "x") 1
+              ]
