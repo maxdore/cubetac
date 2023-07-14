@@ -8,10 +8,10 @@ data Deg = Deg (Term Deg) IVar
 
 allVarDeg :: Ctxt Deg -> Id -> Dim -> [Term Deg]
 allVarDeg c p d | idDim c p > d = []
-                | idDim c p == d-1 = [deg (Var p) i | i <- [1..d] ]
+                | idDim c p == d-1 = [deg c (Var p) i | i <- [1..d] ]
                 | otherwise =
                       nubBy (\t t' -> inferTy c t == inferTy c t')
-                      [ deg t j | t <- allVarDeg c p (d-1) , j <- [1..d] ]
+                      [ deg c t j | t <- allVarDeg c p (d-1) , j <- [1..d] ]
 
 instance Rs Deg where
   dim c (Deg t _) = 1 + termDim c t
@@ -22,7 +22,7 @@ instance Rs Deg where
 
   allSTerms c d = concat [ allVarDeg c p d | (p,_) <- c ]
 
-  deg t i = STerm (Deg t i)
+  deg c t i = STerm (Deg t i)
 
 
 

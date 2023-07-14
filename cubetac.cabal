@@ -26,10 +26,13 @@ source-repository head
 library
   exposed-modules:
       CompositionSolver
+      Cont
       ContortionSolver
+      Core
       Data
       Deg
       Examples
+      Exp
       Formula
       Poset
       Prel

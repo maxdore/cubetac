@@ -9,9 +9,12 @@ import Data.Map ((!), Map)
 import Data.Maybe
 import Data.Ord
 
-import Debug.Trace
--- trace _ = id
--- traceM _ = return ()
+import Prel
+
+-- import Debug.Trace
+trace _ = id
+traceM _ = return ()
+
 
 
 -- basic type synonyms
@@ -27,6 +30,10 @@ negI :: Endpoint -> Endpoint
 negI I0 = I1
 negI I1 = I0
 
+toBool :: Endpoint -> Bool
+toBool I0 = False
+toBool I1 = True
+
 type Restr = (IVar , Endpoint)
 
 
@@ -36,7 +43,7 @@ class (Eq r , Show r) => Rs r where
   infer :: Ctxt r -> r -> Ty r
   allSTerms :: Ctxt r -> Dim -> [Term r]
   -- all rulesets which we consider allow for degeneracies:
-  deg :: Term r -> IVar -> Term r
+  deg :: Ctxt r -> Term r -> IVar -> Term r
 
 data Term r = Var Id
           | Fill Restr (Ty r) -- Fill dir ty means fill type ty in direction dir
@@ -349,13 +356,13 @@ tinv :: Rs r => Ctxt r -> Term r -> Term r
 tinv c t =
   Comp (2, I1) (Ty (termDim c t + 1) [
                      (1,I0) +> t
-                   , (1,I1) +> deg (termFace c t (1,I0)) 1
-                   , (2,I0) +> deg (termFace c t (1,I0)) 1 ])
+                   , (1,I1) +> deg c (termFace c t (1,I0)) 1
+                   , (2,I0) +> deg c (termFace c t (1,I0)) 1 ])
 
 tcomp :: Rs r => Ctxt r -> Term r -> Term r -> Term r
 tcomp c t t' = -- TODO CHECK IF COMPOSABLE
   Comp (2, I1) (Ty (termDim c t + 1) [
-                     (1,I0) +> deg (termFace c t (1,I0)) 1
+                     (1,I0) +> deg c (termFace c t (1,I0)) 1
                    , (1,I1) +> t'
                    , (2,I0) +> t ])
 
@@ -375,37 +382,37 @@ invGoal = Ty 1 [ (1,I0) +> Var "y"
 invFill , pFill , qFill , pqComp :: Rs r => Term r
 invFill = Fill (2 , I1) (Ty 2 [
                         (1,I0) +> Var "p"
-                      , (1,I1) +> deg (Var "x") 1
-                      , (2,I0) +> deg (Var "x") 1
+                      , (1,I1) +> deg twop (Var "x") 1
+                      , (2,I0) +> deg twop (Var "x") 1
                       ])
 
 pFill = Fill (1,I0) (Ty 2 [
-                        (1,I1) +> deg (Var "y") 1
-                      , (2,I0) +> deg (Var "y") 1
+                        (1,I1) +> deg twop (Var "y") 1
+                      , (2,I0) +> deg twop (Var "y") 1
                       , (2,I1) +> Var "p"
                       ])
 qFill = Fill (1,I1) (Ty 2 [
-                        (1,I0) +> deg (Var "y") 1
-                      , (2,I0) +> deg (Var "y") 1
+                        (1,I0) +> deg twop (Var "y") 1
+                      , (2,I0) +> deg twop (Var "y") 1
                       , (2,I1) +> Var "q"
                       ])
 
 pqComp = Comp (2,I1) (Ty 2 [
-                        (1,I0) +> deg (Var "x") 1
+                        (1,I0) +> deg twop (Var "x") 1
                       , (1,I1) +> Var "q"
                       , (2,I0) +> Var "p"
                            ])
 
 orGoal , andGoal , pqpq :: Rs r => Ty r
 orGoal = Ty 2 [ (1,I0) +> Var "p"
-              , (1,I1) +> deg (Var "y") 1
+              , (1,I1) +> deg twop (Var "y") 1
               , (2,I0) +> Var "p"
-              , (2,I1) +> deg (Var "y") 1
+              , (2,I1) +> deg twop (Var "y") 1
                         ]
 
-andGoal = Ty 2 [ (1,I0) +> deg (Var "x") 1
+andGoal = Ty 2 [ (1,I0) +> deg twop (Var "x") 1
                , (1,I1) +> Var "p"
-               , (2,I0) +> deg (Var "x") 1
+               , (2,I0) +> deg twop (Var "x") 1
                , (2,I1) +> Var "p"
                           ]
 
@@ -417,29 +424,29 @@ pqpq = Ty 2 [ (1,I0) +> Var "p"
 
 prefl , reflp :: Rs r => Term r
 prefl = Comp (2,I1) (Ty 2 [
-                      (1,I0) +> deg (Var "x") 1
-                    , (1,I1) +> deg (Var "y") 1
+                      (1,I0) +> deg twop (Var "x") 1
+                    , (1,I1) +> deg twop (Var "y") 1
                     , (2,I0) +> Var "p"
                         ])
 
 reflp = Comp (2,I1) (Ty 2 [
-                      (1,I0) +> deg (Var "x") 1
+                      (1,I0) +> deg twop (Var "x") 1
                     , (1,I1) +> Var "p"
-                    , (2,I0) +> deg (Var "x") 1
+                    , (2,I0) +> deg twop (Var "x") 1
                         ])
 
 unitl , unitr :: Rs r => Ty r
 unitr = Ty 2 [ (1,I0) +> prefl
              , (1,I1) +> Var "p"
-             , (2,I0) +> deg (Var "x") 1
-             , (2,I1) +> deg (Var "y") 1
+             , (2,I0) +> deg twop (Var "x") 1
+             , (2,I1) +> deg twop (Var "y") 1
              ]
 
 
 unitl = Ty 2 [ (1,I0) +> reflp
              , (1,I1) +> Var "p"
-             , (2,I0) +> deg (Var "x") 1
-             , (2,I1) +> deg (Var "y") 1
+             , (2,I0) +> deg twop (Var "x") 1
+             , (2,I1) +> deg twop (Var "y") 1
              ]
 
 threep :: Ctxt r
@@ -456,35 +463,35 @@ threep = [
 assocback, assocright , assoc , assoc2 , assocOr , assocAnd :: Rs r => Ty r
 assocback = Ty 2 [ (1,I0) +> tcomp threep (Var "p") (Var "q")
                  , (1,I1) +> Var "p"
-                 , (2,I0) +> deg (Var "w") 1
+                 , (2,I0) +> deg threep (Var "w") 1
              ]
 
 assocright = Ty 2 [ (1,I0) +> Var "r"
                   , (1,I1) +> tcomp threep (Var "q") (Var "r")
-                  , (2,I1) +> deg (Var "z") 1
+                  , (2,I1) +> deg threep (Var "z") 1
              ]
 
 assoc = Ty 2 [ (1,I0) +> tcomp threep (tcomp threep (Var "p") (Var "q")) (Var "r")
              , (1,I1) +> tcomp threep (Var "p") (tcomp threep (Var "q") (Var "r"))
-             , (2,I0) +> deg (Var "w") 1
-             , (2,I1) +> deg (Var "z") 1
+             , (2,I0) +> deg threep (Var "w") 1
+             , (2,I1) +> deg threep (Var "z") 1
              ]
 
 assoc2 = Ty 2 [ (1,I0) +> tcomp threep (Var "p") (tcomp threep (Var "q") (Var "r"))
               , (1,I1) +> tcomp threep (tcomp threep (Var "p") (Var "q")) (Var "r")
-              , (2,I0) +> deg (Var "w") 1
-              , (2,I1) +> deg (Var "z") 1
+              , (2,I0) +> deg threep (Var "w") 1
+              , (2,I1) +> deg threep (Var "z") 1
               ]
 
 assocOr = Ty 2 [ (1,I0) +> tcomp threep (Var "p") (tcomp threep (Var "q") (Var "r"))
-               , (1,I1) +>  deg (Var "z") 1
+               , (1,I1) +>  deg threep (Var "z") 1
                , (2,I0) +> tcomp threep (tcomp threep (Var "p") (Var "q")) (Var "r")
-               , (2,I1) +> deg (Var "z") 1
+               , (2,I1) +> deg threep (Var "z") 1
               ]
 
-assocAnd = Ty 2 [ (1,I0) +>  deg (Var "w") 1
+assocAnd = Ty 2 [ (1,I0) +>  deg threep (Var "w") 1
                 , (1,I1) +> tcomp threep (Var "p") (tcomp threep (Var "q") (Var "r"))
-                , (2,I0) +> deg (Var "w") 1
+                , (2,I0) +> deg threep (Var "w") 1
                 , (2,I1) +> tcomp threep (tcomp threep (Var "p") (Var "q")) (Var "r")
               ]
 
@@ -500,8 +507,8 @@ assoc' :: Rs r => Ty r
 assoc' = Ty 2 [
     (1,I0) +> tcomp threep' (tcomp threep' (Var "p") (Var "q")) (Var "r")
   , (1,I1) +> tcomp threep' (Var "p") (tcomp threep' (Var "q") (Var "r"))
-  , (2,I0) +> deg (Var "x") 1
-  , (2,I1) +> deg (Var "x") 1
+  , (2,I0) +> deg threep' (Var "x") 1
+  , (2,I1) +> deg threep' (Var "x") 1
       ]
 
 
