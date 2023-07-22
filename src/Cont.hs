@@ -1,24 +1,26 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Cont where
 
 import qualified Data.Map as Map
 import Data.Map ((!), Map)
 import Data.List
+import Data.Maybe
 
 import Prel
 import Core
 
-
+import Debug.Trace
 
 -- An element of a poset is a list of 0s and 1s
 newtype Vert = Vert { toBools :: [Endpoint]}
   deriving (Eq , Ord)
 
 instance Show Vert where
-  show (Vert []) = ""
-  show (Vert [e]) = show e
-  show (Vert (e:es)) = show e ++ show (Vert es)
+  show (Vert []) = "()"
+  show (Vert es) = concatMap (\e -> if e == I0 then "0" else "1") es
+  -- show (Vert es) = "(" ++ concatMap (\e -> if e == I0 then "0" else "1") es ++ ")"
 
 type Poset = [Vert]
 
@@ -53,9 +55,7 @@ x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBool
 x `above` y = y `below` x
 x `dirabove` y = x `above` y && vdiff x y == 1
 
-
-
-isSubposet :: [Vert] -> Maybe (Int , Endpoint)
+isSubposet :: [Vert] -> Maybe Restr
 isSubposet vs
   | null (toBools (head vs)) = Nothing
   | all ((== I1) . head . toBools) vs = Just (1 , I1)
@@ -63,6 +63,13 @@ isSubposet vs
   | otherwise = case isSubposet (map (Vert . tail . toBools) vs) of
       Nothing -> Nothing
       Just (i , e) -> Just (i + 1 , e)
+
+isId :: Subst -> Bool
+isId s = all (\(x,y) -> x == y) (Map.toList s)
+
+restrSubst :: Subst -> Restr -> Subst
+restrSubst sigma (i,e) = Map.mapKeys (`removeInd` i) (Map.filterWithKey (\x _ -> e == toBools x !! (i-1)) sigma)
+
 
 
 
@@ -134,6 +141,8 @@ getSubsts sigma = map Map.fromList (getSubsts' (Map.toList sigma))
   filterRec :: Vert -> Vert -> [(Vert , [Vert])] -> [(Vert , [Vert])]
   filterRec x v = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ]))
 
+combineSubsts :: [Subst] -> PSubst
+combineSubsts ss = Map.fromList (map (\x -> (x , nub (map (Map.findWithDefault undefined x) ss))) (createPoset (domdim (head ss))))
 
 -- Given a potential substitution, generate the substitution from it
 -- (could be equivalently head of getSubsts)
@@ -200,23 +209,66 @@ injPSubst = Map.map (: [])
 
 
 
-data Cont = Cont (Term Cont) PSubst
-  deriving (Eq, Show)
+type Cont = Subst
+-- data Cont = Cont (Term Cont) Subst
+--   deriving (Eq, Show)
+
+normalise :: Ctxt Cont PCont -> Term Cont PCont -> Maybe (Term Cont PCont)
+normalise c (App ((App t tau)) sigma) = normalise c (App t (Map.compose tau sigma))
+normalise c (App t s) =
+  if isId s
+    then normalise c t
+    else
+      case isSubposet (Map.elems s) of
+        Nothing -> Just (App t s)
+        Just (i,e) ->
+          let ty = inferTy c t in
+          if sideSpec ty (i,e)
+            then normalise c (App (getFace ty (i,e)) (Map.map (`removeInd` i) s))
+            else Nothing
+
+normalise c t = Just t
+
+type PCont = PSubst
 
 
+instance Rs Cont PCont where
+  infer c t s =
+    let ty@(Ty n phi) = inferTy c t in
+    let m = domdim s in
+    let tup = [1..domdim s] :: [IVar] in
+    Ty m [ (i,e) +> f | i <- [1..m] , e <- [I0,I1] , f <- maybeToList (normalise c (App t (restrSubst s (i,e)))) ]
 
-instance Rs Cont where
-  dim c (Cont t s) = domdim s
-
-  infer c (Cont t s) = undefined -- let Ty n _ = inferTy c t in
-    -- Ty (n+1) ([ (i,e) +> t | e <- [I0,I1] ]
-    --       ++ [ ((if j < i then j else j+1),e) +> STerm (MDeg (termFace c t (j,e)) j) | j <- [1..n] , e <- [I0,I1] ])
-
-  allSTerms c d = [ STerm (Cont (Var p) (createPSubst d d')) | (p , Ty d' _) <- c ]
+  allPTerms c d = [ PApp (Var p) (createPSubst d d') | (p , Ty d' _) <- c ]
 
   deg c t i = let Ty d _ = inferTy c t in
-    STerm (Cont t (injPSubst (Map.fromList
-                              (map (\x -> (insInd i I0 x,x) ) (createPoset d)
-                               ++ map (\x -> (insInd i I1 x,x) ) (createPoset d)))))
+    App t (Map.fromList
+                  (map (\x -> (insInd i I0 x,x) ) (createPoset d)
+                    ++ map (\x -> (insInd i I1 x,x) ) (createPoset d)))
+
+  unfold = getSubsts
+  combine = combineSubsts
 
 
+-- data PCont = PCont (Term Cont) PSubst
+--   deriving (Eq, Show)
+
+-- instance Wrapper PCont Cont where
+--   unfold = getSubsts
+
+
+xdeg :: Term Cont PCont
+xdeg = App (Var "x") (Map.fromList [(Vert [I0], Vert []) , (Vert [I1], Vert [])])
+
+
+andOrSubst = Map.fromList [
+              (Vert [I0, I0] , Vert [I0, I0])
+            , (Vert [I0, I1] , Vert [I0, I1])
+            , (Vert [I1, I0] , Vert [I0, I1])
+            , (Vert [I1, I1] , Vert [I1, I1])
+              ]
+andOrp:: Term Cont PCont
+andOrp = App (Var "p") andOrSubst
+
+test :: Term Cont PCont
+test = deg twop pqComp 1

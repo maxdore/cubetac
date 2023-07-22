@@ -25,19 +25,11 @@ source-repository head
 
 library
   exposed-modules:
-      CompositionSolver
       Cont
-      ContortionSolver
       Core
-      Data
       Deg
-      Examples
       Exp
-      Formula
-      Poset
       Prel
-      Solver
-      Type
   other-modules:
       Paths_cubetac
   hs-source-dirs:
