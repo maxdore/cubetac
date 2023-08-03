@@ -40,6 +40,11 @@ toBool I1 = True
 
 type Restr = (IVar , Endpoint)
 
+predi :: Restr -> Restr
+predi (i,e) = (i-1,e)
+
+succi :: Restr -> Restr
+succi (i,e) = (i+1,e)
 
 -- This type class specifies which functions rulesets need to export
 class (Eq r , Show r , Eq w , Show w) => Rs r w where
@@ -99,7 +104,7 @@ type Ctxt r w = [Decl r w]
 -- Basic operations on the types
 tyDim :: Ty r w -> Dim
 tyDim (Ty d _) = d
-  
+
 idDim :: Ctxt r w -> Id -> Dim
 idDim c p = tyDim (getDef c p)
 
@@ -124,6 +129,7 @@ getFace ty@(Ty _ fs) f =
     Nothing -> error $ "Could not find face " ++ show f ++ " of " ++ show ty
 
 termFace :: Rs r w => Ctxt r w -> Term r w -> Restr -> Term r w
+-- termFace c t = trace (show t) $ getFace (inferTy c t)
 termFace c t = getFace (inferTy c t)
 
 ptermFace :: Rs r w => Ctxt r w -> Term r w -> Restr -> [Term r w]
@@ -155,7 +161,18 @@ validTerm c (Fill f ty) = not (sideSpec ty f) && validTy c ty
 computeOpenBoundary :: Rs r w => Ctxt r w -> Ty r w -> Restr -> Ty r w
 computeOpenBoundary c (Ty d fs) (oi,oe) =
   -- trace ("COMPUTE BOUNDARY OF " ++ show (Ty d fs) ++ " AT " ++ show (oi,oe)) $
-  Ty (d-1) [ (if i < oi then i else i-1 , e) +> termFace c t (if oi > i then oi-1 else oi,oe) | ((i,e),t) <- fs , i /= oi ]
+  Ty (d-1) [ (if i < oi then i else i-1 , e) +> termFace c t (if oi > i then oi-1 else oi,oe)
+             | ((i,e),t) <- fs , i /= oi , sideSpec (inferTy c t) (if oi > i then oi-1 else oi,oe) ]
+
+
+-- compute a face that we know to exist in a cube but cannot access directly
+-- TODO SOUND? HAVE TO PERMUTE PROBABLY!!!
+get2Face :: Rs r w => Ctxt r w -> Ty r w -> (Restr,Restr) -> Term r w
+get2Face c ty (ie,jf) =
+  if fst ie <= fst jf
+    then termFace c (getFace ty (succi jf)) ie
+    else termFace c (getFace ty jf) (predi ie)
+
 
 -- Type inference
 inferTy :: Rs r w => Ctxt r w -> Term r w -> Ty r w
@@ -228,12 +245,26 @@ incpsord = sortBy (comparing length) . psord
 incpsordbound :: Int -> [a] -> [[a]]
 incpsordbound d = (filter (\s -> length s <= d)) . incpsord
 
+
+possibleFillers :: [Restr] -> [Restr] -> Dim -> [[(Restr,Restr)]]
+possibleFillers ogs ofs d =
+  let pairs = [ [(f,predi g),(g,f)] | (f:cs) <- tails ofs , g <- cs , fst f /= fst g] in
+    -- traceShow pairs $
+    -- traceShow (incps pairs) $
+  reverse $ sortBy (comparing length) $ filter
+    (\ss -> length ss == length (nubBy (\r s -> fst r == fst s) ss))
+    (map concat (incps (pairs ++ [ [(g,(d,I1))] | g <- ogs , g `elem` ofs ])))
+    -- (map concat (incps (pairs ++ (map (\g -> [(g,(d,I1))]) ogs))))
+
+
 findCompBounded :: Rs r w => Ctxt r w -> Ty r w -> Int -> [Term r w]
-findCompBounded c ty 0 = constrOpenComp c ty [[]] 0
+findCompBounded c ty 0 =
+  trace "DEPTH 0" $
+  constrOpenComp c ty [[]] 0
 findCompBounded c ty@(Ty d _) depth =
+  trace ("DEPTH " ++ show depth) $
   let sides = restrictions d ++ [(d + 1, I0)] in
-  constrOpenComp c ty (incpsordbound (depth+1) sides) depth
-    -- Generates the powerset of a list in ascending cardinality
+  constrOpenComp c ty (incps sides) depth
 
 -- opens specifies which combinations of sides of the cube can be left open
 constrOpenComp :: Rs r w => Ctxt r w -> Ty r w -> [[Restr]] -> Int -> [Term r w]
@@ -245,37 +276,41 @@ constrOpenComp c ty@(Ty d _) opens depth = do
   -- TODO
   let cube = Ty (d + 1) (sol ++ [(d + 1 , I1) +> Fill cdir ty])
 
+  --  TODO compute which fillers could possibly exist alongside their fill directions
+  trytofill <- possibleFillers (unspec ty) ope d
+  -- traceShowM $ "FILL COMBINATIONS " ++ show trytofill
+  -- [map (\(i,e) -> ((i,e),(1,e))) ope]
+  -- trytofill <- if depth == 0 then [ope] else reverse (incps ope)
 
-  let trytofill = if depth == 0
-                 then [ope]
-                 else reverse (incps ope)
-
-  fills <- mconcat $ mapM
-    (\fil ->
-        evalStateT fillerCSP (FSEnv c cube fil Map.empty)
-        )
-    trytofill
+  -- TODO remove trying to fill none
+  fills <- evalStateT fillerCSP (FSEnv c cube trytofill Map.empty)
 
   let filledsol = sol ++ fills
+  let stillope = ope \\ map fst trytofill
 
-
-  -- when (depth == 0) (guard (length filledsol == 2 * d + 1))
+  -- traceM $ "FILLED IN SOL " ++ show filledsol
+  -- traceM  $ "STILL TO FILL " ++ show stillope
   -- unsafePerformIO $ die "ASD"
-  -- guard (depth > 0)
 
-  rcomps <- foldM
-    (\s o -> do
-        -- traceM $ "TRYING TO FILL " ++ show o
-        let gobdy = if sideSpec ty o then [(d + 1 , I1) +> Fill cdir ty] else []
-        let wty = Ty (d + 1) (s ++ gobdy)
-        let fty = computeOpenBoundary c wty o
-        -- traceM $ "TRYING TO FILL " ++ show o ++ " : " ++ show fty
-        fsol <- findCompBounded c fty (depth - 1)
-        return $ s ++ [o +> fsol]
-        )
-    sol
-    ope
-  return $ Comp cdir (Ty (d + 1) rcomps)
+  if (null stillope)
+    then return $ Comp cdir (Ty (d + 1) filledsol)
+    else do
+      -- guard (depth > 1)
+
+      rcomps <- foldM
+        (\s o -> do
+            -- traceM $ "TRYING TO FILL " ++ show o
+            let gobdy = if sideSpec ty o then [(d + 1 , I1) +> Fill cdir ty] else []
+            let wty = Ty (d + 1) (s ++ gobdy)
+            let fty = computeOpenBoundary c wty o
+            -- traceM $ "TRYING TO FILL " ++ show o ++ " : " ++ show fty
+            fsol <- findCompBounded c fty (depth - 1)
+            return $ s ++ [o +> fsol]
+            )
+        filledsol
+        stillope
+
+      return $ Comp cdir (Ty (d + 1) rcomps)
 
 
 
@@ -312,6 +347,7 @@ simpleCSP = do
 
   -- TODO have option for inserting certain fillers in domain?
   -- let pterms = allIds c d ++ allSTerms c d ++ allFill c d
+  -- let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allIds c d ++ allPTerms c d
   let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allIds c d ++ allPTerms c d
   let solv = (restrictions d ++ [(gi,negI ge)]) \\ ope
 
@@ -327,13 +363,13 @@ simpleCSP = do
             )
         solv
 
-  domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
-  traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
+  -- traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
   mapM_ (uncurry boundaryConstraint) [ (f,g) | (f:ys) <- tails solv, g <- ys , fst f /= fst g ]
 
-  domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
-  traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
+  -- traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
   mapM (\f -> getSol f >>= \s -> return (f,s)) sides
 
@@ -443,9 +479,12 @@ data FCVarInfo a w r = FCVarInfo { fdelayedConstraints :: FSolving a () w r, fva
 data FSEnv s w r =
   FSEnv { fctxt :: Ctxt r w
         , cube :: Ty r w
-        , fil :: [CVar] --  the sides of the cubes we want to fill
+        , fil :: [(Restr,Restr)] --  the sides of the cubes to be filled and their fill direction
         , fvarMap :: Map FCVar (FCVarInfo s w r)
        }
+
+openterm :: Term r w
+openterm = (Comp (0,I0) (Ty 0 []))
 
 fillerCSP :: Rs r w => FSolving s [Face r w] w r
 fillerCSP = do
@@ -453,57 +492,77 @@ fillerCSP = do
   cube <- gets cube
   fil <- gets fil
 
-  -- ope = restrictions d ++ [(gi,negI ge) \\ (map fst sol)
+  if (null fil)
+    then return []
+    else do 
+      -- traceM $ "INSERTING FILLERS " ++ show fil ++ " INTO " ++ show cube
 
-  traceM $ "INSERTING FILLERS " ++ show fil ++ " INTO " ++ show cube
+      let pterms = allIds c (tyDim cube - 2) ++ allPTerms c (tyDim cube - 2)
 
-  let pterms = allIds c (tyDim cube - 2) ++ allPTerms c (tyDim cube - 2)
+      -- traceShowM pterms
 
-  traceShowM pterms
+      -- unsafePerformIO $ die "ASD"
+      filfs <- concat <$> mapM (\(ie,fdir) -> do
+                      let jes = unspec (computeOpenBoundary c cube ie) \\ [fdir]
+                      -- traceM $ show (ie,fdir) ++ " : "
+                      -- traceShowM (computeOpenBoundary c cube ie)
+                      mapM (\je -> do
+                              -- traceShowM (ie,je)
+                              let f@(Ty _ specf) = computeOpenBoundary c cube ie
+                              -- traceShowM f
+                              -- if sideSpec gf (j,e')
+                              --   then traceShowM (getFace gf (j,e'))
+                              --   else traceShowM "NOT SPEC"
 
-  filfs <- concat <$> mapM (\ie -> do
-                   mapM (\je -> do
-                           traceShowM (ie,je)
-                           let f@(Ty _ specf) = computeOpenBoundary c cube ie
-                           traceShowM f
-                           -- if sideSpec gf (j,e')
-                           --   then traceShowM (getFace gf (j,e'))
-                           --   else traceShowM "NOT SPEC"
+                              let dom = foldr (\(ke,gf) pt ->
+                                                  -- traceShow ("UPDATE " ++ show (ke,gf)) $
+                                                  catMaybes $ map (\t ->
+                                                                    let (jef , kef) = if fst je < fst ke
+                                                                          then (je , (fst ke - 1 , snd ke))
+                                                                          else ((fst je - 1 , snd je) , ke) in
+                                                                    restrPTerm c t kef [termFace c gf jef]) pt)
+                                        -- TODO also have to repeat this as a constraint to prevent non-conservative rulesets from yielding wrong results!
+                                              pterms
+                                              (filter (\(k,e) -> fst k /= (fst je)) specf)
+                              -- traceShowM dom
 
-                           let dom = foldr (\(ke,gf) pt ->
-                                              catMaybes $ map (\t ->
-                                                                let (jef , kef) = if fst je < fst ke
-                                                                      then (je , (fst ke - 1 , snd ke))
-                                                                      else ((fst je - 1 , snd je) , ke) in
-                                                                 restrPTerm c t kef [termFace c gf jef]) pt)
-                                           pterms
-                                           specf
-                           traceShowM dom
+                              newFCVar (ie,je) dom
+                            ) jes
+                )
+            fil
 
-                           newFCVar (ie,je) dom
-                        ) (unspec (computeOpenBoundary c cube ie))
-            )
-        fil
+      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
+      -- traceM $ "INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
-  domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-  traceM $ "INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      mapM_ (uncurry termsEqual) [ (c,d) | (c:cs) <- tails filfs , d <- cs , fst (fst c) /= fst (fst d) , fst c == snd d , snd c == ((\(j,e) -> (j-1 , e)) (fst d))  ]
 
-  -- mapM_ (uncurry equalConstraint!) [ (f,g) | (c:cs) <- filfs , d <- cs , fst (fst f) /= fst (fst g) ]
+      mapM_ (uncurry compsEqual) [ (c,d) | (c:cs) <- tails fil , d <- cs , fst (fst c) /= fst (fst d) , fst c == snd d , snd c == ((\(j,e) -> (j-1 , e)) (fst d))  ]
 
-  domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-  traceM $ "AFTER MATCH\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
+      -- traceM $ "AFTER MATCH\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
-  -- mapM (\ie -> internal boundaryConstraint...) fil
+      mapM_ (uncurry fboundaryConstraint) [ (c,d) | (c:cs) <- tails filfs , d <- cs , fst c == fst d , fst (snd c) /= fst (snd d) ]
 
-  domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-  traceM $ "AFTER INTERNAL BOUNDARIES\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
+      -- traceM $ "AFTER INTERNAL BOUNDARIES\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
-  mapM (\ie -> oneOpenConstraint [(ie,je) | je <- unspec (computeOpenBoundary c cube ie) ]) fil
+      -- mapM (\ie -> oneOpenConstraint [(ie,je) | je <- unspec (computeOpenBoundary c cube ie) ]) fil
 
-  domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-  traceM $ "AFTER ONLY ONE OPEN\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
+      -- traceM $ "AFTER ONLY ONE OPEN\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
-  return []
+      -- s <- mapM (\f -> fgetSol f >>= \s -> return (f,s)) filfs
+      -- mapM traceShowM s
+
+      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
+      -- traceM $ "AFTER ALL\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+
+      psol <- mapM (\(ie,fdir) -> do
+                      sides <- mapM (\je -> fgetSol (ie,je) >>= \t -> return (je , t)) (unspec (computeOpenBoundary c cube ie) \\ [fdir])
+                      let (Ty _ specf) = computeOpenBoundary c cube ie
+                      return (ie, Fill fdir (Ty (tyDim cube - 2) (filter (\(je,t) -> je /= fdir) (sides ++ specf))))
+                      ) fil
+      return psol
 
 
 
@@ -525,12 +584,14 @@ flookupDom :: FCVar -> FSolving s (FDomain r w) w r
 flookupDom x = do
     s <- get
     return . fvalues $ fvarMap s ! x
+    -- return . (openterm:) .  fvalues $ fvarMap s ! x
 
-fupdate :: FCVar -> FDomain r w -> FSolving s () w r
+fupdate :: Rs r w => FCVar -> FDomain r w -> FSolving s () w r
 fupdate x i = do
     s <- get
     let vm = fvarMap s
     let vi = vm ! x
+    -- put $ s { fvarMap = Map.insert x (vi { fvalues = (if i == [] then [openterm] else i) }) vm }
     put $ s { fvarMap = Map.insert x (vi { fvalues = i }) vm }
     fdelayedConstraints vi
 
@@ -559,37 +620,104 @@ addNaryConstraint f xs = do
     mapM_ (\x -> faddConstraint x constraint) xs
 
 
--- boundaryConstraint :: Rs r w => Restr -> Restr -> Solving s () w r
--- boundaryConstraint = addBinaryConstraint $ \cv dv -> do
---   c <- gets ctxt
---   let (cf , df) = if fst cv < fst dv
---         then (cv , (fst dv - 1 , snd dv))
---         else ((fst cv - 1 , snd cv) , dv)
 
---   ts <- lookupDom cv
---   ss <- lookupDom dv
---   let tsf = concatMap (\t -> ptermFace c t df) ts
---   let ssg = concatMap (\t -> ptermFace c t cf) ss
+isVar :: Rs r w => (Restr,Restr) -> FSolving s Bool w r
+isVar (ie,je) = do
+  c <- gets fctxt
+  cube <- gets cube
+  return $ je `elem` unspec (computeOpenBoundary c cube ie)
 
---   let hs = tsf `intersect` ssg
+ 
 
---   guard (not (null hs))
+-- TODO UNFOLDING NECESSARY! OR MAKE CLEVERER INTERSECT
+-- TODO GENERALISE TO NOT ONLY FCVars, but also if one is already part of the cube
+-- then this can be also used to setup initial domains
+termsEqual :: Rs r w => (Restr,Restr) -> (Restr,Restr) -> FSolving s () w r
+termsEqual = faddBinaryConstraint $ \cv dv -> do
+  c <- gets fctxt
+  cube <- gets cube
+  -- traceShowM $ "TERMS EQ OF " ++ show cv ++ " AND " ++ show dv
+  ts <- ifM (isVar cv) (flookupDom cv) (return [get2Face c cube cv])
+  ss <- ifM (isVar dv) (flookupDom dv) (return [get2Face c cube dv])
+  let hs = ts `intersect` ss
+  guard (not (null hs))
+  whenM ((isVar cv) `andM` return (ts /= hs)) $ fupdate cv hs
+  whenM ((isVar dv) `andM` return (ss /= hs)) $ fupdate dv hs
 
---   let ts' = catMaybes $ map (\t -> restrPTerm c t df hs) ts
---   let ss' = catMaybes $ map (\t -> restrPTerm c t cf hs) ss
 
---   guard (not (null ts'))
---   guard (not (null ss'))
 
---   when (ts' /= ts) $ update cv ts'
---   when (ss' /= ss) $ update dv ss'
+
+compsEqual :: Rs r w => (Restr,Restr) -> (Restr,Restr) -> FSolving s () w r
+compsEqual (ie,fdir) (ie',fdir') = do
+  -- traceShowM $ "COMPS EQ OF " ++ show (ie,fdir) ++ " AND " ++ show (ie',fdir')
+  c <- gets fctxt
+  cube <- gets cube
+  let swap = if fdir == fdir'
+        then id
+        else (\j ->
+           if j == fst fdir
+             then fst fdir'
+           else if j == fst fdir'
+             then fst fdir
+           else j
+          )
+  let swape = if snd fdir == snd fdir'
+        then id
+        else negI
+  mapM (\(j,e) -> termsEqual (ie,(j,e)) (ie',(swap j,swape e)))
+       (restrictions (tyDim cube-1) \\ [fdir])
+  return ()
+
+
+fboundaryConstraint :: Rs r w => FCVar -> FCVar -> FSolving s () w r
+fboundaryConstraint = faddBinaryConstraint $ \(ie,cv) (ie',dv) -> do
+  -- traceShowM $ "BOUNDARIES EQ OF " ++ show (ie,cv) ++ " AND " ++ show (ie',dv)
+  c <- gets fctxt
+  let (cf , df) = if fst cv < fst dv
+        then (cv , (fst dv - 1 , snd dv))
+        else ((fst cv - 1 , snd cv) , dv)
+
+  ts <- flookupDom (ie,cv)
+  ss <- flookupDom (ie',dv)
+  let tsf = concatMap (\t -> ptermFace c t df) ts
+  let ssg = concatMap (\t -> ptermFace c t cf) ss
+
+  let hs = tsf `intersect` ssg
+
+  guard (not (null hs))
+
+  let ts' = catMaybes $ map (\t -> restrPTerm c t df hs) ts
+  let ss' = catMaybes $ map (\t -> restrPTerm c t cf hs) ss
+
+  -- guard (not (null ts'))
+  -- guard (not (null ss'))
+
+  when (ts' /= ts) $ fupdate (ie,cv) ts'
+  when (ss' /= ss) $ fupdate (ie',dv) ss'
 
 
 oneOpenConstraint :: Rs r w => [FCVar] -> FSolving s () w r
 oneOpenConstraint = addNaryConstraint $ \vs -> do
-  ds <- mapM flookupDom vs
-  guard (length (filter null ds) < 2)
+  traceShowM $ "ONE SIDE NEEDS TO BE COMP " ++ show vs
+  ds <- mapM (\v -> flookupDom v >>= \d -> return (v,d)) vs
+  -- guard (length (filter null ds) < 2 || length (filter (==[openterm]) ds) == 1)
+  -- guard (length (filter (==[openterm]) ds) == 1)
+  when (length (filter (\d -> d==[openterm] || null d) (map snd ds)) == 0) $ do
+    openside <- lift ds
+    fupdate (fst openside) []
+    return ()
 
+fgetSol ::  Rs r w => FCVar -> FSolving s (Term r w) w r
+fgetSol var = do
+  ts <- flookupDom var
+  let allsol = concat $ map (\t -> do
+           case t of
+             PApp t ss -> map (App t) (unfold ss)
+             t -> [t]
+           ) ts
+  sol <- lift allsol
+  fupdate var [sol]
+  return sol
 
 --------------------------------------------------------------
 
@@ -665,14 +793,14 @@ pqFill = Fill (2,I1) (Ty 2 [
 orGoal , andGoal , pqpq :: Rs r w => Ty r w
 orGoal = Ty 2 [ (1,I0) +> Var "p"
               , (1,I1) +> deg twop (Var "y") 1
-              , (2,I0) +> Var "p"
+              -- , (2,I0) +> Var "p"
               , (2,I1) +> deg twop (Var "y") 1
                         ]
 
 andGoal = Ty 2 [ (1,I0) +> deg twop (Var "x") 1
                , (1,I1) +> Var "p"
                , (2,I0) +> deg twop (Var "x") 1
-               , (2,I1) +> Var "p"
+               -- , (2,I1) +> Var "p"
                           ]
 
 pqpq = Ty 2 [ (1,I0) +> Var "p"
@@ -727,7 +855,7 @@ assocback = Ty 2 [ (1,I0) +> tcomp threep (Var "p") (Var "q")
 
 assocright = Ty 2 [ (1,I0) +> Var "r"
                   , (1,I1) +> tcomp threep (Var "q") (Var "r")
-                  -- , (2,I0) +> tinv threep (Var "q")
+                  , (2,I0) +> tinv threep (Var "q")
                   , (2,I1) +> deg threep (Var "z") 1
              ]
 
