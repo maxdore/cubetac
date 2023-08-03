@@ -15,9 +15,10 @@ import Prel
 
 import System.Exit
 import System.IO.Unsafe
-import Debug.Trace
--- trace _ = id
--- traceM _ = return ()
+-- import Debug.Trace
+trace _ = id
+traceM _ = return ()
+traceShowM _ = return ()
 
 
 
@@ -89,11 +90,11 @@ instance Rs r w => Eq (Ty r w) where
 
 -- Print faces of a cube on different lines and indented
 instance (Show r , Show w) => Show (Ty r w) where
-  show (Ty d fs) = "Ty " ++ show d ++ " [\n  " ++
+  show (Ty d fs) = "(Ty " ++ show d ++ " [\n  " ++
     intercalate ", " (map
                       (\(f,t) -> show f ++ " +> " ++ concatMap (\l ->  "   " ++ l ++ "\n") (lines (show t)))
                       (sortOn fst fs))
-    ++ "]"
+    ++ "])"
 
 type Decl r w = (Id , Ty r w)
 type Ctxt r w = [Decl r w]
