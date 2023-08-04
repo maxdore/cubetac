@@ -252,10 +252,13 @@ constrOpenComp c ty@(Ty d _) opens depth = do
 
 -- CSP SOLVER
 
+-- The solving monad is a state monad wrapped inside the list search monad
 type Solving s a r w v = StateT (SEnv s r w v) [] a
+
 type Domain r w = [Term r w]
 data CVarInfo a r w v = CVarInfo { delayedConstraints :: Solving a () r w v , values :: Domain r w}
 
+-- Basic type class for constraint variables
 class Ord v => Cv v where
 
 -- For the comp CSP we are filling sides of the cube
@@ -283,13 +286,15 @@ mkCompEnv c ty ie ope = SEnv c ty Map.empty ie ope undefined
 mkFillEnv c ty fil = SEnv c ty Map.empty undefined undefined fil
 
 
+-- Management of the constraint solver
+
 lookupDef :: Id -> Solving s (Ty r w) r w v
 lookupDef name = do
   c <- gets ctxt
   return $ getDef c name
 
-newCVar :: Cv v => v -> Domain r w -> Solving s v r w v
-newCVar v dom = do
+newVar :: Cv v => v -> Domain r w -> Solving s v r w v
+newVar v dom = do
     v `isOneOf` dom
     return v
     where
@@ -361,12 +366,12 @@ compCSP = do
 
   sides <- mapM (\f@(i,_) ->
                       if i == gi || not (sideSpec ty f)
-                        then newCVar f pterms -- if the side of the goal is not specified, we fill it in any way we want
+                        then newVar f pterms -- if the side of the goal is not specified, we fill it in any way we want
                         else do
                           let gf = getFace ty f
-                          v <- newCVar f (catMaybes $ map (\t -> restrPTerm c t (gi-1,ge) [gf]) pterms)
+                          v <- newVar f (catMaybes $ map (\t -> restrPTerm c t (gi-1,ge) [gf]) pterms)
                           -- (filter (\pt -> gf `elem` ptermFace c pt (gi-1,ge)) pterms)
-                          -- singleConstraint f v [gf] -- TODO SHOULD BE HERE!
+                          -- singleConstraint f v [gf] -- TODO introduce this and join with initial domain setup
                           return v
             )
         solv
@@ -404,8 +409,8 @@ fillerCSP = do
                                                 catMaybes $ map (\pt -> let (je' , ke') = adji je ke in restrPTerm c pt ke' [termFace c gf je']) pts)
                                               pterms
                                               (filter (\(ke,_) -> fst ke /= (fst je)) specf)
-                                        -- TODO also have to repeat this as a constraint to prevent non-conservative rulesets from yielding wrong results!
-                              newCVar (ie,je) dom
+                                        -- TODO make this a constraint to prevent non-conservative rulesets from yielding wrong results!
+                              newVar (ie,je) dom
                             ) jes
                 )
             fil
