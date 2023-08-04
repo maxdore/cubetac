@@ -13,18 +13,16 @@ import Data.Ord
 
 import Prel
 
-import System.Exit
-import System.IO.Unsafe
+-- import System.Exit
+-- import System.IO.Unsafe
 -- import Debug.Trace
 trace _ = id
 traceM _ = return ()
 traceShowM _ = return ()
 
 
-
--- basic type synonyms
 type Id = String
-type Dim = Int
+type Dim = Int -- the dimension of a cube
 type IVar = Int -- De Bruijn indices for variable names
 
 -- Endpoint datatype for nice printing
@@ -47,27 +45,19 @@ predi (i,e) = (i-1,e)
 succi :: Restr -> Restr
 succi (i,e) = (i+1,e)
 
+-- When comparing the boundaries of two faces of a cube, we have to adjust
+-- de Brujin indices: if i < j, then j is offset by one and vice versa
 adji :: Restr -> Restr -> (Restr, Restr)
 adji ie je = if fst ie < fst je then (ie,predi je) else (predi ie, je)
 
 -- This type class specifies which functions rulesets need to export
 class (Eq r , Show r , Eq w , Show w) => Rs r w where
-  -- dim :: Ctxt r w -> r -> Dim
   infer :: Ctxt r w -> Term r w -> r -> Ty r w
-  -- allSTerms :: Ctxt r w -> Dim -> [Term r w]
   -- all rulesets which we consider allow for degeneracies:
   deg :: Ctxt r w -> Term r w -> IVar -> Term r w
-
   allPTerms :: Ctxt r w -> Dim -> [Term r w]
-
   unfold :: w -> [r]
   combine :: [r] -> w
-
--- class Rs r w => Wrapper r w where
---   allPTerms :: Ctxt r w -> Dim -> [Term w]
---   unfold :: w -> [r]
-
-
 
 data Term r w = Var Id
           | Fill Restr (Ty r w) -- Fill dir ty means fill type ty in direction dir
@@ -75,9 +65,6 @@ data Term r w = Var Id
           | App (Term r w) r -- Apply term constructors of ruleset
           | PApp (Term r w) w -- Apply collection of term constructors
   deriving (Eq , Show)
-
-
-
 
 
 -- Syntactic sugar to allow writing (1,I0) +> t
@@ -101,7 +88,6 @@ instance (Show r , Show w) => Show (Ty r w) where
 
 type Decl r w = (Id , Ty r w)
 type Ctxt r w = [Decl r w]
-
 
 
 
@@ -155,8 +141,8 @@ sideSpec (Ty _ fs) f = isJust (lookup f fs)
 
 validTy :: Rs r w => Ctxt r w -> Ty r w -> Bool
 validTy c (Ty _ fs) =
-  and [ termFace c t (j-1,e') == termFace c t' (i,e)
-           | ((i,e) , t) <- fs , ((j,e') , t') <- fs , i < j ]
+  and [ termFace c t (predi je) == termFace c t' ie
+           | (ie , t) <- fs , (je , t') <- fs , fst ie < fst je ]
   -- TODO check also no faces assigned multiple times & that d not exceeded
 
 validTerm :: Rs r w => Ctxt r w -> Term r w -> Bool
@@ -167,11 +153,12 @@ validTerm c (Fill f ty) = not (sideSpec ty f) && validTy c ty
 tyFaceBdy :: Rs r w => Ctxt r w -> Ty r w -> Restr -> Ty r w
 tyFaceBdy c (Ty d fs) ie =
   -- trace ("COMPUTE BOUNDARY OF " ++ show (Ty d fs) ++ " AT " ++ show ie) $
-  Ty (d-1) [ je' +> termFace c t ie'
-             | (je,t) <- fs , fst je /= fst ie , let (je',ie') = adji je ie, sideSpec (inferTy c t) ie' ]
+  Ty (d-1) [ je' +> termFace c t ie' | (je,t) <- fs , fst je /= fst ie ,
+                                       let (je',ie') = adji je ie,
+                                       sideSpec (inferTy c t) ie' ]
 
 
--- compute a face that we know to exist in a cube but cannot access directly
+-- compute a subeface that we know to exist in a cube but cannot access directly
 -- TODO SOUND? HAVE TO PERMUTE PROBABLY!!!
 get2Face :: Rs r w => Ctxt r w -> Ty r w -> (Restr,Restr) -> Term r w
 get2Face c ty (ie,je) =
@@ -179,6 +166,17 @@ get2Face c ty (ie,je) =
     then termFace c (getFace ty je) (predi ie)
     else termFace c (getFace ty (succi je)) ie
 
+-- Given the unspecified sides of a goal and the unspecified sides of a box with
+-- that boundary, compute all the possible fillers (which sides of the box are
+-- filled and the direction of the filler).
+-- Works as follows: if the goal boundary is unspecified, a filler can go in
+-- this direction, otherwise fillers come in pairs
+possibleFillers :: [Restr] -> [Restr] -> Dim -> [[(Restr,Restr)]]
+possibleFillers ogs ofs d =
+  let pairs = [ [(f,predi g),(g,f)] | (f:cs) <- tails ofs , g <- cs , fst f /= fst g] in
+  reverse $ sortBy (comparing length) $ filter
+    (\ss -> length ss == length (nubBy (\r s -> fst r == fst s) ss))
+    (map concat (incps (pairs ++ [ [(g,(d,I1))] | g <- ogs , g `elem` ofs ])))
 
 -- Type inference
 inferTy :: Rs r w => Ctxt r w -> Term r w -> Ty r w
@@ -186,7 +184,6 @@ inferTy c (Var p) = getDef c p
 inferTy _ (Fill ie (Ty d fs)) = Ty d ((ie +> Comp ie (Ty d fs)) : fs)
 inferTy c (Comp ie ty) = tyFaceBdy c ty ie
 inferTy c (App t r) = infer c t r
-
 
 -- Generate terms for domains
 restrictions :: Int -> [Restr]
@@ -201,8 +198,8 @@ unspec (Ty d fs) = restrictions d \\ map fst fs
 allIds :: Ctxt r w -> Dim -> [Term r w]
 allIds c d = [ Var p | (p , Ty d' _) <- c , d == d'  ]
 
+-- superseded by filler CSP:
 -- All basic fillers for a given dimension
--- (superseded by filler CSP)
 -- allFill :: Rs r w => Ctxt r w -> Dim -> [Term r w]
 -- allFill c d =
 --   let ts = allIds c (d-1) in -- ++ allSTerms c (d-1) in
@@ -233,41 +230,12 @@ allIds c d = [ Var p | (p , Ty d' _) <- c , d == d'  ]
 findComp :: Rs r w => Ctxt r w -> Ty r w -> Term r w
 findComp c ty = head (concatMap (findCompBounded c ty) [0..])
 
-ps :: [a] -> [[a]]
-ps = filterM (const [True, False])
-
-incps :: [a] -> [[a]]
-incps = sortBy (comparing length) . ps
-
--- Order of filling does not matter anymore with filler CSP
-
--- psord :: [a] -> [[a]]
--- psord = concat . map permutations . ps
-
--- incpsbound :: Int -> [a] -> [[a]]
--- incpsbound d = (filter (\s -> length s <= d)) . incps
-
--- incpsord :: [a] -> [[a]]
--- incpsord = sortBy (comparing length) . psord
-
--- incpsordbound :: Int -> [a] -> [[a]]
--- incpsordbound d = (filter (\s -> length s <= d)) . incpsord
-
-
-possibleFillers :: [Restr] -> [Restr] -> Dim -> [[(Restr,Restr)]]
-possibleFillers ogs ofs d =
-  let pairs = [ [(f,predi g),(g,f)] | (f:cs) <- tails ofs , g <- cs , fst f /= fst g] in
-  reverse $ sortBy (comparing length) $ filter
-    (\ss -> length ss == length (nubBy (\r s -> fst r == fst s) ss))
-    (map concat (incps (pairs ++ [ [(g,(d,I1))] | g <- ogs , g `elem` ofs ])))
-
-
 findCompBounded :: Rs r w => Ctxt r w -> Ty r w -> Int -> [Term r w]
 findCompBounded c ty 0 =
-  trace "DEPTH 0" $
+  -- trace "DEPTH 0" $
   constrOpenComp c ty [[]] 0
 findCompBounded c ty@(Ty d _) depth =
-  trace ("DEPTH " ++ show depth) $
+  -- trace ("DEPTH " ++ show depth) $
   let sides = restrictions d ++ [(d + 1, I0)] in
   constrOpenComp c ty (incps sides) depth
 
@@ -278,45 +246,32 @@ constrOpenComp c ty@(Ty d _) opens depth = do
   ope <- opens
   sol <- evalStateT simpleCSP (SEnv c ty cdir ope Map.empty)
 
-  -- TODO
   let cube = Ty (d + 1) (sol ++ [(d + 1 , I1) +> Fill cdir ty])
 
-  --  TODO compute which fillers could possibly exist alongside their fill directions
   trytofill <- possibleFillers (unspec ty) ope d
   -- traceShowM $ "FILL COMBINATIONS " ++ show trytofill
-  -- [map (\(i,e) -> ((i,e),(1,e))) ope]
-  -- trytofill <- if depth == 0 then [ope] else reverse (incps ope)
 
-  -- TODO remove trying to fill none
   fills <- evalStateT fillerCSP (FSEnv c cube trytofill Map.empty)
 
   let filledsol = sol ++ fills
   let stillope = ope \\ map fst trytofill
 
   -- traceM $ "FILLED IN SOL " ++ show filledsol
-  -- traceM  $ "STILL TO FILL " ++ show stillope
-  -- unsafePerformIO $ die "ASD"
 
   if (null stillope)
     then return $ Comp cdir (Ty (d + 1) filledsol)
     else do
-      -- guard (depth > 1)
-
       rcomps <- foldM
-        (\s o -> do
-            -- traceM $ "TRYING TO FILL " ++ show o
-            let gobdy = if sideSpec ty o then [(d + 1 , I1) +> Fill cdir ty] else []
-            let wty = Ty (d + 1) (s ++ gobdy)
-            let fty = tyFaceBdy c wty o
-            -- traceM $ "TRYING TO FILL " ++ show o ++ " : " ++ show fty
+        (\s ie -> do
+            let gobdy = if sideSpec ty ie then [(d + 1 , I1) +> Fill cdir ty] else []
+            let fty = tyFaceBdy c (Ty (d + 1) (s ++ gobdy)) ie
             fsol <- findCompBounded c fty (depth - 1)
-            return $ s ++ [o +> fsol]
+            return $ s ++ [ie +> fsol]
             )
         filledsol
         stillope
 
       return $ Comp cdir (Ty (d + 1) rcomps)
-
 
 
 -- CSP SOLVER
@@ -348,7 +303,6 @@ simpleCSP = do
   ope <- gets open
 
   -- traceM $ "SOLVE IN " ++ show (gi,ge) ++ " FOR " ++ show ty ++ " WITH OPEN SIDES " ++ show ope
-  -- traceM $ "OPE " ++ show ope
 
   let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allIds c d ++ allPTerms c d
   let solv = (restrictions d ++ [(gi,negI ge)]) \\ ope
@@ -385,7 +339,6 @@ singleConstraint f cv hs = addConstraint cv $ do
   c <- gets ctxt
   ts <- lookupDom cv
   let ts' = catMaybes $ map (\t -> restrPTerm c t f hs) ts
-  -- let ts' = filter (\t -> termFace c t f `elem` hs) ts
   when (ts' /= ts) $ update cv ts'
 
 boundaryConstraint :: Rs r w => Restr -> Restr -> Solving s () r w
@@ -404,9 +357,6 @@ boundaryConstraint = addBinaryConstraint $ \cv dv -> do
 
   let ts' = catMaybes $ map (\t -> restrPTerm c t df hs) ts
   let ss' = catMaybes $ map (\t -> restrPTerm c t cf hs) ss
-
-  guard (not (null ts'))
-  guard (not (null ss'))
 
   when (ts' /= ts) $ update cv ts'
   when (ss' /= ss) $ update dv ss'
@@ -529,12 +479,6 @@ fillerCSP = do
       -- traceM $ "AFTER INTERNAL BOUNDARIES\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
 
       -- mapM (\ie -> oneOpenConstraint [(ie,je) | je <- unspec (tyFaceBdy c cube ie) ]) fil
-
-      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-      -- traceM $ "AFTER ONLY ONE OPEN\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
-
-      -- s <- mapM (\f -> fgetSol f >>= \s -> return (f,s)) filfs
-      -- mapM traceShowM s
 
       -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
       -- traceM $ "AFTER ALL\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
@@ -669,24 +613,6 @@ fboundaryConstraint = faddBinaryConstraint $ \(ie,cv) (ie',dv) -> do
   when (ss' /= ss) $ fupdate (ie',dv) ss'
 
 
--- superseded by computing possible fill directions explicitly
--- type NaryConstraint s r w = [FCVar] -> FSolving s () r w
--- addNaryConstraint :: NaryConstraint s r w -> NaryConstraint s r w
--- addNaryConstraint f xs = do
---     let constraint  = f xs
---     constraint
---     mapM_ (\x -> faddConstraint x constraint) xs
-
--- oneOpenConstraint :: Rs r w => [FCVar] -> FSolving s () r w
--- oneOpenConstraint = addNaryConstraint $ \vs -> do
---   traceShowM $ "ONE SIDE NEEDS TO BE COMP " ++ show vs
---   ds <- mapM (\v -> flookupDom v >>= \d -> return (v,d)) vs
---   -- guard (length (filter null ds) < 2 || length (filter (==[openterm]) ds) == 1)
---   -- guard (length (filter (==[openterm]) ds) == 1)
---   when (length (filter (\d -> d==[openterm] || null d) (map snd ds)) == 0) $ do
---     openside <- lift ds
---     fupdate (fst openside) []
---     return ()
 
 fgetSol ::  Rs r w => FCVar -> FSolving s (Term r w) r w
 fgetSol var = do

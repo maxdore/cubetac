@@ -1,6 +1,7 @@
 module Prel where
 
 import Data.List
+import Data.Ord
 import Control.Monad
 
 
@@ -34,3 +35,23 @@ andM mx my = do
   if x
     then my
     else return x
+
+ps :: [a] -> [[a]]
+ps = filterM (const [True, False])
+
+incps :: [a] -> [[a]]
+incps = sortBy (comparing length) . ps
+
+-- Order of filling does not matter anymore with filler CSP
+-- psord :: [a] -> [[a]]
+-- psord = concat . map permutations . ps
+
+-- incpsbound :: Int -> [a] -> [[a]]
+-- incpsbound d = (filter (\s -> length s <= d)) . incps
+
+-- incpsord :: [a] -> [[a]]
+-- incpsord = sortBy (comparing length) . psord
+
+-- incpsordbound :: Int -> [a] -> [[a]]
+-- incpsordbound d = (filter (\s -> length s <= d)) . incpsord
+
