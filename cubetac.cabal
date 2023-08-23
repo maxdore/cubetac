@@ -25,10 +25,12 @@ source-repository head
 
 library
   exposed-modules:
+      Conn
       Cont
       Core
       Deg
       Exp
+      Poset
       Prel
   other-modules:
       Paths_cubetac

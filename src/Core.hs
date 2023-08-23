@@ -18,10 +18,10 @@ import Prel
 
 -- import System.Exit
 -- import System.IO.Unsafe
--- import Debug.Trace
-trace _ = id
-traceM _ = return ()
-traceShowM _ = return ()
+import Debug.Trace
+-- trace _ = id
+-- traceM _ = return ()
+-- traceShowM _ = return ()
 
 
 type Id = String
@@ -39,6 +39,11 @@ negI I1 = I0
 toBool :: Endpoint -> Bool
 toBool I0 = False
 toBool I1 = True
+
+fromBool :: Bool -> Endpoint
+fromBool False = I0
+fromBool True = I1
+
 
 type Restr = (IVar , Endpoint)
 
@@ -101,6 +106,9 @@ idDim c p = tyDim (getDef c p)
 
 termDim :: Rs r w => Ctxt r w -> Term r w -> Dim
 termDim c t = tyDim (inferTy c t)
+
+getName :: Term r w -> Id
+getName (Var p) = p
 
 getDef :: Ctxt r w -> Id -> Ty r w
 getDef c name =
@@ -557,6 +565,14 @@ tcomp c t t' = -- TODO CHECK IF COMPOSABLE
                    , (1,I1) +> t'
                    , (2,I0) +> t ])
 
+
+t3comp :: Rs r w => Ctxt r w -> Term r w -> Term r w -> Term r w -> Term r w
+t3comp c t t' t'' = -- TODO CHECK IF COMPOSABLE (note that here, t is inverted already)
+  Comp (2, I1) (Ty (termDim c t + 1) [
+                     (1,I0) +> t
+                   , (1,I1) +> t''
+                   , (2,I0) +> t' ])
+
 twop :: Rs r w => Ctxt r w
 twop = [
     ("x" , Ty 0 [])
@@ -715,11 +731,11 @@ eqsq = [
     ("x" , Ty 0 [])
   , ("p" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
   , ("q" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
-  -- , ("alpha" , Ty 2 [ (1,I0) +> Var "p"
-  --                   , (1,I1) +> Var "q"
-  --                   -- , (2,I0) +> deg (Var "x") 1
-  --                   -- , (2,I1) +> deg (Var "x") 1
-  --                   ])
+  , ("alpha" , Ty 2 [ (1,I0) +> Var "p"
+                    , (1,I1) +> Var "q"
+                    , (2,I0) +> deg eqsq (Var "x") 1
+                    , (2,I1) +> deg eqsq (Var "x") 1
+                    ])
     ]
 
 eqsqinv = Ty 2 [ (1,I0) +> Var "q"
