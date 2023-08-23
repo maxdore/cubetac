@@ -16,12 +16,12 @@ import Debug.Trace
 
 -- We save formulas as tuples of conjunctions of disjunctions, and we also have
 -- to keep track of which variables we could use
-type DMFormula = (IVar , [[[IVar]]])
+type ConnFormula = (IVar , [[[IVar]]])
 type PPM = PSubst --  Map Vert [Vert]
 
 
 
-form2subst :: DMFormula -> Subst
+form2subst :: ConnFormula -> Subst
 form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (createPoset m))
   where
   evalFormula :: Vert -> [[IVar]] -> Endpoint
@@ -30,7 +30,7 @@ form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs
     let result = map (\d -> filter (\i -> i `notElem` vs1) d) ds in
     fromBool $ [] `elem` result
 
-subst2form :: Subst -> DMFormula
+subst2form :: Subst -> ConnFormula
 subst2form s =
   (domdim s , reverse $ map (\fi -> constrFormula (map (\(x , Vert is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1])
     where
@@ -46,14 +46,14 @@ subst2form s =
 offset :: IVar -> [[[IVar]]] -> [[[IVar]]]
 offset i = map (map (map (\j -> if j < i then j else j-1)))
 
-eval :: DMFormula -> IVar -> Endpoint -> DMFormula
+eval :: ConnFormula -> IVar -> Endpoint -> ConnFormula
 eval (m , rs) i e =
   let rs' = if e == I0
       then map (filter (i `notElem`)) rs
       else map (map (delete i)) rs in
   (m-1, offset i rs')
 
-normalise :: Ctxt DMFormula PPM -> Term DMFormula PPM -> Term DMFormula PPM
+normalise :: Ctxt ConnFormula PPM -> Term ConnFormula PPM -> Term ConnFormula PPM
 normalise c (App (Var p) (m , rs))
   -- | not (null rs) && last rs == [[m]] && not (m `elem` concat (concat (init rs)))
   --   = normalise c (App t (m-1, init rs))
@@ -69,10 +69,9 @@ normalise c (App t (m , rs)) | otherwise =
           Just i -> normalise c (App (getFace ty (i+1,I1)) (m , take i rs ++ drop (i+1) rs))
           Nothing -> App t (m , map (\r -> filter (\d -> not (any (\d' -> d /= d' && intersect d d' == d) r)) r) rs) -- TODO DNF
 -- TODO also normalise multiple formula applications like in Cont?
--- TODO sometimes negative m it seems???
 
 
-instance Rs DMFormula PPM where
+instance Rs ConnFormula PPM where
   infer c t (m , r) =
     Ty m [ (i,e) +> normalise c (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
 
@@ -86,7 +85,7 @@ instance Rs DMFormula PPM where
 
 
 
-andOrp , idp , andp , idx :: Term DMFormula PPM
+andOrp , idp , andp , idx :: Term ConnFormula PPM
 -- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
 andOrp = App (Var "p") (3 , [[[1,2],[1,3]]])
 idp = App (Var "p") (0 , [[]])

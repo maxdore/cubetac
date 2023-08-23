@@ -29,6 +29,7 @@ library
       Cont
       Core
       Deg
+      DeMorgan
       Exp
       Poset
       Prel
