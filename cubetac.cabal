@@ -26,14 +26,15 @@ source-repository head
 library
   exposed-modules:
       Benchmark
-      Conn
-      Cont
       Core
-      Deg
-      DeMorgan
       Examples
       Poset
       Prel
+      Rulesets.Conn
+      Rulesets.Cont
+      Rulesets.Deg
+      Rulesets.DeMorgan
+      Rulesets.Disj
   other-modules:
       Paths_cubetac
   hs-source-dirs:

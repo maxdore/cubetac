@@ -1,4 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Examples where
 
 import qualified Data.Map as Map
@@ -7,9 +9,10 @@ import Data.Map ((!), Map)
 
 import Poset
 import Core
-import Deg
-import Conn
-import Cont
+import Rulesets.Deg
+import Rulesets.Conn
+import Rulesets.Cont
+import Rulesets.Disj
 
 
 -- Common term constructions
@@ -216,6 +219,28 @@ eqsqfill = Fill (1,I1) (Ty 2 [
               ])
 
 
+sq :: Rs r w => Ctxt r w
+sq = [
+    ("x" , Ty 0 [])
+  , ("p" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
+  , ("q" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
+  , ("r" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
+  , ("s" , Ty 1 [(1,I0) +> Var "x" , (1,I1) +> Var "x"])
+  , ("alpha" , Ty 2 [ (1,I0) +> Var "p"
+                    , (1,I1) +> Var "s"
+                    , (2,I0) +> Var "r"
+                    , (2,I1) +> Var "q"
+                    ])
+    ]
+
+symmsq = Ty 2 [ (1,I0) +> Var "r"
+              , (1,I1) +> Var "q"
+              , (2,I0) +> Var "p"
+              , (2,I1) +> Var "s"
+                    ]
+
+
+
 higherpq :: Rs r w => Ctxt r w
 higherpq = [
     ("a" , (Ty 0 []))
@@ -306,7 +331,7 @@ test :: Term Cont PCont
 test = deg twop pqComp 1
 
 
-andOrpswitch' , switchandOrp' , andOrpdup' , idp , andp , idx :: Term ConnFormula PPM
+andOrpswitch' , switchandOrp' , andOrpdup' , idp , andp , idx :: Term Conn PPM
 -- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
 switchandOrp' = App (App (Var "p") (2 , [[[1,2]],[[1],[2]]])) (2 , [[[2]],[[1]]])
 andOrpswitch' = App (App (Var "p") (2 , [[[2]],[[1]]])) (2 , [[[1,2]],[[1],[2]]])

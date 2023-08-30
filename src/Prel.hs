@@ -39,6 +39,9 @@ andM mx my = do
 ps :: [a] -> [[a]]
 ps = filterM (const [True, False])
 
+neps :: [a] -> [[a]]
+neps xs = filter (not . null) (ps xs)
+
 incps :: [a] -> [[a]]
 incps = sortBy (comparing length) . ps
 

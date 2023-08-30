@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module DeMorgan where
+module Rulesets.DeMorgan where
 
 import qualified Data.Map as Map
 import Data.List
@@ -56,24 +56,25 @@ allForm m n = map (\rs -> (m , rs) ) (replicateM n rss)
     rss = filter inDnf (ps (subsets [1..m]))
 
 
-normalise :: Ctxt DMFormula DMFormula -> Term DMFormula DMFormula -> Term DMFormula DMFormula
-normalise c (App (Var p) (m , rs))
-  | idDim c p == m && rs == [ [[Pos i]] | i <- [1..length rs] ] =
-    -- trace ("FOUND ID" ++ show (App (Var p) (m , rs))) $
-    Var p
-normalise c (App t (m , rs)) | otherwise =
-    -- trace ("NORM" ++ show (App t (m , rs))) $
-      let ty = inferTy c t in
-      case findIndex null rs of
-        Just i -> normalise c (App (getFace ty (i+1,I0)) (m , take i rs ++ drop (i+1) rs))
-        Nothing -> case findIndex ([] `elem`) rs of
-          Just i -> normalise c (App (getFace ty (i+1,I1)) (m , take i rs ++ drop (i+1) rs))
-          Nothing -> App t (m , map redDnf rs)
 
 
 instance Rs DMFormula DMFormula where
   infer c t (m , r) =
     Ty m [ (i,e) +> normalise c (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
+
+  normalise c (App (Var p) (m , rs))
+    | idDim c p == m && rs == [ [[Pos i]] | i <- [1..length rs] ] =
+      -- trace ("FOUND ID" ++ show (App (Var p) (m , rs))) $
+      Var p
+  normalise c (App t (m , rs)) | otherwise =
+      -- trace ("NORM" ++ show (App t (m , rs))) $
+        let ty = inferTy c t in
+        case findIndex null rs of
+          Just i -> normalise c (App (getFace ty (i+1,I0)) (m , take i rs ++ drop (i+1) rs))
+          Nothing -> case findIndex ([] `elem`) rs of
+            Just i -> normalise c (App (getFace ty (i+1,I1)) (m , take i rs ++ drop (i+1) rs))
+            Nothing -> App t (m , map redDnf rs)
+
 
   allPTerms c d = [ PApp (Var p) rs | (p , Ty d' _) <- c , rs <- allForm d d' ]
 
@@ -85,9 +86,9 @@ instance Rs DMFormula DMFormula where
 
 
 
-andOrp , idp , andp , idx :: Term DMFormula DMFormula
--- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
-andOrp = App (Var "p") (3 , [[[Pos 1, Neg 2],[Pos 1, Neg 3]]])
-idp = App (Var "p") (0 , [[]])
-andp = App (Var "p") (1 , [[[Pos 1]]])
-idx = App (Var "x") (0 , [])
+-- andOrp , idp , andp , idx :: Term DMFormula DMFormula
+-- -- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
+-- andOrp = App (Var "p") (3 , [[[Pos 1, Neg 2],[Pos 1, Neg 3]]])
+-- idp = App (Var "p") (0 , [[]])
+-- andp = App (Var "p") (1 , [[[Pos 1]]])
+-- idx = App (Var "x") (0 , [])

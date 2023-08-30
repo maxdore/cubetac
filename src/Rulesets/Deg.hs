@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Deg where
+module Rulesets.Deg where
 
 import Data.List
 import Core

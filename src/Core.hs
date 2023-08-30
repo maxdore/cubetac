@@ -371,7 +371,7 @@ compCSP = do
   let solv = (restrictions d ++ [(gi,negI ge)]) \\ ope
 
   -- The set of terms that can be used
-  let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allIds c d ++ allPTerms c d
+  let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allPTerms c d
 
   sides <- mapM (\f@(i,_) ->
                       if i == gi || not (sideSpec ty f)

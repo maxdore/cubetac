@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Conn where
+module Rulesets.Conn where
 
 import qualified Data.Map as Map
 import Data.Map ((!), Map)
@@ -16,10 +16,10 @@ import Debug.Trace
 
 -- We save formulas as tuples of conjunctions of disjunctions, and we also have
 -- to keep track of which variables we could use
-type ConnFormula = (IVar , [[[IVar]]])
+type Conn = (IVar , [[[IVar]]])
 type PPM = PSubst
 
-form2subst :: ConnFormula -> Subst
+form2subst :: Conn -> Subst
 form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (createPoset m))
   where
   evalFormula :: Vert -> [[IVar]] -> Endpoint
@@ -28,7 +28,7 @@ form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs
     let result = map (\d -> filter (\i -> i `notElem` vs1) d) ds in
     fromBool $ [] `elem` result
 
-subst2form :: Subst -> ConnFormula
+subst2form :: Subst -> Conn
 subst2form s =
   (domdim s , reverse $ map (\fi -> constrFormula (map (\(x , Vert is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1])
     where
@@ -44,7 +44,7 @@ subst2form s =
 offset :: IVar -> [[[IVar]]] -> [[[IVar]]]
 offset i = map (map (map (\j -> if j < i then j else j-1)))
 
-eval :: ConnFormula -> IVar -> Endpoint -> ConnFormula
+eval :: Conn -> IVar -> Endpoint -> Conn
 eval (m , rs) i e =
   let rs' = if e == I0
       then map (filter (i `notElem`)) rs
@@ -59,9 +59,8 @@ subst cs i ds =
 
 
 
-instance Rs ConnFormula PPM where
+instance Rs Conn PPM where
   infer c t (m , r) =
-    -- Ty m [ (i,e) +> (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
     Ty m [ (i,e) +> normalise c (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
 
   normalise c (App (App t (m , ss)) (n , rs)) =
