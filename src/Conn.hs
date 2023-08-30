@@ -17,9 +17,7 @@ import Debug.Trace
 -- We save formulas as tuples of conjunctions of disjunctions, and we also have
 -- to keep track of which variables we could use
 type ConnFormula = (IVar , [[[IVar]]])
-type PPM = PSubst --  Map Vert [Vert]
-
-
+type PPM = PSubst
 
 form2subst :: ConnFormula -> Subst
 form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (createPoset m))
@@ -53,27 +51,42 @@ eval (m , rs) i e =
       else map (map (delete i)) rs in
   (m-1, offset i rs')
 
-normalise :: Ctxt ConnFormula PPM -> Term ConnFormula PPM -> Term ConnFormula PPM
-normalise c (App (Var p) (m , rs))
-  -- | not (null rs) && last rs == [[m]] && not (m `elem` concat (concat (init rs)))
-  --   = normalise c (App t (m-1, init rs))
-  | idDim c p == m && rs == [ [[i]] | i <- [1..length rs] ] =
-    -- trace ("FOUND ID" ++ show (App (Var p) (m , rs))) $
-    Var p
-normalise c (App t (m , rs)) | otherwise =
-    -- trace ("NORM" ++ show (App t (m , rs))) $
-      let ty = inferTy c t in
-      case findIndex null rs of
-        Just i -> normalise c (App (getFace ty (i+1,I0)) (m , take i rs ++ drop (i+1) rs))
-        Nothing -> case findIndex ([] `elem`) rs of
-          Just i -> normalise c (App (getFace ty (i+1,I1)) (m , take i rs ++ drop (i+1) rs))
-          Nothing -> App t (m , map (\r -> filter (\d -> not (any (\d' -> d /= d' && intersect d d' == d) r)) r) rs) -- TODO DNF
--- TODO also normalise multiple formula applications like in Cont?
+subst :: [[IVar]] -> IVar -> [[IVar]] -> [[IVar]]
+subst cs i ds =
+  let res = [ delete i c ++ d | c <- cs , i `elem` c , d <- ds ] ++ [ c | c <- cs , i `notElem` c ] in
+    -- traceShow (cs , i , ds , res) $
+    res
+
 
 
 instance Rs ConnFormula PPM where
   infer c t (m , r) =
+    -- Ty m [ (i,e) +> (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
     Ty m [ (i,e) +> normalise c (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
+
+  normalise c (App (App t (m , ss)) (n , rs)) =
+    let rs' = map (map (map (\i -> i + m))) rs in
+      -- traceShow rs' $
+    let ss' = map (\s -> foldr (\i s' -> subst s' i (rs'!!(i-1))) s [1..n]) ss in
+      -- traceShow ss' $
+    normalise c (App t (n , map (map (map (\i -> i - m))) ss'))
+  normalise c (App (Var p) (m , rs))
+    -- | not (null rs) && last rs == [[m]] && not (m `elem` concat (concat (init rs)))
+    --   = normalise c (App t (m-1, init rs))
+    | idDim c p == m && rs == [ [[i]] | i <- [1..length rs] ] =
+      -- trace ("FOUND ID" ++ show (App (Var p) (m , rs))) $
+      -- trace ("FOUND ID") $
+      Var p
+  normalise c (App t (m , rs)) | otherwise =
+      -- trace ("NORM" ++ show (App t (m , rs))) $
+        let ty = inferTy c t in
+        case findIndex null rs of
+          Just i -> normalise c (App (getFace ty (i+1,I0)) (m , take i rs ++ drop (i+1) rs))
+          Nothing -> case findIndex ([] `elem`) rs of
+            Just i -> normalise c (App (getFace ty (i+1,I1)) (m , take i rs ++ drop (i+1) rs))
+            Nothing -> App t (m , map (\r -> filter (\d -> not (any (\d' -> d /= d' && intersect d d' == d) r)) r) rs) -- TODO DNF
+  -- TODO also normalise multiple formula applications like in Cont?
+
 
   allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (createPoset d)) | (p , Ty d' _) <- c ]
 
@@ -84,10 +97,3 @@ instance Rs ConnFormula PPM where
   combine = combineSubsts . (map form2subst)
 
 
-
-andOrp , idp , andp , idx :: Term ConnFormula PPM
--- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
-andOrp = App (Var "p") (3 , [[[1,2],[1,3]]])
-idp = App (Var "p") (0 , [[]])
-andp = App (Var "p") (1 , [[[1]]])
-idx = App (Var "x") (0 , [])

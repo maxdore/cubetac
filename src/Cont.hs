@@ -4,7 +4,6 @@
 module Cont where
 
 import qualified Data.Map as Map
-import Data.Map ((!), Map)
 import Data.List
 import Data.Maybe
 
@@ -89,21 +88,6 @@ type Cont = Subst
 -- data Cont = Cont (Term Cont) Subst
 --   deriving (Eq, Show)
 
-normalise :: Ctxt Cont PCont -> Term Cont PCont -> Maybe (Term Cont PCont)
-normalise c (App ((App t tau)) sigma) = normalise c (App t (Map.compose tau sigma))
-normalise c (App t s) =
-  if isId s
-    then normalise c t
-    else
-      case isSubposet (Map.elems s) of
-        Nothing -> Just (App t s)
-        Just (i,e) ->
-          let ty = inferTy c t in
-          if sideSpec ty (i,e)
-            then normalise c (App (getFace ty (i,e)) (Map.map (`removeInd` i) s))
-            else Nothing
-
-normalise c t = Just t
 
 type PCont = PSubst
 
@@ -113,7 +97,21 @@ instance Rs Cont PCont where
     let ty@(Ty n phi) = inferTy c t in
     let m = domdim s in
     let tup = [1..domdim s] :: [IVar] in
-    Ty m [ (i,e) +> f | i <- [1..m] , e <- [I0,I1] , f <- maybeToList (normalise c (App t (restrSubst s (i,e)))) ]
+    Ty m [ (i,e) +> normalise c (App t (restrSubst s (i,e))) | i <- [1..m] , e <- [I0,I1]  ]
+
+  normalise c (App ((App t tau)) sigma) = normalise c (App t (Map.compose tau sigma))
+  normalise c (App t s) =
+    if isId s
+      then normalise c t
+      else
+        case isSubposet (Map.elems s) of
+          Nothing -> App t s
+          Just (i,e) ->
+            -- TODO do we need to earlier capture in infer if the side is specified????
+            let ty = inferTy c t in
+            normalise c (App (getFace ty (i,e)) (Map.map (`removeInd` i) s))
+  normalise c t = t
+
 
   allPTerms c d = [ PApp (Var p) (createPSubst d d') | (p , Ty d' _) <- c ]
 
@@ -133,18 +131,3 @@ instance Rs Cont PCont where
 --   unfold = getSubsts
 
 
-xdeg :: Term Cont PCont
-xdeg = App (Var "x") (Map.fromList [(Vert [I0], Vert []) , (Vert [I1], Vert [])])
-
-
-andOrSubst = Map.fromList [
-              (Vert [I0, I0] , Vert [I0, I0])
-            , (Vert [I0, I1] , Vert [I0, I1])
-            , (Vert [I1, I0] , Vert [I0, I1])
-            , (Vert [I1, I1] , Vert [I1, I1])
-              ]
-andOrp:: Term Cont PCont
-andOrp = App (Var "p") andOrSubst
-
-test :: Term Cont PCont
-test = deg twop pqComp 1

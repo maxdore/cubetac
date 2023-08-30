@@ -25,12 +25,13 @@ source-repository head
 
 library
   exposed-modules:
+      Benchmark
       Conn
       Cont
       Core
       Deg
       DeMorgan
-      Exp
+      Examples
       Poset
       Prel
   other-modules:
