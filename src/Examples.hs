@@ -7,8 +7,36 @@ import Data.Map ((!), Map)
 
 import Poset
 import Core
+import Deg
 import Conn
 import Cont
+
+
+-- Common term constructions
+
+tinv :: Rs r w => Ctxt r w -> Term r w -> Term r w
+tinv c t =
+  Comp (2, I1) (Ty (termDim c t + 1) [
+                     (1,I0) +> t
+                   , (1,I1) +> deg c (termFace c t (1,I0)) 1
+                   , (2,I0) +> deg c (termFace c t (1,I0)) 1 ])
+
+tcomp :: Rs r w => Ctxt r w -> Term r w -> Term r w -> Term r w
+tcomp c t t' = -- TODO CHECK IF COMPOSABLE
+  Comp (2, I1) (Ty (termDim c t + 1) [
+                     (1,I0) +> deg c (termFace c t (1,I0)) 1
+                   , (1,I1) +> t'
+                   , (2,I0) +> t ])
+
+
+t3comp :: Rs r w => Ctxt r w -> Term r w -> Term r w -> Term r w -> Term r w
+t3comp c t t' t'' = -- TODO CHECK IF COMPOSABLE (note that here, t is inverted already)
+  Comp (2, I1) (Ty (termDim c t + 1) [
+                     (1,I0) +> t
+                   , (1,I1) +> t''
+                   , (2,I0) +> t' ])
+
+
 
 twop :: Rs r w => Ctxt r w
 twop = [

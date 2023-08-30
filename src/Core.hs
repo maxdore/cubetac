@@ -16,13 +16,7 @@ import Data.Ord
 
 import Prel
 
--- import System.Exit
--- import System.IO.Unsafe
 import Debug.Trace
--- trace _ = id
--- traceM _ = return ()
--- traceShowM _ = return ()
-
 
 type Id = String
 type Dim = Int -- the dimension of a cube
@@ -282,6 +276,7 @@ data SEnv s r w v =
   SEnv { ctxt :: Ctxt r w
        , goal :: Ty r w
        , varMap :: Map v (CVarInfo s r w v)
+       , verbose :: Bool
 
        -- state variables used for the comp CSP
        , dir :: Restr -- in which direction do we want a comp
@@ -291,8 +286,8 @@ data SEnv s r w v =
        , fil :: [FVar] --  the sides of the cubes to be filled and their fill direction
        }
 
-mkCompEnv c ty ie ope = SEnv c ty Map.empty ie ope undefined
-mkFillEnv c ty fil = SEnv c ty Map.empty undefined undefined fil
+mkCompEnv c ty ie ope = SEnv c ty Map.empty False ie ope undefined
+mkFillEnv c ty fil = SEnv c ty Map.empty False undefined undefined fil
 
 
 -- Management of the constraint solver
@@ -346,11 +341,11 @@ addBinaryConstraint f x y = do
     addConstraint x constraint
     addConstraint y constraint
 
-getSol :: Cv v =>  Rs r w => v -> Solving s (Term r w) r w v
+getSol :: Cv v => Rs r w => v -> Solving s (Term r w) r w v
 getSol var = do
   ts <- lookupDom var
-  let allsol = concat $ map (\t -> do
-           case t of
+  let allsol = concatMap (\s -> do
+           case s of
              PApp t ss -> map (App t) (unfold ss)
              t -> [t]
            ) ts
@@ -358,6 +353,10 @@ getSol var = do
   update var [sol]
   return sol
 
+debug :: Cv v => Rs r w => [String] -> Solving s () r w v
+debug outs = do
+  v <- gets verbose
+  when v (mapM_ traceM outs)
 
 compCSP :: Rs r w => Solving s [Face r w] r w CVar
 compCSP = do
@@ -366,30 +365,31 @@ compCSP = do
   (gi,ge) <- gets dir
   ope <- gets open
 
-  -- traceM $ "SOLVE IN " ++ show (gi,ge) ++ " FOR " ++ show ty ++ " WITH OPEN SIDES " ++ show ope
+  debug ["SOLVE IN " ++ show (gi,ge) ++ " FOR " ++ show ty ++ " WITH OPEN SIDES " ++ show ope]
 
-  let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allIds c d ++ allPTerms c d
+  -- The sides of the cube that need to be filled
   let solv = (restrictions d ++ [(gi,negI ge)]) \\ ope
+
+  -- The set of terms that can be used
+  let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allIds c d ++ allPTerms c d
 
   sides <- mapM (\f@(i,_) ->
                       if i == gi || not (sideSpec ty f)
-                        then newVar f pterms -- if the side of the goal is not specified, we fill it in any way we want
+                        -- if the side of the goal is not specified, we have a domain containing all pterms
+                        then newVar f pterms
+                        -- otherwise we restrict the initial domains to match the goal boundary
                         else do
                           let gf = getFace ty f
                           v <- newVar f (catMaybes $ map (\t -> restrPTerm c t (gi-1,ge) [gf]) pterms)
-                          -- (filter (\pt -> gf `elem` ptermFace c pt (gi-1,ge)) pterms)
                           -- singleConstraint f v [gf] -- TODO introduce this and join with initial domain setup
                           return v
-            )
-        solv
+            ) solv
 
-  -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
-  -- traceM $ "AFTER INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  debug ["AFTER INIT"] >> mapM (\s -> lookupDom s >>= \r -> return (show (s , r))) sides >>= debug
 
   mapM_ (uncurry boundaryConstraint) [ (f,g) | (f:ys) <- tails solv, g <- ys , fst f /= fst g ]
 
-  -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) sides
-  -- traceM $ "AFTER SIDE\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+  debug ["AFTER SIDES"] >> mapM (\s -> lookupDom s >>= \r -> return (show (s , r))) sides >>= debug
 
   mapM (\f -> getSol f >>= \s -> return (f,s)) sides
 
@@ -404,7 +404,7 @@ fillerCSP = do
   if (null fil)
     then return []
     else do
-      -- traceM $ "INSERTING FILLERS " ++ show fil ++ " INTO " ++ show cube
+      debug ["INSERTING FILLERS " ++ show fil ++ " INTO " ++ show cube]
 
       let pterms = allIds c (tyDim cube - 2) ++ allPTerms c (tyDim cube - 2)
 
@@ -422,20 +422,16 @@ fillerCSP = do
                 )
             fil
 
-      -- domains <- mapM (\s -> lookupDom s >>= \r -> return (s , r)) filfs
-      -- traceM $ "INIT\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      debug ["AFTER INIT"] >> mapM (\s -> lookupDom s >>= \r -> return (show (s , r))) filfs >>= debug
 
       mapM_ (uncurry termsEqual) [ (c,d) | (c:cs) <- tails filfs , d <- cs , fst (fst c) /= fst (fst d) , fst c == snd d , snd c == ((\(j,e) -> (j-1 , e)) (fst d))  ]
-
       mapM_ (uncurry compsEqual) [ (c,d) | (c:cs) <- tails fil , d <- cs , fst (fst c) /= fst (fst d) , fst c == snd d , snd c == ((\(j,e) -> (j-1 , e)) (fst d))  ]
 
-      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-      -- traceM $ "AFTER MATCH\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      debug ["AFTER MATCH"] >> mapM (\s -> lookupDom s >>= \r -> return (show (s , r))) filfs >>= debug
 
       mapM_ (uncurry fboundaryConstraint) [ (c,d) | (c:cs) <- tails filfs , d <- cs , fst c == fst d , fst (snd c) /= fst (snd d) ]
 
-      -- domains <- mapM (\s -> flookupDom s >>= \r -> return (s , r)) filfs
-      -- traceM $ "AFTER INTERNAL BOUNDARIES\n" ++ concatMap ((++ "\n") . show) domains ++ "END"
+      debug ["AFTER INTERNAL BOUNDARIES"] >> mapM (\s -> lookupDom s >>= \r -> return (show (s , r))) filfs >>= debug
 
       psol <- mapM (\(ie,fdir) -> do
                       sides <- mapM (\je -> getSol (ie,je) >>= \t -> return (je , t)) (unspec (tyFaceBdy c cube ie) \\ [fdir])
@@ -546,29 +542,4 @@ fboundaryConstraint = addBinaryConstraint $ \(ie,cv) (ie',dv) -> do
 
 
 
-
-
--- Examples
-
-tinv :: Rs r w => Ctxt r w -> Term r w -> Term r w
-tinv c t =
-  Comp (2, I1) (Ty (termDim c t + 1) [
-                     (1,I0) +> t
-                   , (1,I1) +> deg c (termFace c t (1,I0)) 1
-                   , (2,I0) +> deg c (termFace c t (1,I0)) 1 ])
-
-tcomp :: Rs r w => Ctxt r w -> Term r w -> Term r w -> Term r w
-tcomp c t t' = -- TODO CHECK IF COMPOSABLE
-  Comp (2, I1) (Ty (termDim c t + 1) [
-                     (1,I0) +> deg c (termFace c t (1,I0)) 1
-                   , (1,I1) +> t'
-                   , (2,I0) +> t ])
-
-
-t3comp :: Rs r w => Ctxt r w -> Term r w -> Term r w -> Term r w -> Term r w
-t3comp c t t' t'' = -- TODO CHECK IF COMPOSABLE (note that here, t is inverted already)
-  Comp (2, I1) (Ty (termDim c t + 1) [
-                     (1,I0) +> t
-                   , (1,I1) +> t''
-                   , (2,I0) +> t' ])
 
