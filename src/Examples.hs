@@ -9,8 +9,8 @@ import Data.Map ((!), Map)
 
 import Poset
 import Core
-import Rulesets.Deg
-import Rulesets.Conn
+import Rulesets.Cart
+import Rulesets.Dede
 import Rulesets.Cont
 import Rulesets.Disj
 
@@ -331,7 +331,7 @@ test :: Term Cont PCont
 test = deg twop pqComp 1
 
 
-andOrpswitch' , switchandOrp' , andOrpdup' , idp , andp , idx :: Term Conn PPM
+andOrpswitch' , switchandOrp' , andOrpdup' , idp , andp , idx :: Term Dede PPM
 -- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
 switchandOrp' = App (App (Var "p") (2 , [[[1,2]],[[1],[2]]])) (2 , [[[2]],[[1]]])
 andOrpswitch' = App (App (Var "p") (2 , [[[2]],[[1]]])) (2 , [[[1,2]],[[1],[2]]])

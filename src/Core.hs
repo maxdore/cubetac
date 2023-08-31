@@ -62,6 +62,25 @@ class (Eq r , Show r , Eq w , Show w) => Rs r w where
   unfold :: w -> [r]
   combine :: [r] -> w
 
+
+-- If we have rulesets without a wrapper type w, we can automatically infer the
+-- unfold and combine methods
+class (Eq r , Show r) => Bs r where
+  binfer :: Ctxt r r -> Term r r -> r -> Ty r r
+  bnormalise :: Ctxt r r -> Term r r -> Term r r
+  bdeg :: Ctxt r r -> Term r r -> IVar -> Term r r
+  ballPTerms :: Ctxt r s -> Dim -> [Term r r]
+
+instance (Bs r) => (Rs r r) where
+  infer = binfer
+  normalise = bnormalise
+  deg = bdeg
+  allPTerms = ballPTerms
+  unfold = singleton
+  combine = head
+
+
+
 data Term r w = Var Id
           | Fill Restr (Ty r w) -- Fill dir ty means fill type ty in direction dir
           | Comp Restr (Ty r w)

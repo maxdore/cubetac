@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Rulesets.Conn where
+module Rulesets.Dede where
 
 import qualified Data.Map as Map
 import Data.Map ((!), Map)
@@ -16,10 +16,10 @@ import Debug.Trace
 
 -- We save formulas as tuples of conjunctions of disjunctions, and we also have
 -- to keep track of which variables we could use
-type Conn = (IVar , [[[IVar]]])
+type Dede = (IVar , [[[IVar]]])
 type PPM = PSubst
 
-form2subst :: Conn -> Subst
+form2subst :: Dede -> Subst
 form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (createPoset m))
   where
   evalFormula :: Vert -> [[IVar]] -> Endpoint
@@ -28,7 +28,7 @@ form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs
     let result = map (\d -> filter (\i -> i `notElem` vs1) d) ds in
     fromBool $ [] `elem` result
 
-subst2form :: Subst -> Conn
+subst2form :: Subst -> Dede
 subst2form s =
   (domdim s , reverse $ map (\fi -> constrFormula (map (\(x , Vert is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1])
     where
@@ -44,7 +44,7 @@ subst2form s =
 offset :: IVar -> [[[IVar]]] -> [[[IVar]]]
 offset i = map (map (map (\j -> if j < i then j else j-1)))
 
-eval :: Conn -> IVar -> Endpoint -> Conn
+eval :: Dede -> IVar -> Endpoint -> Dede
 eval (m , rs) i e =
   let rs' = if e == I0
       then map (filter (i `notElem`)) rs
@@ -59,7 +59,7 @@ subst cs i ds =
 
 
 
-instance Rs Conn PPM where
+instance Rs Dede PPM where
   infer c t (m , r) =
     Ty m [ (i,e) +> normalise c (App t (eval (m , r) i e)) | i <- [1..m] , e <- [I0,I1] ]
 
@@ -84,8 +84,6 @@ instance Rs Conn PPM where
           Nothing -> case findIndex ([] `elem`) rs of
             Just i -> normalise c (App (getFace ty (i+1,I1)) (m , take i rs ++ drop (i+1) rs))
             Nothing -> App t (m , map (\r -> filter (\d -> not (any (\d' -> d /= d' && intersect d d' == d) r)) r) rs) -- TODO DNF
-  -- TODO also normalise multiple formula applications like in Cont?
-
 
   allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (createPoset d)) | (p , Ty d' _) <- c ]
 

@@ -30,9 +30,9 @@ library
       Examples
       Poset
       Prel
-      Rulesets.Conn
+      Rulesets.Cart
       Rulesets.Cont
-      Rulesets.Deg
+      Rulesets.Dede
       Rulesets.DeMorgan
       Rulesets.Disj
   other-modules:
