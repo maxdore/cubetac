@@ -33,27 +33,10 @@ createPoset n | n <= 0 = [Vert []]
 createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (I0 : v)) g ++ map (\v -> Vert (I1 : v)) g
 
--- Given m and n, generate all n-dimensional faces of the m-element poset
-getFaces :: Int -> Int -> [[Vert]]
-getFaces m 0 = map (: []) (createPoset m)
-getFaces m n | m == n = [ createPoset m ]
-getFaces m n =
-  map (map (I0 `insv`)) (getFaces (m-1) n)
-  ++ map (map (I1 `insv`)) (getFaces (m-1) n)
-  ++ map (\l -> map (I0 `insv`) l ++ map (I1 `insv`) l) (getFaces (m-1) (n-1))
-
--- Given two elements of a poset, compute the number of indices in which they differ
--- E.g., vdiff v u == 1 means that v and u are adjacent
-vdiff :: Vert -> Vert -> Int
-vdiff (Vert []) (Vert []) = 0
-vdiff (Vert (e:es)) (Vert (e':es')) = (if e == e' then 0 else 1) + vdiff (Vert es) (Vert es')
-vdiff _ _ = error "Comparing difference between elements of different posets"
-
 -- Checking order between two elements of a poset
-below , above , dirabove :: Vert -> Vert -> Bool
+below , above :: Vert -> Vert -> Bool
 x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBools y))
 x `above` y = y `below` x
-x `dirabove` y = x `above` y && vdiff x y == 1
 
 
 

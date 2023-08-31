@@ -12,6 +12,9 @@ import Core
 
 import Debug.Trace
 
+-- THIS FILE IS STILL WIP
+
+
 -- We save formulas as tuples of conjunctions of disjunctions, and we also have
 -- to keep track of which variables we could use
 data Atom = Pos IVar | Neg IVar

@@ -52,34 +52,30 @@ succi (i,e) = (i+1,e)
 adji :: Restr -> Restr -> (Restr, Restr)
 adji ie je = if fst ie < fst je then (ie,predi je) else (predi ie, je)
 
--- This type class specifies which functions rulesets need to export
-class (Eq r , Show r , Eq w , Show w) => Rs r w where
-  infer :: Ctxt r w -> Term r w -> r -> Ty r w
-  normalise :: Ctxt r w -> Term r w -> Term r w
-  -- all rulesets which we consider allow for degeneracies:
-  deg :: Ctxt r w -> Term r w -> IVar -> Term r w
+
+
+-- The base type class that rulesets need to implement
+class (Eq r , Show r) => Bs r where
+  tdim :: r -> Dim
+  face :: r -> Restr -> r
+  deg :: Dim -> IVar -> r
+  compose :: r -> r -> r
+  isId :: r -> Bool
+  isFace :: r -> Maybe Restr
+  rmI :: r -> IVar -> r
+  allTerms :: Ctxt r r -> Dim -> [Term r r] -- optional just for rulesets without wrapper type
+
+-- Type class for rulesets with a wrapper type
+class (Bs r , Eq w , Show w) => Rs r w where
   allPTerms :: Ctxt r w -> Dim -> [Term r w]
   unfold :: w -> [r]
   combine :: [r] -> w
 
-
--- If we have rulesets without a wrapper type w, we can automatically infer the
--- unfold and combine methods
-class (Eq r , Show r) => Bs r where
-  binfer :: Ctxt r r -> Term r r -> r -> Ty r r
-  bnormalise :: Ctxt r r -> Term r r -> Term r r
-  bdeg :: Ctxt r r -> Term r r -> IVar -> Term r r
-  ballPTerms :: Ctxt r s -> Dim -> [Term r r]
-
+-- any ruleset can be trivially equipped with a wrapper type
 instance (Bs r) => (Rs r r) where
-  infer = binfer
-  normalise = bnormalise
-  deg = bdeg
-  allPTerms = ballPTerms
+  allPTerms c m = map (\(App t rs) -> PApp t rs) (allTerms c m)
   unfold = singleton
   combine = head
-
-
 
 data Term r w = Var Id
           | Fill Restr (Ty r w) -- Fill dir ty means fill type ty in direction dir
@@ -158,6 +154,13 @@ restrPTerm c (PApp t ss) ie hs =
       else Just (PApp t (combine ss'))
 restrPTerm c t ie hs = if termFace c t ie `elem` hs then Just t else Nothing
 
+normalise :: Rs r w => Ctxt r w -> Term r w -> Term r w
+normalise c (App (App t ss) rs) = normalise c (App t (compose ss rs))
+normalise c (App t rs) | isId rs = t
+                       | otherwise =
+                         case isFace rs of
+                          Just (i,e) -> normalise c (App (getFace (inferTy c t) (i,e)) (rmI rs i))
+                          Nothing -> App t rs
 
 sideSpec :: Ty r w -> Restr -> Bool
 sideSpec (Ty _ fs) f = isJust (lookup f fs)
@@ -206,7 +209,7 @@ inferTy :: Rs r w => Ctxt r w -> Term r w -> Ty r w
 inferTy c (Var p) = getDef c p
 inferTy _ (Fill ie (Ty d fs)) = Ty d ((ie +> Comp ie (Ty d fs)) : fs)
 inferTy c (Comp ie ty) = tyFaceBdy c ty ie
-inferTy c (App t r) = infer c t r
+inferTy c (App t r) = Ty (tdim r) [ (i,e) +> normalise c (App t (face r (i,e))) | i <- [1..tdim r] , e <- [I0,I1] ]
 
 -- Generate terms for domains
 restrictions :: Int -> [Restr]
@@ -220,6 +223,10 @@ unspec (Ty d fs) = restrictions d \\ map fst fs
 
 allIds :: Ctxt r w -> Dim -> [Term r w]
 allIds c d = [ Var p | (p , Ty d' _) <- c , d == d'  ]
+
+
+
+
 
 
 -- MAIN SOLVER LOGIC
@@ -391,6 +398,8 @@ compCSP = do
 
   -- The set of terms that can be used
   let pterms = [ Fill cd t | (_ , Comp cd t) <- fs ] ++ allPTerms c d
+
+  debug [show pterms]
 
   sides <- mapM (\f@(i,_) ->
                       if i == gi || not (sideSpec ty f)

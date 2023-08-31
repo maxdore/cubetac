@@ -31,66 +31,50 @@ allFormulas n m = map (map Clause) (replicateM n (neps [1..m]))
 newtype Disj = Disj (IVar , [Formula])
   deriving (Eq, Show)
 
-evalDisj :: Disj -> IVar -> Endpoint -> Disj
-evalDisj (Disj (m , rs)) i e =
-  let rs' = if e == I0
-      then (map (\(Clause is) -> let is' = delete i is in if is' == [] then Endpoint I0 else Clause is' )) rs
-      else (map (\(Clause is) -> if i `elem` is then Endpoint I1 else Clause is )) rs
-  in Disj (m-1, offset i rs')
-
 instance Bs Disj where
-  binfer c t (Disj (m , r)) =
-    Ty m [ (i,e) +> bnormalise c (App t (evalDisj (Disj (m , r)) i e)) | i <- [1..m] , e <- [I0,I1] ]
-
-  bnormalise c (App (App t (Disj (m , ss))) (Disj (n , rs))) =
+  tdim (Disj (m , r)) = m
+  face (Disj (m , rs)) (i,e) =
+    let rs' = if e == I0
+                    then (map (\(Clause is) -> let is' = delete i is in if is' == [] then Endpoint I0 else Clause is' )) rs
+                    else (map (\(Clause is) -> if i `elem` is then Endpoint I1 else Clause is )) rs
+    in Disj (m-1, offset i rs')
+  deg d i = Disj (d+1 , [ Clause [j] | j <- [1..d+1] , j /= i])
+  compose (Disj (m , ss)) (Disj (n , rs)) =
     let rs' = map (mapAtoms (\i -> i + m)) rs in
     let ss' = map (\d -> foldr (\i d' -> subst d' i (rs'!!(i-1))) d [1..n]) ss in
-    bnormalise c (App t (Disj (n , map (mapAtoms (\i -> i - m)) ss')))
-  bnormalise c (App (Var p) (Disj (m , rs))) | idDim c p == m && rs == [ Clause [i] | i <- [1..length rs] ] =
-      Var p
-  bnormalise c (App t (Disj (m , rs))) =
-      case elemIndex (Endpoint I0) rs of
-        Just i -> bnormalise c (App (getFace (inferTy c t) (i+1,I0)) (Disj (m , take i rs ++ drop (i+1) rs)))
-        Nothing -> case elemIndex (Endpoint I1) rs of
-          Just i -> bnormalise c (App (getFace (inferTy c t) (i+1,I1)) (Disj (m , take i rs ++ drop (i+1) rs)))
-          Nothing -> App t (Disj (m , rs))
+    ((Disj (n , map (mapAtoms (\i -> i - m)) ss')))
 
-  ballPTerms c d = [ App (Var p) (Disj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
-
-  bdeg c t i = let Ty d _ = inferTy c t in
-    App t (Disj (d+1 , [ Clause [j] | j <- [1..d+1] , j /= i]))
+  isId (Disj (m , rs)) = rs == [Clause [i] | i <- [1..m]]
+  isFace (Disj (m , rs)) = case elemIndex (Endpoint I0) rs of
+    Just i -> Just (i+1,I0)
+    Nothing -> case elemIndex (Endpoint I1) rs of
+      Just i -> Just (i+1,I1)
+      Nothing -> Nothing
+  rmI (Disj (m , rs)) i = Disj (m , take (i-1) rs ++ drop i rs)
+  allTerms c d = [ App (Var p) (Disj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
 
 
 newtype Conj = Conj (IVar , [Formula])
   deriving (Eq, Show)
 
-evalConj :: Conj -> IVar -> Endpoint -> Conj
-evalConj (Conj (m , rs)) i e =
-  let rs' = if e == I0
-      then (map (\(Clause is) -> if i `elem` is then Endpoint I0 else Clause is )) rs
-      else (map (\(Clause is) -> let is' = delete i is in if is' == [] then Endpoint I1 else Clause is' )) rs
-  in Conj (m-1, offset i rs')
-
 instance Bs Conj where
-  binfer c t (Conj (m , r)) =
-    Ty m [ (i,e) +> bnormalise c (App t (evalConj (Conj (m , r)) i e)) | i <- [1..m] , e <- [I0,I1] ]
-
-  bnormalise c (App (App t (Conj (m , ss))) (Conj (n , rs))) =
+  tdim (Conj (m , r)) = m
+  face (Conj (m , rs)) (i,e) =
+    let rs' = if e == I0
+                  then (map (\(Clause is) -> if i `elem` is then Endpoint I0 else Clause is )) rs
+                  else (map (\(Clause is) -> let is' = delete i is in if is' == [] then Endpoint I1 else Clause is' )) rs
+    in Conj (m-1, offset i rs')
+  deg d i = Conj (d+1 , [ Clause [j] | j <- [1..d+1] , j /= i])
+  compose (Conj (m , ss)) (Conj (n , rs)) =
     let rs' = map (mapAtoms (\i -> i + m)) rs in
     let ss' = map (\d -> foldr (\i d' -> subst d' i (rs'!!(i-1))) d [1..n]) ss in
-    bnormalise c (App t (Conj (n , map (mapAtoms (\i -> i - m)) ss')))
-  bnormalise c (App (Var p) (Conj (m , rs))) | idDim c p == m && rs == [ Clause [i] | i <- [1..length rs] ] =
-      Var p
-  bnormalise c (App t (Conj (m , rs))) =
-      case elemIndex (Endpoint I0) rs of
-        Just i -> bnormalise c (App (getFace (inferTy c t) (i+1,I0)) (Conj (m , take i rs ++ drop (i+1) rs)))
-        Nothing -> case elemIndex (Endpoint I1) rs of
-          Just i -> bnormalise c (App (getFace (inferTy c t) (i+1,I1)) (Conj (m , take i rs ++ drop (i+1) rs)))
-          Nothing -> App t (Conj (m , rs))
-
-  ballPTerms c d = [ App (Var p) (Conj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
-
-  bdeg c t i = let Ty d _ = inferTy c t in
-    App t (Conj (d+1 , [ Clause [j] | j <- [1..d+1] , j /= i]))
-
+    ((Conj (n , map (mapAtoms (\i -> i - m)) ss')))
+  isId (Conj (m , rs)) = rs == [Clause [i] | i <- [1..m]]
+  isFace (Conj (m , rs)) = case elemIndex (Endpoint I0) rs of
+    Just i -> Just (i+1,I0)
+    Nothing -> case elemIndex (Endpoint I1) rs of
+      Just i -> Just (i+1,I1)
+      Nothing -> Nothing
+  rmI (Conj (m , rs)) i = Conj (m , take (i-1) rs ++ drop i rs)
+  allTerms c d = [ App (Var p) (Conj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
 

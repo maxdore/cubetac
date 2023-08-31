@@ -2,7 +2,6 @@
 
 module Benchmark where
 
--- import Data.Time
 import System.CPUTime
 import System.Timeout
 
@@ -12,7 +11,6 @@ import Rulesets.Cart
 import Rulesets.Dede
 import Rulesets.Cont
 import Rulesets.Disj
-
 
 
 tests :: Rs r w => [(String,Ctxt r w, Ty r w)]
