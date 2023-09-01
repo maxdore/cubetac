@@ -45,6 +45,7 @@ offset i = map (map (map (\j -> if j < i then j else j-1)))
 
 subst :: [[IVar]] -> IVar -> [[IVar]] -> [[IVar]]
 subst cs i ds =
+    -- traceShow ("SUBST" , cs , i , ds) $
   let res = [ delete i c ++ d | c <- cs , i `elem` c , d <- ds ] ++ [ c | c <- cs , i `notElem` c ] in
     -- traceShow (cs , i , ds , res) $
     res
@@ -57,10 +58,12 @@ instance Bs Dede where
                   else map (map (delete i)) rs
     in (m-1, offset i rs')
   deg d i =  (d+1 , [ [[j]] | j <- [1..d+1] , j /= i])
-  compose ( (m , ss)) ( (n , rs)) =
+  compose (m , ss) (n , rs) =
+    -- trace "????" $
     let rs' = map (map (map (\i -> i + m))) rs in
     let ss' = map (\d -> foldr (\i d' -> subst d' i (rs'!!(i-1))) d [1..n]) ss in
-    (((n , map (map (map (\i -> i - m))) ss')))
+    -- traceShow (ss , rs , ss') $
+    (n , map (map (map (\i -> i - m))) ss')
   isId (m , rs) = rs == [ [[i]] | i <- [1..m]]
   isFace (m , rs) = case findIndex null rs of
     Just i -> Just (i+1,I0)

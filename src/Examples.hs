@@ -13,6 +13,7 @@ import Rulesets.Cart
 import Rulesets.Cont
 import Rulesets.Disj
 import Rulesets.Dede
+import Rulesets.DeMo
 
 
 -- Common term constructions
@@ -262,24 +263,23 @@ eckmannHilton =
     --   (1,I0) +> tcomp higherpq (Var "p") (Var "q")
     -- , (1,I1) +> tcomp higherpq (Var "q") (Var "p")
       (1,I0) +> Comp (2,I1) (Ty 3 [
-                     (1,I0) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
+                     (1,I0) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
                    , (1,I1) +> Var "p"
                    , (2,I0) +> Var "q"
-                   , (3,I0) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
-                   , (3,I1) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
+                   , (3,I0) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
+                   , (3,I1) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
                    ])
      , (1,I1) +> Comp (2,I1) (Ty 3 [
-                     (1,I0) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
+                     (1,I0) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
                    , (1,I1) +> Var "q"
                    , (2,I0) +> Var "p"
-                   , (3,I0) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
-                   , (3,I1) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
+                   , (3,I0) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
+                   , (3,I1) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
                    ])
-    , (2,I0) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
-    , (2,I1) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
-    , (3,I0) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
-    , (3,I1) +> App (App (Var "a") (deg 0 1)) (deg 0 1)
-    -- , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) , (Term "a" (constSubst 2) , Term "a" (constSubst 2))
+    , (2,I0) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
+    , (2,I1) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
+    , (3,I0) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
+    , (3,I1) +> App (App (Var "a") (deg 0 1)) (deg 1 2)
     ]
 
 ehSquare :: Rs r w => Ty r w

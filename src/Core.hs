@@ -138,7 +138,6 @@ getFace ty@(Ty _ fs) f =
     Nothing -> error $ "Could not find face " ++ show f ++ " of " ++ show ty
 
 termFace :: Rs r w => Ctxt r w -> Term r w -> Restr -> Term r w
--- termFace c t = trace (show t) $ getFace (inferTy c t)
 termFace c t = getFace (inferTy c t)
 
 ptermFace :: Rs r w => Ctxt r w -> Term r w -> Restr -> [Term r w]
@@ -148,14 +147,18 @@ ptermFace c t ie = [termFace c t ie]
 
 restrPTerm :: Rs r w => Ctxt r w -> Term r w -> Restr -> [Term r w] -> Maybe (Term r w)
 restrPTerm c (PApp t ss) ie hs =
+  -- trace ("RESTR " ++ show ((PApp t ss) , ie , hs)) $
   let ss' = filter (\s -> termFace c (App t s) ie `elem` hs) (unfold ss) in
+    -- trace ("RESTRRES " ++ show ss') $
     if null ss'
       then Nothing
       else Just (PApp t (combine ss'))
 restrPTerm c t ie hs = if termFace c t ie `elem` hs then Just t else Nothing
 
 normalise :: Rs r w => Ctxt r w -> Term r w -> Term r w
-normalise c (App (App t ss) rs) = normalise c (App t (compose ss rs))
+normalise c (App (App t ss) rs) =
+  -- trace ("NORM" ++ show (App (App t ss) rs)) $
+  normalise c (App t (compose ss rs))
 normalise c (App t rs) | isId rs = t
                        | otherwise =
                          case isFace rs of
@@ -403,9 +406,12 @@ compCSP = do
 
   sides <- mapM (\f@(i,_) ->
                       if i == gi || not (sideSpec ty f)
-                        -- if the side of the goal is not specified, we have a domain containing all pterms
+                        -- if we have the back of the cube or the side of the
+                        -- goal is not specified, we have a domain containing
+                        -- all pterms
                         then newVar f pterms
-                        -- otherwise we restrict the initial domains to match the goal boundary
+                        -- otherwise we restrict the initial domains to match
+                        -- the goal boundary
                         else do
                           let gf = getFace ty f
                           v <- newVar f (catMaybes $ map (\t -> restrPTerm c t (gi-1,ge) [gf]) pterms)

@@ -11,7 +11,7 @@ import Rulesets.Cart
 import Rulesets.Dede
 import Rulesets.Cont
 import Rulesets.Disj
-
+import Rulesets.DeMo
 
 tests :: Rs r w => [(String,Ctxt r w, Ty r w)]
 tests = [
@@ -23,7 +23,11 @@ tests = [
   , ("assocback", threep , assocback)
   , ("assocright", threep , assocright)
   , ("associativity", threep , assoc)
+  , ("associativity2", threep , assoc2)
+  , ("assocOr", threep , assocOr)
+  , ("assocAnd", threep , assocAnd)
   , ("EH square", higherpq , ehSquare)
+  , ("EH direct", higherpq , eckmannHilton)
         ]
 
 carttests = tests :: [(String,Ctxt Cart Cart, Ty Cart Cart)]
@@ -31,6 +35,7 @@ dedetests = tests :: [(String,Ctxt Dede PPM, Ty Dede PPM)]
 conttests = tests :: [(String,Ctxt Cont PCont, Ty Cont PCont)]
 conjtests = tests :: [(String,Ctxt Conj Conj, Ty Conj Conj)]
 disjtests = tests :: [(String,Ctxt Disj Disj, Ty Disj Disj)]
+demotests = tests :: [(String,Ctxt DeMo DeMo, Ty DeMo DeMo)]
 
 time :: Rs r w => Ctxt r w -> Ty r w -> IO ()
 time c ty = do
@@ -53,8 +58,8 @@ padc x n = let m = (n - length x) in replicate (m `div` 2 + m `mod` 2) ' ' ++ x 
 
 main :: IO ()
 main = do
-  putStrLn $ "                   | " ++ concatMap (\s -> padc s 9 ++ " | ") ["Cart","Dede","Cont","Conj","Disj"]
-  putStrLn (replicate (20+5*12) '-')
+  putStrLn $ "                   | " ++ concatMap (\s -> padc s 9 ++ " | ") ["Cartesian","Dedekind","Contort","Conj","Disj", "DeMorgan"]
+  putStrLn (replicate (20+6*12) '-')
   mapM_ (\i -> do
             let (name , cartc , cartty) = carttests!!i
             putStr (padr name 18 ++ " | ")
@@ -71,6 +76,9 @@ main = do
             putStr " | "
             let (_ , disjc , disjty) = disjtests!!i
             time disjc disjty
+            putStr " | "
+            let (_ , democ , demoty) = demotests!!i
+            time democ demoty
             putStr " | "
             putStrLn ""
           ) [0..length carttests - 1]

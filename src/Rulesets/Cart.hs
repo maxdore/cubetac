@@ -48,7 +48,7 @@ instance Bs Cart where
   compose (Cart (m , ss)) (Cart (n , rs)) =
     let rs' = map (mapAtom (\i -> i + m)) rs in
     let ss' = map (\d -> foldr (\i d' -> subst d' i (rs'!!(i-1))) d [1..n]) ss in
-    ((Cart (n , map (mapAtom (\i -> i - m)) ss')))
+    (Cart (n , map (mapAtom (\i -> i - m)) ss'))
 
   isId (Cart (m , rs)) = rs == [Atom i | i <- [1..m]]
 

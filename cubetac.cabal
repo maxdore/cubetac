@@ -33,7 +33,7 @@ library
       Rulesets.Cart
       Rulesets.Cont
       Rulesets.Dede
-      Rulesets.DeMorgan
+      Rulesets.DeMo
       Rulesets.Disj
   other-modules:
       Paths_cubetac
