@@ -197,24 +197,40 @@ assoc' = Ty 2 [
 sphere :: Rs r w => Ctxt r w
 sphere = [
         ("b" , Ty 0 [])
-      , ("s" , (Ty 2 [(1,I0) +> ndeg (Var "b") 1 ,
-                      (1,I1) +> ndeg (Var "b") 1 ,
-                      (2,I0) +> ndeg (Var "b") 1 ,
-                      (2,I1) +> ndeg (Var "b") 1 ]))
+      , ("s" , (Ty 2 [(1,I0) +> ndeg sphere (Var "b") 1 ,
+                      (1,I1) +> ndeg sphere (Var "b") 1 ,
+                      (2,I0) +> ndeg sphere (Var "b") 1 ,
+                      (2,I1) +> ndeg sphere (Var "b") 1 ]))
                  ]
-
--- andOrSubst = Map.fromList [
---               (Vert [e0, e0] , Vert [e0, e0])
---             , (Vert [e0, e1] , Vert [e0, e1])
---             , (Vert [e1, e0] , Vert [e0, e1])
---             , (Vert [e1, e1] , Vert [e1, e1])
---               ]
+  
 andOrSubst = Map.fromList [
               (Vert [I0, I0] , Vert [I0, I0])
             , (Vert [I0, I1] , Vert [I0, I1])
             , (Vert [I1, I0] , Vert [I0, I1])
             , (Vert [I1, I1] , Vert [I1, I1])
               ]
+
+-- andOrCont :: Rs Cont w => Ty Cont w
+andOrCont :: Ty Cont PCont
+andOrCont = Ty 3 [
+    (1,I0) +> App (Var "s") andOrSubst
+  , (1,I1) +> ndeg sphere (Var "b") 2
+  , (2,I0) +> ndeg sphere (Var "b") 2
+  , (2,I1) +> ndeg sphere (Var "b") 2
+  , (3,I0) +> ndeg sphere (Var "b") 2
+  , (3,I1) +> ndeg sphere (Var "b") 2
+      ]
+
+andOrDede :: Rs Dede w => Ty Dede w
+andOrDede = Ty 3 [
+    (1,I0) +> App (Var "s") (2 , [[[1],[2]],[[1,2]]])
+  , (1,I1) +> ndeg sphere (Var "b") 2
+  , (2,I0) +> ndeg sphere (Var "b") 2
+  , (2,I1) +> ndeg sphere (Var "b") 2
+  , (3,I0) +> ndeg sphere (Var "b") 2
+  , (3,I1) +> ndeg sphere (Var "b") 2
+      ]
+
 
 
   -- andOrSubst3 = Map.fromList [
@@ -229,25 +245,6 @@ andOrSubst = Map.fromList [
   --             ]
 
 
-andOrCont :: Rs Cont w => Ty Cont w
-andOrCont = Ty 3 [
-    (1,I0) +> App (Var "s") andOrSubst
-  , (1,I1) +> ndeg (Var "b") 2
-  , (2,I0) +> ndeg (Var "b") 2
-  , (2,I1) +> ndeg (Var "b") 2
-  , (3,I0) +> ndeg (Var "b") 2
-  , (3,I1) +> ndeg (Var "b") 2
-      ]
-
-andOrDede :: Rs Dede w => Ty Dede w
-andOrDede = Ty 3 [
-    (1,I0) +> App (Var "s") (2 , [[[1],[2]],[[1,2]]])
-  , (1,I1) +> ndeg (Var "b") 2
-  , (2,I0) +> ndeg (Var "b") 2
-  , (2,I1) +> ndeg (Var "b") 2
-  , (3,I0) +> ndeg (Var "b") 2
-  , (3,I1) +> ndeg (Var "b") 2
-      ]
 
 
 -- sphere5Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]

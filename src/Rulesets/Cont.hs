@@ -4,10 +4,16 @@
 module Rulesets.Cont where
 
 import qualified Data.Map as Map
+import Data.Map ((!), Map)
+import Data.List
+import Control.Monad
+import Control.Monad.State
 
 import Prel
 import Core
 import Poset
+
+import Debug.Trace
 
 isSubposet :: [Vert] -> Maybe Restr
 isSubposet vs
@@ -27,8 +33,8 @@ type PCont = PSubst
 instance Bs Cont where
   tdim sigma = domdim sigma
   face = restrSubst
-  deg d i = Map.fromList (map (\x -> (insInd i I0 x,x) ) (createPoset d)
-                       ++ map (\x -> (insInd i I1 x,x) ) (createPoset d))
+  deg d i = Map.fromList (map (\x -> (insInd (i , I0) x,x) ) (createPoset d)
+                       ++ map (\x -> (insInd (i , I1) x,x) ) (createPoset d))
   compose = Map.compose
   isId = all (\(x,y) -> x == y) . Map.toList
   isFace = isSubposet . Map.elems
@@ -39,3 +45,22 @@ instance Rs Cont PCont where
   allPTerms c d = [ PApp (Var p) (createPSubst d d') | (p , Ty d' _) <- c ]
   unfold = getSubsts
   combine = combineSubsts
+
+  constrCont c gty (p , pty) = do
+    sigma <- foldM
+                  (\sigma (ie , gf) -> do
+                    -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
+                    theta <- case gf of
+                        App (Var q) tau | q == p -> Just $ injPSubst tau
+                        _ -> do
+                          let theta = filter (\s -> normalise c (App (Var p) s) == gf)
+                                      (unfold (restrPSubst sigma ie))
+                          if null theta
+                            then Nothing
+                            else Just (combine theta)
+                    return $ foldl (\s x -> updatePSubst s (insInd ie x) (theta ! x)) sigma (createPoset (tyDim gty - 1))
+                      )
+                  (createPSubst (tyDim gty) (tyDim pty))
+                  (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
+                    [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
+    return (App (Var p) (fstSubst sigma))

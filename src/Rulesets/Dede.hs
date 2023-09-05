@@ -7,6 +7,7 @@ import qualified Data.Map as Map
 import Data.Map ((!), Map)
 import Data.List
 import Data.Maybe
+import Control.Monad.State
 
 import Prel
 import Poset
@@ -75,5 +76,3 @@ instance Rs Dede PSubst where
   allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (createPoset d)) | (p , Ty d' _) <- c ]
   unfold = (map subst2form) . getSubsts
   combine = combineSubsts . (map form2subst)
-
-

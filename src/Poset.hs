@@ -53,9 +53,9 @@ removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
 removeInd _ _ = error "This index is not part of the element"
 
 -- Insert e such that x_i = e afterwards
-insInd :: Int -> Endpoint -> Vert -> Vert
-insInd 0 _ _ = error "Indices start from 1"
-insInd i e (Vert es) | i > length es + 1 = error "Index too large for element"
+insInd :: Restr -> Vert -> Vert
+insInd (0 , _) _ = error "Indices start from 1"
+insInd (i , e) (Vert es) | i > length es + 1 = error "Index too large for element"
                      | otherwise = let (f,s) = splitAt (i-1) es in Vert (f ++ [e] ++ s)
 
 -- Given a list of vertices, return the first index at which all vertices
@@ -129,3 +129,17 @@ fstSubst = Map.fromList . fstPSubst' . Map.toList
 
 injPSubst :: Subst -> PSubst
 injPSubst = Map.map (: [])
+
+-- updateGadgets :: PSubst -> [Subst] -> [Restr] -> PSubst
+-- updateGadgets sigma ss ies =
+--   let xs = createPoset (domdim sigma) in
+--   let vus = map (\x -> nub (map (! x) ss)) xs in -- TODO TAKE INTO ACCOUNT RESTRICTIONS!
+--   foldl (\s (x , vu) -> updatePSubst s x vu) sigma (zip xs vus)
+
+updatePSubst :: PSubst -> Vert -> [Vert] -> PSubst
+updatePSubst sigma x vs = Map.mapWithKey (\y us -> filter (\u ->
+                                                        (y `above` x) --> any (u `above`) vs &&
+                                                        (y `below` x) --> any (u `below`) vs
+                                                      ) us) (Map.insert x vs sigma)
+
+

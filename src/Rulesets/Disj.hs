@@ -29,10 +29,6 @@ subst :: Formula -> IVar -> Formula -> Formula
 subst (Clause s) i (Clause t) | i `elem` s = Clause $ sort $ delete i s ++ t
                               | otherwise = Clause s
 
-allFormulas :: Dim -> Dim -> [[Formula]]
-allFormulas n m = map (map Clause) (replicateM n (neps [1..m]))
-
-
 form2subst :: (IVar , [Formula]) -> Subst
 form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (create1ConnPoset m))
   where
@@ -45,6 +41,11 @@ subst2form :: Subst -> (IVar , [Formula])
 subst2form sigma = (domdim sigma , map (\i ->
                             Clause [ j | j <- [1..domdim sigma] , toBools (fromJust (Map.lookup (baseVert (domdim sigma) j) sigma))!!(i-1) == I1 ]
                                                            ) [1..coddim sigma])
+
+allFormulas :: Dim -> Dim -> [[Formula]]
+-- allFormulas n m = map (map Clause) (replicateM n (ps [1..m]))
+allFormulas n m = map (snd . subst2form) (getSubsts (Map.fromList $ map (\v -> (v , createPoset n)) (create1ConnPoset m)))
+
 
 
 newtype Disj = Disj { rmdisj :: (IVar , [Formula])}

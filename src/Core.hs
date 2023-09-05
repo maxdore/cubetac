@@ -70,12 +70,14 @@ class (Bs r , Eq w , Show w) => Rs r w where
   allPTerms :: Ctxt r w -> Dim -> [Term r w]
   unfold :: w -> [r]
   combine :: [r] -> w
+  constrCont :: Ctxt r w -> Ty r w -> Decl r w -> Maybe (Term r w)
 
 -- any ruleset can be trivially equipped with a wrapper type
 instance (Bs r) => (Rs r r) where
   allPTerms c m = map (\(App t rs) -> PApp t rs) (allTerms c m)
   unfold = singleton
   combine = head
+  constrCont = undefined -- todo just try out allTerms
 
 data Term r w = Var Id
           | Fill Restr (Ty r w) -- Fill dir ty means fill type ty in direction dir
@@ -117,10 +119,15 @@ idDim c p = tyDim (getDef c p)
 termDim :: Rs r w => Ctxt r w -> Term r w -> Dim
 termDim c t = tyDim (inferTy c t)
 
+baseDim :: Rs r w => Ctxt r w -> Term r w -> Dim
+baseDim c (Var p) = idDim c p
+baseDim c (App t rs) = tdim rs
 
-ndeg :: Rs r w => Term r w -> Int -> Term r w
-ndeg t 1 = App t (deg 0 1)
-ndeg t n = App (ndeg t (n-1)) (deg (n-1) n)
+ndeg :: Rs r w => Ctxt r w -> Term r w -> Int -> Term r w
+ndeg c t n = normalise c (ndeg' n)
+  where
+  ndeg' 1 = App t (deg 0 1)
+  ndeg' n = App (ndeg' (n-1)) (deg (n-1) n)
 
 
 getName :: Term r w -> Id
@@ -153,13 +160,33 @@ ptermFace c t ie = [termFace c t ie]
 
 restrPTerm :: Rs r w => Ctxt r w -> Term r w -> Restr -> [Term r w] -> Maybe (Term r w)
 restrPTerm c (PApp t ss) ie hs =
-  -- trace ("RESTR " ++ show ((PApp t ss) , ie , hs)) $
+  trace ("RESTR " ++ show ((PApp t ss) , ie , hs)) $
   let ss' = filter (\s -> termFace c (App t s) ie `elem` hs) (unfold ss) in
     -- trace ("RESTRRES " ++ show ss') $
     if null ss'
       then Nothing
       else Just (PApp t (combine ss'))
 restrPTerm c t ie hs = if termFace c t ie `elem` hs then Just t else Nothing
+
+
+-- -- Given a pterm, filter it so that it some face of it is contained in a
+-- -- collection of terms
+-- filterPSubst :: Rs r w => Ctxt r w -> Term r w -> Restr  -> [Restr] -> [Term] -> Maybe PContortion
+-- filterPSubst ctxt (PContortion p sigma) ies qs =
+--   let ss = [ s | (s , q) <- possibleFaces ctxt (PContortion p sigma) ies , q `elem` qs ] in
+--   let sigma' = updateGadgets sigma ss ies in
+--   if isEmptyPSubst sigma'
+--     then Nothing
+--     else Just (PContortion p sigma')
+
+-- possibleFaces :: Cube -> PContortion -> [Restr] -> [(Subst , Term)]
+-- -- possibleFaces ctxt (PContortion p sigma) ies | trace ("myfun " ++ show (PContortion p sigma) ++ " " ++ show ies) False = undefined
+-- possibleFaces ctxt (PContortion p sigma) ies = let ss = getSubsts sigma in
+--   -- trace ("UNFOLDING " ++ show (length ss)) $
+--   map (\s -> (s , termRestr ctxt (Term p s) ies)) ss
+
+
+
 
 normalise :: Rs r w => Ctxt r w -> Term r w -> Term r w
 normalise c (App (App t ss) rs) =
@@ -239,6 +266,8 @@ allIds c d = [ Var p | (p , Ty d' _) <- c , d == d'  ]
 
 
 -- MAIN SOLVER LOGIC
+findCont :: Rs r w => Ctxt r w -> Ty r w -> Maybe (Term r w)
+findCont c gty = msum (map (constrCont c gty) c)
 
 -- Call the composition solver by iteratively deepening box level
 findComp :: Rs r w => Ctxt r w -> Ty r w -> Term r w
