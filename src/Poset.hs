@@ -24,14 +24,21 @@ instance Show Vert where
 
 type Poset = [Vert]
 
-insv :: Endpoint -> Vert -> Vert
-e `insv` x = Vert (e: toBools x)
-
--- Construct an n-element poset
+-- Construct I^n poset
 createPoset :: Int -> Poset
 createPoset n | n <= 0 = [Vert []]
 createPoset n = let g = map toBools (createPoset (n - 1))
   in map (\v -> Vert (I0 : v)) g ++ map (\v -> Vert (I1 : v)) g
+
+
+baseVert :: Int -> Int -> Vert
+baseVert n i = Vert (replicate (i-1) I0 ++ [I1] ++ replicate (n-i) I0)
+
+-- Construct poset that only has one connective
+create1ConnPoset :: Int -> Poset
+create1ConnPoset n = -- Vert (replicate n I0) :
+  map (baseVert n) [1..n]
+
 
 -- Checking order between two elements of a poset
 below , above :: Vert -> Vert -> Bool
@@ -39,7 +46,17 @@ x `below` y = all (\(e , e') -> toBool e' --> toBool e) (zip (toBools x) (toBool
 x `above` y = y `below` x
 
 
+-- Given an element in a poset, remove the i-th index from it
+removeInd :: Vert -> Int -> Vert
+removeInd (Vert (_:es)) 1 = Vert es
+removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
+removeInd _ _ = error "This index is not part of the element"
 
+-- Insert e such that x_i = e afterwards
+insInd :: Int -> Endpoint -> Vert -> Vert
+insInd 0 _ _ = error "Indices start from 1"
+insInd i e (Vert es) | i > length es + 1 = error "Index too large for element"
+                     | otherwise = let (f,s) = splitAt (i-1) es in Vert (f ++ [e] ++ s)
 
 -- Given a list of vertices, return the first index at which all vertices
 -- have the same value, as well as that value
@@ -57,17 +74,6 @@ getAllCommon vs = if length vs > length (toBools (head vs)) -- TODO NOT CORRECT
     (i,e) : map (\(j,e') -> (j+ 1, e')) (getAllCommon (map (\v -> removeInd v i) vs))
 
 
--- Given an element in a poset, remove the i-th index from it
-removeInd :: Vert -> Int -> Vert
-removeInd (Vert (_:es)) 1 = Vert es
-removeInd (Vert (e:es)) n = Vert (e : toBools (removeInd (Vert es) (n-1)))
-removeInd _ _ = error "This index is not part of the element"
-
--- Insert e such that x_i = e afterwards
-insInd :: Int -> Endpoint -> Vert -> Vert
-insInd 0 _ _ = error "Indices start from 1"
-insInd i e (Vert es) | i > length es + 1 = error "Index too large for element"
-                     | otherwise = let (f,s) = splitAt (i-1) es in Vert (f ++ [e] ++ s)
 
 -- Given a list of n^2 elements of a poset, generate map from [1]^n to the elements
 reconstrPMap :: [Vert] -> Map Vert Vert
@@ -86,7 +92,7 @@ type PSubst = Map Vert [Vert]
 
 instance Fct PSubst where
   domdim = length . toBools . fst . head . Map.toList
-  coddim = undefined -- TODO
+  coddim = length . toBools . head . snd . head . Map.toList
 
 createPSubst :: Int -> Int -> PSubst
 createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
@@ -108,7 +114,8 @@ getSubsts sigma = map Map.fromList (getSubsts' (Map.toList sigma))
   filterRec x v = map (\(y, us) -> (y , [ u | u <- us , (y `below` x) --> (u `below` v) ]))
 
 combineSubsts :: [Subst] -> PSubst
-combineSubsts ss = Map.fromList (map (\x -> (x , nub (map (Map.findWithDefault undefined x) ss))) (createPoset (domdim (head ss))))
+combineSubsts ss = Map.mapWithKey (\x _ -> nub (map (Map.findWithDefault undefined x) ss)) (head ss)
+  --Map.fromList (map (\x -> (x , nub (map (Map.findWithDefault undefined x) ss))) (createPoset (domdim (head ss))))
 
 -- Given a potential substitution, generate the substitution from it
 -- (could be equivalently head of getSubsts)

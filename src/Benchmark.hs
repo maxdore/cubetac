@@ -6,6 +6,7 @@ import System.CPUTime
 import System.Timeout
 
 import Core
+import Poset
 import Examples
 import Rulesets.Cart
 import Rulesets.Dede
@@ -31,10 +32,10 @@ tests = [
         ]
 
 carttests = tests :: [(String,Ctxt Cart Cart, Ty Cart Cart)]
-dedetests = tests :: [(String,Ctxt Dede PPM, Ty Dede PPM)]
+dedetests = tests :: [(String,Ctxt Dede PSubst, Ty Dede PSubst)]
 conttests = tests :: [(String,Ctxt Cont PCont, Ty Cont PCont)]
-conjtests = tests :: [(String,Ctxt Conj Conj, Ty Conj Conj)]
-disjtests = tests :: [(String,Ctxt Disj Disj, Ty Disj Disj)]
+conjtests = tests :: [(String,Ctxt Conj PSubst, Ty Conj PSubst)]
+disjtests = tests :: [(String,Ctxt Disj PSubst, Ty Disj PSubst)]
 demotests = tests :: [(String,Ctxt DeMo DeMo, Ty DeMo DeMo)]
 
 time :: Rs r w => Ctxt r w -> Ty r w -> IO ()

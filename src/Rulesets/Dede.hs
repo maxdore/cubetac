@@ -17,7 +17,6 @@ import Debug.Trace
 -- We save formulas as tuples of conjunctions of disjunctions, and we also have
 -- to keep track of which variables we could use
 type Dede = (IVar , [[[IVar]]])
-type PPM = PSubst
 
 form2subst :: Dede -> Subst
 form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (createPoset m))
@@ -72,7 +71,7 @@ instance Bs Dede where
       Nothing -> Nothing
   rmI (m , rs) i = (m , take (i-1) rs ++ drop i rs)
 
-instance Rs Dede PPM where
+instance Rs Dede PSubst where
   allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (createPoset d)) | (p , Ty d' _) <- c ]
   unfold = (map subst2form) . getSubsts
   combine = combineSubsts . (map form2subst)

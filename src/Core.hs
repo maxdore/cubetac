@@ -117,6 +117,12 @@ idDim c p = tyDim (getDef c p)
 termDim :: Rs r w => Ctxt r w -> Term r w -> Dim
 termDim c t = tyDim (inferTy c t)
 
+
+ndeg :: Rs r w => Term r w -> Int -> Term r w
+ndeg t 1 = App t (deg 0 1)
+ndeg t n = App (ndeg t (n-1)) (deg (n-1) n)
+
+
 getName :: Term r w -> Id
 getName (Var p) = p
 

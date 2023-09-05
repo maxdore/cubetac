@@ -4,9 +4,14 @@
 module Rulesets.Disj where
 
 import Data.List
+import Data.Maybe
 import Control.Monad
+import qualified Data.Map as Map
+import Data.Map ((!), Map)
+
 import Prel
 import Core
+import Poset
 
 import Debug.Trace
 
@@ -28,14 +33,28 @@ allFormulas :: Dim -> Dim -> [[Formula]]
 allFormulas n m = map (map Clause) (replicateM n (neps [1..m]))
 
 
-newtype Disj = Disj (IVar , [Formula])
+form2subst :: (IVar , [Formula]) -> Subst
+form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (create1ConnPoset m))
+  where
+  evalFormula :: Vert -> Formula -> Endpoint
+  evalFormula (Vert x) (Clause is) = case elemIndex I1 x of
+    Just i -> fromBool (i+1 `elem` is)
+    -- Nothing -> fromBool (null is)
+
+subst2form :: Subst -> (IVar , [Formula])
+subst2form sigma = (domdim sigma , map (\i ->
+                            Clause [ j | j <- [1..domdim sigma] , toBools (fromJust (Map.lookup (baseVert (domdim sigma) j) sigma))!!(i-1) == I1 ]
+                                                           ) [1..coddim sigma])
+
+
+newtype Disj = Disj { rmdisj :: (IVar , [Formula])}
   deriving (Eq, Show)
 
 instance Bs Disj where
   tdim (Disj (m , r)) = m
   face (Disj (m , rs)) (i,e) =
     let rs' = if e == I0
-                    then (map (\(Clause is) -> let is' = delete i is in if is' == [] then Endpoint I0 else Clause is' )) rs
+                    then (map (\(Clause is) -> let is' = delete i is in if null is' then Endpoint I0 else Clause is' )) rs
                     else (map (\(Clause is) -> if i `elem` is then Endpoint I1 else Clause is )) rs
     in Disj (m-1, offset i rs')
   deg d i = Disj (d+1 , [ Clause [j] | j <- [1..d+1] , j /= i])
@@ -53,8 +72,15 @@ instance Bs Disj where
   rmI (Disj (m , rs)) i = Disj (m , take (i-1) rs ++ drop i rs)
   allTerms c d = [ App (Var p) (Disj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
 
+instance Rs Disj PSubst where
+  allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (create1ConnPoset d)) | (p , Ty d' _) <- c ]
+  unfold = (map (Disj . subst2form)) . getSubsts
+  combine = combineSubsts . (map (form2subst . rmdisj))
 
-newtype Conj = Conj (IVar , [Formula])
+
+
+
+newtype Conj = Conj { rmconj :: (IVar , [Formula])}
   deriving (Eq, Show)
 
 instance Bs Conj where
@@ -62,7 +88,7 @@ instance Bs Conj where
   face (Conj (m , rs)) (i,e) =
     let rs' = if e == I0
                   then (map (\(Clause is) -> if i `elem` is then Endpoint I0 else Clause is )) rs
-                  else (map (\(Clause is) -> let is' = delete i is in if is' == [] then Endpoint I1 else Clause is' )) rs
+                  else (map (\(Clause is) -> let is' = delete i is in if null is' then Endpoint I1 else Clause is' )) rs
     in Conj (m-1, offset i rs')
   deg d i = Conj (d+1 , [ Clause [j] | j <- [1..d+1] , j /= i])
   compose (Conj (m , ss)) (Conj (n , rs)) =
@@ -77,4 +103,9 @@ instance Bs Conj where
       Nothing -> Nothing
   rmI (Conj (m , rs)) i = Conj (m , take (i-1) rs ++ drop i rs)
   allTerms c d = [ App (Var p) (Conj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
+
+instance Rs Conj PSubst where
+  allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (create1ConnPoset d)) | (p , Ty d' _) <- c ]
+  unfold = (map (Conj . subst2form)) . getSubsts
+  combine = combineSubsts . (map (form2subst . rmconj))
 
