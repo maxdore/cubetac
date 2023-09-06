@@ -85,7 +85,7 @@ instance Bs DeMo where
 
   rmI (m , rs) i = (m , take (i-1) rs ++ drop i rs)
 
-  allTerms c d = [ App (Var p) rs | (p , Ty d' _) <- c , rs <- allForm d d' ]
+  allConts = allForm
 
 
 

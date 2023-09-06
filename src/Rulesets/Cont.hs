@@ -42,7 +42,7 @@ instance Bs Cont where
 
 
 instance Rs Cont PCont where
-  allPTerms c d = [ PApp (Var p) (createPSubst d d') | (p , Ty d' _) <- c ]
+  allPConts _ m n = [ createPSubst m n ]
   unfold = getSubsts
   combine = combineSubsts
 
@@ -63,4 +63,6 @@ instance Rs Cont PCont where
                   (createPSubst (tyDim gty) (tyDim pty))
                   (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
                     [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
+
+    traceShowM (length (getSubsts sigma))
     return (App (Var p) (fstSubst sigma))

@@ -34,8 +34,8 @@ tests = [
 carttests = tests :: [(String,Ctxt Cart Cart, Ty Cart Cart)]
 dedetests = tests :: [(String,Ctxt Dede PSubst, Ty Dede PSubst)]
 conttests = tests :: [(String,Ctxt Cont PCont, Ty Cont PCont)]
-conjtests = tests :: [(String,Ctxt Conj PSubst, Ty Conj PSubst)]
-disjtests = tests :: [(String,Ctxt Disj PSubst, Ty Disj PSubst)]
+conjtests = tests :: [(String,Ctxt Conj Conj, Ty Conj Conj)]
+disjtests = tests :: [(String,Ctxt Disj Disj, Ty Disj Disj)]
 demotests = tests :: [(String,Ctxt DeMo DeMo, Ty DeMo DeMo)]
 
 time :: Rs r w => Ctxt r w -> Ty r w -> IO ()

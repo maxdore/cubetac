@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+-- {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Core where
 
@@ -12,6 +13,7 @@ import Data.List
 import qualified Data.Map as Map
 import Data.Map ((!), Map)
 import Data.Maybe
+import Data.Either
 import Data.Ord
 
 import Prel
@@ -63,21 +65,30 @@ class (Eq r , Show r) => Bs r where
   isId :: r -> Bool
   isFace :: r -> Maybe Restr
   rmI :: r -> IVar -> r
-  allTerms :: Ctxt r r -> Dim -> [Term r r] -- optional just for rulesets without wrapper type
+  -- below is optional just for rulesets without wrapper type
+  allConts :: Dim -> Dim -> [r]
 
--- Type class for rulesets with a wrapper type
+-- Type class for rulesets with a type for potential contortions
 class (Bs r , Eq w , Show w) => Rs r w where
-  allPTerms :: Ctxt r w -> Dim -> [Term r w]
+  allPConts :: Ctxt r w -> Dim -> Dim -> [w]
   unfold :: w -> [r]
   combine :: [r] -> w
   constrCont :: Ctxt r w -> Ty r w -> Decl r w -> Maybe (Term r w)
 
 -- any ruleset can be trivially equipped with a wrapper type
 instance (Bs r) => (Rs r r) where
-  allPTerms c m = map (\(App t rs) -> PApp t rs) (allTerms c m)
+  allPConts _ = allConts
   unfold = singleton
   combine = head
-  constrCont = undefined -- todo just try out allTerms
+  constrCont c gty (p , pty) =
+    msum (map
+          (\rs ->
+            let t = App (Var p) rs in
+            if termOfTy c t gty
+              then Just t
+              else Nothing)
+          (allConts (tyDim gty) (tyDim pty)))
+
 
 data Term r w = Var Id
           | Fill Restr (Ty r w) -- Fill dir ty means fill type ty in direction dir
@@ -108,6 +119,8 @@ instance (Show r , Show w) => Show (Ty r w) where
 type Decl r w = (Id , Ty r w)
 type Ctxt r w = [Decl r w]
 
+allPTerms :: Rs r w => Ctxt r w -> Dim -> [Term r w]
+allPTerms c m = [ PApp (Var p) rs | (p , Ty n _) <- c , rs <- allPConts c m n ]
 
 -- Basic operations on the types
 tyDim :: Ty r w -> Dim
@@ -160,32 +173,13 @@ ptermFace c t ie = [termFace c t ie]
 
 restrPTerm :: Rs r w => Ctxt r w -> Term r w -> Restr -> [Term r w] -> Maybe (Term r w)
 restrPTerm c (PApp t ss) ie hs =
-  trace ("RESTR " ++ show ((PApp t ss) , ie , hs)) $
+  -- trace ("RESTR " ++ show ((PApp t ss) , ie , hs)) $
   let ss' = filter (\s -> termFace c (App t s) ie `elem` hs) (unfold ss) in
     -- trace ("RESTRRES " ++ show ss') $
     if null ss'
       then Nothing
       else Just (PApp t (combine ss'))
 restrPTerm c t ie hs = if termFace c t ie `elem` hs then Just t else Nothing
-
-
--- -- Given a pterm, filter it so that it some face of it is contained in a
--- -- collection of terms
--- filterPSubst :: Rs r w => Ctxt r w -> Term r w -> Restr  -> [Restr] -> [Term] -> Maybe PContortion
--- filterPSubst ctxt (PContortion p sigma) ies qs =
---   let ss = [ s | (s , q) <- possibleFaces ctxt (PContortion p sigma) ies , q `elem` qs ] in
---   let sigma' = updateGadgets sigma ss ies in
---   if isEmptyPSubst sigma'
---     then Nothing
---     else Just (PContortion p sigma')
-
--- possibleFaces :: Cube -> PContortion -> [Restr] -> [(Subst , Term)]
--- -- possibleFaces ctxt (PContortion p sigma) ies | trace ("myfun " ++ show (PContortion p sigma) ++ " " ++ show ies) False = undefined
--- possibleFaces ctxt (PContortion p sigma) ies = let ss = getSubsts sigma in
---   -- trace ("UNFOLDING " ++ show (length ss)) $
---   map (\s -> (s , termRestr ctxt (Term p s) ies)) ss
-
-
 
 
 normalise :: Rs r w => Ctxt r w -> Term r w -> Term r w
@@ -247,6 +241,12 @@ inferTy _ (Fill ie (Ty d fs)) = Ty d ((ie +> Comp ie (Ty d fs)) : fs)
 inferTy c (Comp ie ty) = tyFaceBdy c ty ie
 inferTy c (App t r) = Ty (tdim r) [ (i,e) +> normalise c (App t (face r (i,e))) | i <- [1..tdim r] , e <- [I0,I1] ]
 
+
+termOfTy :: Rs r w => Ctxt r w -> Term r w -> Ty r w -> Bool
+termOfTy c t ty = let ty' = inferTy c t in
+  tyDim ty == tyDim ty' &&
+  all (\ie -> sideSpec ty ie --> (sideSpec ty' ie && getFace ty ie == getFace ty' ie)) (restrictions (tyDim ty))
+
 -- Generate terms for domains
 restrictions :: Int -> [Restr]
 restrictions n = [ (i,e) | i <- [1..n], e <- [I0,I1]]
@@ -266,6 +266,9 @@ allIds c d = [ Var p | (p , Ty d' _) <- c , d == d'  ]
 
 
 -- MAIN SOLVER LOGIC
+solve :: Rs r w => Ctxt r w -> Ty r w -> Term r w
+solve c gty = head (maybeToList (findCont c gty) ++ [findComp c gty])
+
 findCont :: Rs r w => Ctxt r w -> Ty r w -> Maybe (Term r w)
 findCont c gty = msum (map (constrCont c gty) c)
 

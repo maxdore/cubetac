@@ -26,7 +26,7 @@ subst (Atom s) i t | i == s = t
                    | otherwise = Atom s
 
 allFormulas :: Dim -> Dim -> [[Formula]]
-allFormulas n m = replicateM n [ Atom i | i <- [1..m]]
+allFormulas m n = replicateM n [ Atom i | i <- [1..m]]
 
 newtype Cart = Cart (IVar , [Formula])
   deriving (Eq, Show)
@@ -60,5 +60,6 @@ instance Bs Cart where
 
   rmI (Cart (m , rs)) i = Cart (m , take (i-1) rs ++ drop i rs)
 
-  allTerms c d = [ App (Var p) (Cart (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
+  allConts m n = map (\rs -> (Cart (m , rs))) (allFormulas m n)
+
 

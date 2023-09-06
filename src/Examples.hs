@@ -13,6 +13,7 @@ import Rulesets.Cart
 import Rulesets.Cont
 import Rulesets.Disj
 import Rulesets.Dede
+import qualified Rulesets.Dede as Dede
 import Rulesets.DeMo
 
 
@@ -214,12 +215,18 @@ andOrSubst = Map.fromList [
 andOrCont :: Ty Cont PCont
 andOrCont = Ty 3 [
     (1,I0) +> App (Var "s") andOrSubst
-  , (1,I1) +> ndeg sphere (Var "b") 2
-  , (2,I0) +> ndeg sphere (Var "b") 2
-  , (2,I1) +> ndeg sphere (Var "b") 2
-  , (3,I0) +> ndeg sphere (Var "b") 2
-  , (3,I1) +> ndeg sphere (Var "b") 2
+  -- , (1,I1) +> ndeg sphere (Var "b") 2
+  -- , (2,I0) +> ndeg sphere (Var "b") 2
+  -- , (2,I1) +> ndeg sphere (Var "b") 2
+  -- , (3,I0) +> ndeg sphere (Var "b") 2
+  -- , (3,I1) +> ndeg sphere (Var "b") 2
       ]
+
+andorcont :: Int -> Ty Cont PCont
+andorcont n = Ty n $
+  [ (1,I0) +> App (Var "s") (Dede.form2subst (n-1 , [[[1..n-1]] , [[i] | i <- [1..n-1]]])) ] ++
+  [ (i,e) +> ndeg sphere (Var "b") (n-1) | i <- [1..n] , e <- [I0,I1] , (i,e) /= (1,I0) ]
+
 
 andOrDede :: Rs Dede w => Ty Dede w
 andOrDede = Ty 3 [
@@ -231,26 +238,10 @@ andOrDede = Ty 3 [
   , (3,I1) +> ndeg sphere (Var "b") 2
       ]
 
-
-
-  -- andOrSubst3 = Map.fromList [
-  --             (Vert [e0, e0, e0] , Vert [e0, e0])
-  --           , (Vert [e0, e0, e1] , Vert [e0, e1])
-  --           , (Vert [e0, e1, e0] , Vert [e0, e1])
-  --           , (Vert [e0, e1, e1] , Vert [e1, e1])
-  --           , (Vert [e1, e0, e0] , Vert [e0, e1])
-  --           , (Vert [e1, e0, e1] , Vert [e0, e1])
-  --           , (Vert [e1, e1, e0] , Vert [e0, e1])
-  --           , (Vert [e1, e1, e1] , Vert [e1, e1])
-  --             ]
-
-
-
-
--- sphere5Cube = Boundary [ (Term "p" (tele2Subst (Tele [Formula [Disj [Conj 1, Conj 2 , Conj 3 , Conj 4]] , Formula [Disj [Conj 1], Disj [Conj 2] , Disj [Conj 3] , Disj [Conj 4]]]) 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) , (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ,  (Term "a" (constSubst 4) , Term "a" (constSubst 4)) ]
-
-
-
+andordede :: Int -> Ty Dede PCont
+andordede n = Ty n $
+  [ (1,I0) +> App (Var "s") (n-1 , [[[1..n-1]] , [[i] | i <- [1..n-1]]]) ] ++
+  [ (i,e) +> ndeg sphere (Var "b") (n-1) | i <- [1..n] , e <- [I0,I1] , (i,e) /= (1,I0) ]
 
 
 eqsq :: Rs r w => Ctxt r w
@@ -391,3 +382,13 @@ andOrpdup' = App (App (Var "p") (2 , [[[2]],[[2]]])) (2 , [[[1,2]],[[1],[2]]])
 idp = App (Var "p") (2 , [[[1]],[[2]]])
 andp = App (Var "p") (1 , [[[1]]])
 idx = App (Var "x") (0 , [])
+
+disjtest :: Rs Disj w => Ty Disj w
+disjtest = (Ty 3 [
+                (1,I0) +>    App (Var "p") (Disj {rmdisj = (2,[Clause [1]])})
+              , (1,I1) +>    App (Var "y") (Disj {rmdisj = (2,[])})
+              , (2,I0) +>    App (Var "p") (Disj {rmdisj = (2,[Clause [1]])})
+              , (2,I1) +>    App (Var "y") (Disj {rmdisj = (2,[])})
+              , (3,I0) +>    App (Var "p") (Disj {rmdisj = (2,[Clause [1,2]])})
+              , (3,I1) +>    App (Var "p") (Disj {rmdisj = (2,[Clause [1,2]])})
+              ])

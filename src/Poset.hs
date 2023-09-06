@@ -97,6 +97,8 @@ instance Fct PSubst where
 createPSubst :: Int -> Int -> PSubst
 createPSubst k l = Map.fromList $ map (\v -> (v , createPoset l)) (createPoset k)
 
+create1ConnPSubst :: Int -> Int -> PSubst
+create1ConnPSubst m n = Map.fromList (map (\x -> (x , createPoset n)) (create1ConnPoset m))
 
 -- Give back restriction of sigma and forget that it was a restriction
 restrPSubst :: PSubst -> Restr -> PSubst

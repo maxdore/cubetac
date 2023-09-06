@@ -73,6 +73,27 @@ instance Bs Dede where
   rmI (m , rs) i = (m , take (i-1) rs ++ drop i rs)
 
 instance Rs Dede PSubst where
-  allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (createPoset d)) | (p , Ty d' _) <- c ]
+  allPConts _ m n = [ createPSubst m n ]
   unfold = (map subst2form) . getSubsts
   combine = combineSubsts . (map form2subst)
+
+  constrCont c gty (p , pty) = do
+    sigma <- foldM
+                  (\sigma (ie , gf) -> do
+                    -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
+                    theta <- case gf of
+                        App (Var q) rs | q == p -> Just $ injPSubst (form2subst rs)
+                        _ -> do
+                          let theta = filter (\s -> normalise c (App (Var p) (subst2form s)) == gf)
+                                      (getSubsts (restrPSubst sigma ie))
+                          if null theta
+                            then Nothing
+                            else Just (combineSubsts theta)
+                    return $ foldl (\s x -> updatePSubst s (insInd ie x) (theta ! x)) sigma (createPoset (tyDim gty - 1))
+                      )
+                  (createPSubst (tyDim gty) (tyDim pty))
+                  (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
+                    [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
+
+    traceShowM (length (getSubsts sigma))
+    return (App (Var p) (subst2form (fstSubst sigma)))

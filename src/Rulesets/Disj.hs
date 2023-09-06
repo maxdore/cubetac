@@ -44,7 +44,7 @@ subst2form sigma = (domdim sigma , map (\i ->
 
 allFormulas :: Dim -> Dim -> [[Formula]]
 -- allFormulas n m = map (map Clause) (replicateM n (ps [1..m]))
-allFormulas n m = map (snd . subst2form) (getSubsts (Map.fromList $ map (\v -> (v , createPoset n)) (create1ConnPoset m)))
+allFormulas m n = map (snd . subst2form) (getSubsts (Map.fromList $ map (\v -> (v , createPoset n)) (create1ConnPoset m)))
 
 
 
@@ -71,12 +71,40 @@ instance Bs Disj where
       Just i -> Just (i+1,I1)
       Nothing -> Nothing
   rmI (Disj (m , rs)) i = Disj (m , take (i-1) rs ++ drop i rs)
-  allTerms c d = [ App (Var p) (Disj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
+  allConts m n = map (\rs -> (Disj (m , rs))) (allFormulas m n)
 
 instance Rs Disj PSubst where
-  allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (create1ConnPoset d)) | (p , Ty d' _) <- c ]
+  allPConts _ m n = [ create1ConnPSubst m n ]
   unfold = (map (Disj . subst2form)) . getSubsts
   combine = combineSubsts . (map (form2subst . rmdisj))
+
+  constrCont c gty (p , pty) = do
+    traceM ("TRY TO CONTORT " ++ p)
+    sigma <- foldM
+                  (\sigma (ie , gf) -> do
+                    traceM $ show ie ++ " : " ++ show sigma ++ " WITH " ++ show gf
+                    theta <- case gf of
+                        App (Var q) rs | q == p -> Just $ injPSubst (form2subst (rmdisj rs))
+                        _ -> do
+                          let theta = filter (\s -> traceShow s $ normalise c (App (Var p) (Disj (subst2form s))) == gf)
+                                      (getSubsts (restrPSubst sigma ie))
+                          traceShowM theta
+                          if null theta
+                            then Nothing
+                            else Just (combineSubsts theta)
+                    traceShowM theta
+                    let theta' = foldl (\s x -> updatePSubst s (insInd ie x) (theta ! x)) sigma [ baseVert (tyDim gty-1) i | i <- [1..tyDim gty-1] ]
+                    traceShowM theta'
+                    return $ theta'
+                      )
+                  (create1ConnPSubst (tyDim gty) (tyDim pty))
+                  (reverse (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
+                    [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie]
+                  ))
+
+    traceShowM (length (getSubsts sigma))
+    return (App (Var p) (Disj (subst2form (fstSubst sigma))))
+    -- Nothing
 
 
 
@@ -103,10 +131,10 @@ instance Bs Conj where
       Just i -> Just (i+1,I1)
       Nothing -> Nothing
   rmI (Conj (m , rs)) i = Conj (m , take (i-1) rs ++ drop i rs)
-  allTerms c d = [ App (Var p) (Conj (d, r)) | (p,_) <- c , r <- allFormulas (idDim c p) d ]
+  allConts m n = map (\rs -> (Conj (m , rs))) (allFormulas m n)
 
 instance Rs Conj PSubst where
-  allPTerms c d = [ PApp (Var p) (Map.fromList $ map (\v -> (v , createPoset d')) (create1ConnPoset d)) | (p , Ty d' _) <- c ]
+  allPConts _ m n = [ create1ConnPSubst m n ]
   unfold = (map (Conj . subst2form)) . getSubsts
   combine = combineSubsts . (map (form2subst . rmconj))
 
