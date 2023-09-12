@@ -36,8 +36,7 @@ baseVert n i = Vert (replicate (i-1) I0 ++ [I1] ++ replicate (n-i) I0)
 
 -- Construct poset that only has one connective
 create1ConnPoset :: Int -> Poset
-create1ConnPoset n = -- Vert (replicate n I0) :
-  map (baseVert n) [1..n]
+create1ConnPoset n = Vert (replicate n I0) :  map (baseVert n) [1..n]
 
 
 -- Checking order between two elements of a poset

@@ -203,6 +203,23 @@ sphere = [
                       (2,I0) +> ndeg sphere (Var "b") 1 ,
                       (2,I1) +> ndeg sphere (Var "b") 1 ]))
                  ]
+
+i0subst = Map.fromList [
+              (Vert [I0] , Vert [I0])
+            , (Vert [I1] , Vert [I0])
+              ]
+
+idsubst = Map.fromList [
+              (Vert [I0] , Vert [I0])
+            , (Vert [I1] , Vert [I1])
+              ]
+  
+i1subst = Map.fromList [
+              (Vert [I0] , Vert [I1])
+            , (Vert [I1] , Vert [I1])
+              ]
+
+
   
 andOrSubst = Map.fromList [
               (Vert [I0, I0] , Vert [I0, I0])
@@ -392,3 +409,6 @@ disjtest = (Ty 3 [
               , (3,I0) +>    App (Var "p") (Disj {rmdisj = (2,[Clause [1,2]])})
               , (3,I1) +>    App (Var "p") (Disj {rmdisj = (2,[Clause [1,2]])})
               ])
+
+
+exam = findComp twop unitr :: Term Conj Conj
