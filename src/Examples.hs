@@ -4,13 +4,13 @@
 module Examples where
 
 import qualified Data.Map as Map
-import Data.Map ((!), Map)
+
 
 
 import Poset
 import Core
 import Rulesets.Cart
-import Rulesets.Cont
+import Rulesets.PMap
 import Rulesets.Disj
 import Rulesets.Dede
 import qualified Rulesets.Dede as Dede
@@ -205,33 +205,33 @@ sphere = [
                  ]
 
 i0subst = Map.fromList [
-              (Vert [I0] , Vert [I0])
-            , (Vert [I1] , Vert [I0])
+              ([I0] , [I0])
+            , ([I1] , [I0])
               ]
 
 idsubst = Map.fromList [
-              (Vert [I0] , Vert [I0])
-            , (Vert [I1] , Vert [I1])
+              ([I0] , [I0])
+            , ([I1] , [I1])
               ]
   
 i1subst = Map.fromList [
-              (Vert [I0] , Vert [I1])
-            , (Vert [I1] , Vert [I1])
+              ([I0] , [I1])
+            , ([I1] , [I1])
               ]
 
 
   
-andOrSubst = Map.fromList [
-              (Vert [I0, I0] , Vert [I0, I0])
-            , (Vert [I0, I1] , Vert [I0, I1])
-            , (Vert [I1, I0] , Vert [I0, I1])
-            , (Vert [I1, I1] , Vert [I1, I1])
+andOrPMap = Map.fromList [
+              ([I0, I0] , [I0, I0])
+            , ([I0, I1] , [I0, I1])
+            , ([I1, I0] , [I0, I1])
+            , ([I1, I1] , [I1, I1])
               ]
 
--- andOrCont :: Rs Cont w => Ty Cont w
-andOrCont :: Ty Cont PCont
+-- andOrPMap :: Rs PMap w => Ty PMap w
+andOrCont :: Ty PMap PPMap
 andOrCont = Ty 3 [
-    (1,I0) +> App (Var "s") andOrSubst
+    (1,I0) +> App (Var "s") andOrPMap
   -- , (1,I1) +> ndeg sphere (Var "b") 2
   -- , (2,I0) +> ndeg sphere (Var "b") 2
   -- , (2,I1) +> ndeg sphere (Var "b") 2
@@ -239,7 +239,7 @@ andOrCont = Ty 3 [
   -- , (3,I1) +> ndeg sphere (Var "b") 2
       ]
 
-andorcont :: Int -> Ty Cont PCont
+andorcont :: Int -> Ty PMap PPMap
 andorcont n = Ty n $
   [ (1,I0) +> App (Var "s") (Dede.form2subst (n-1 , [[[1..n-1]] , [[i] | i <- [1..n-1]]])) ] ++
   [ (i,e) +> ndeg sphere (Var "b") (n-1) | i <- [1..n] , e <- [I0,I1] , (i,e) /= (1,I0) ]
@@ -255,7 +255,7 @@ andOrDede = Ty 3 [
   , (3,I1) +> ndeg sphere (Var "b") 2
       ]
 
-andordede :: Int -> Ty Dede PCont
+andordede :: Int -> Ty Dede PPMap
 andordede n = Ty n $
   [ (1,I0) +> App (Var "s") (n-1 , [[[1..n-1]] , [[i] | i <- [1..n-1]]]) ] ++
   [ (i,e) +> ndeg sphere (Var "b") (n-1) | i <- [1..n] , e <- [I0,I1] , (i,e) /= (1,I0) ]
@@ -322,8 +322,8 @@ higherpq = [
                  ]
 
 
--- pq = Box [(Term "a" (constSubst 2) , Term "q" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ] (Term "p" id2Subst)
--- qp = Box [(Term "a" (constSubst 2) , Term "p" id2Subst) , (Term "a" (constSubst 2) , Term "a" (constSubst 2)) ] (Term "q" id2Subst)
+-- pq = Box [(Term "a" (constPMap 2) , Term "q" id2PMap) , (Term "a" (constPMap 2) , Term "a" (constPMap 2)) ] (Term "p" id2PMap)
+-- qp = Box [(Term "a" (constPMap 2) , Term "p" id2PMap) , (Term "a" (constPMap 2) , Term "a" (constPMap 2)) ] (Term "q" id2PMap)
 
 eckmannHilton :: Rs r w => Ty r w
 eckmannHilton =
@@ -365,33 +365,33 @@ ehSquare = Ty 3 [
 
 
 
-xdeg :: Term Cont PCont
-xdeg = App (Var "x") (Map.fromList [(Vert [I0], Vert []) , (Vert [I1], Vert [])])
+xdeg :: Term PMap PPMap
+xdeg = App (Var "x") (Map.fromList [([I0], []) , ([I1], [])])
 
 
 switch = Map.fromList [
-              (Vert [I0, I0] , Vert [I0, I0])
-            , (Vert [I0, I1] , Vert [I1, I0])
-            , (Vert [I1, I0] , Vert [I0, I1])
-            , (Vert [I1, I1] , Vert [I1, I1])
+              ([I0, I0] , [I0, I0])
+            , ([I0, I1] , [I1, I0])
+            , ([I1, I0] , [I0, I1])
+            , ([I1, I1] , [I1, I1])
               ]
 dup2 = Map.fromList [
-              (Vert [I0, I0] , Vert [I0, I0])
-            , (Vert [I0, I1] , Vert [I1, I1])
-            , (Vert [I1, I0] , Vert [I0, I0])
-            , (Vert [I1, I1] , Vert [I1, I1])
+              ([I0, I0] , [I0, I0])
+            , ([I0, I1] , [I1, I1])
+            , ([I1, I0] , [I0, I0])
+            , ([I1, I1] , [I1, I1])
               ]
 
-switchandOrp , andOrpswitch , andOrpdup :: Term Cont PCont
-switchandOrp = App (App (Var "p") andOrSubst) switch
-andOrpswitch = App (App (Var "p") switch) andOrSubst
-andOrpdup = App (App (Var "p") dup2) andOrSubst
+switchandOrp , andOrpswitch , andOrpdup :: Term PMap PPMap
+switchandOrp = App (App (Var "p") andOrPMap) switch
+andOrpswitch = App (App (Var "p") switch) andOrPMap
+andOrpdup = App (App (Var "p") dup2) andOrPMap
 
--- test :: Term Cont PCont
+-- test :: Term PMap PPMap
 -- test = App pqComp 1
 
 
-andOrpswitch' , switchandOrp' , andOrpdup' , idp , andp , idx :: Term Dede PSubst
+andOrpswitch' , switchandOrp' , andOrpdup' , idp , andp , idx :: Term Dede PPMap
 -- andOrp = App (Var "alpha") (3 , [[[1,2],[1,3]] , [[1],[2],[3]]])
 switchandOrp' = App (App (Var "p") (2 , [[[1,2]],[[1],[2]]])) (2 , [[[2]],[[1]]])
 andOrpswitch' = App (App (Var "p") (2 , [[[2]],[[1]]])) (2 , [[[1,2]],[[1],[2]]])

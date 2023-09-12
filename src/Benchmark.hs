@@ -10,7 +10,7 @@ import Poset
 import Examples
 import Rulesets.Cart
 import Rulesets.Dede
-import Rulesets.Cont
+import Rulesets.PMap
 import Rulesets.Disj
 import Rulesets.DeMo
 
@@ -33,10 +33,10 @@ tests = [
         ]
 
 carttests = tests :: [(String,Ctxt Cart Cart, Ty Cart Cart)]
-dedetests = tests :: [(String,Ctxt Dede PSubst, Ty Dede PSubst)]
-conttests = tests :: [(String,Ctxt Cont PCont, Ty Cont PCont)]
-conjtests = tests :: [(String,Ctxt Conj PSubst, Ty Conj PSubst)]
-disjtests = tests :: [(String,Ctxt Disj PSubst, Ty Disj PSubst)]
+dedetests = tests :: [(String,Ctxt Dede PPMap, Ty Dede PPMap)]
+conttests = tests :: [(String,Ctxt PMap PPMap, Ty PMap PPMap)]
+conjtests = tests :: [(String,Ctxt Conj PPMap, Ty Conj PPMap)]
+disjtests = tests :: [(String,Ctxt Disj PPMap, Ty Disj PPMap)]
 demotests = tests :: [(String,Ctxt DeMo DeMo, Ty DeMo DeMo)]
 
 time :: Rs r w => Ctxt r w -> Ty r w -> IO ()
@@ -60,7 +60,7 @@ padc x n = let m = (n - length x) in replicate (m `div` 2 + m `mod` 2) ' ' ++ x 
 
 main :: IO ()
 main = do
-  putStrLn $ "                   | " ++ concatMap (\s -> padc s 9 ++ " | ") ["Cartesian","Dedekind","Contort","Conj","Disj", "DeMorgan"]
+  putStrLn $ "                   | " ++ concatMap (\s -> padc s 9 ++ " | ") ["Cartesian","Dedekind","Posetmap","Conj","Disj", "DeMorgan"]
   putStrLn (replicate (20+6*12) '-')
   mapM_ (\i -> do
             let (name , cartc , cartty) = carttests!!i

@@ -6,7 +6,7 @@ module Rulesets.Dede where
 import qualified Data.Map as Map
 import Data.Map ((!), Map)
 import Data.List
-import Data.Maybe
+
 import Control.Monad.State
 
 import Prel
@@ -19,23 +19,23 @@ import Debug.Trace
 -- to keep track of which variables we could use
 type Dede = (IVar , [[[IVar]]])
 
-form2subst :: Dede -> Subst
-form2subst (m , rs) = Map.fromList (map (\v -> (v , Vert (map (evalFormula v) rs))) (createPoset m))
+form2subst :: Dede -> PMap
+form2subst (m , rs) = Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (createPoset m))
   where
   evalFormula :: Vert -> [[IVar]] -> Endpoint
-  evalFormula (Vert is) ds =
+  evalFormula (is) ds =
     let vs1 = map fst $ filter (toBool . snd) (zip [1..] is) in
     let result = map (\d -> filter (\i -> i `notElem` vs1) d) ds in
     fromBool $ [] `elem` result
 
-subst2form :: Subst -> Dede
+subst2form :: PMap -> Dede
 subst2form s =
-  (domdim s , reverse $ map (\fi -> constrFormula (map (\(x , Vert is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1])
+  (domdim s , reverse $ map (\fi -> constrFormula (map (\(x , is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1])
     where
     constrFormula :: [(Vert , Endpoint)] -> [[IVar]]
     constrFormula ves =
       let truevs = [ v | (v , e) <- ves , toBool e ] in
-      let cs = [ [ i | (e,i) <- zip vs [1..] , toBool e] | Vert vs <- truevs ] in
+      let cs = [ [ i | (e,i) <- zip vs [1..] , toBool e] | vs <- truevs ] in
       let redcs = filter (\c -> not (any (\d -> c /= d && d `isSubsequenceOf` c) cs)) cs in
       let normcs = sort redcs in
         normcs
@@ -72,28 +72,28 @@ instance Bs Dede where
       Nothing -> Nothing
   rmI (m , rs) i = (m , take (i-1) rs ++ drop i rs)
 
-instance Rs Dede PSubst where
-  allPConts _ m n = [ createPSubst m n ]
-  unfold = (map subst2form) . getSubsts
-  combine = combineSubsts . (map form2subst)
+instance Rs Dede PPMap where
+  allPConts _ m n = [ createPPMap m n ]
+  unfold = (map subst2form) . getPMaps
+  combine = combinePMaps . (map form2subst)
 
   constrCont c gty (p , pty) = do
     sigma <- foldM
                   (\sigma (ie , gf) -> do
                     -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
                     theta <- case gf of
-                        App (Var q) rs | q == p -> Just $ injPSubst (form2subst rs)
+                        App (Var q) rs | q == p -> Just $ injPPMap (form2subst rs)
                         _ -> do
                           let theta = filter (\s -> normalise c (App (Var p) (subst2form s)) == gf)
-                                      (getSubsts (restrPSubst sigma ie))
+                                      (getPMaps (restrPPMap sigma ie))
                           if null theta
                             then Nothing
-                            else Just (combineSubsts theta)
-                    return $ foldl (\s x -> updatePSubst s (insInd ie x) (theta ! x)) sigma (createPoset (tyDim gty - 1))
+                            else Just (combinePMaps theta)
+                    return $ foldl (\s x -> updatePPMap s (insInd ie x) (theta ! x)) sigma (createPoset (tyDim gty - 1))
                       )
-                  (createPSubst (tyDim gty) (tyDim pty))
+                  (createPPMap (tyDim gty) (tyDim pty))
                   (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
                     [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
 
-    traceShowM (length (getSubsts sigma))
-    return (App (Var p) (subst2form (fstSubst sigma)))
+    traceShowM (length (getPMaps sigma))
+    return (App (Var p) (subst2form (fstPMap sigma)))
