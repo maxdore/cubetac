@@ -231,7 +231,7 @@ andOrPMap = Map.fromList [
 -- andOrPMap :: Rs PMap w => Ty PMap w
 andOrCont :: Ty PMap PPMap
 andOrCont = Ty 3 [
-    (1,I0) +> App (Var "s") andOrPMap
+    (1,I0) +> App (Var "s") (PMap andOrPMap)
   -- , (1,I1) +> ndeg sphere (Var "b") 2
   -- , (2,I0) +> ndeg sphere (Var "b") 2
   -- , (2,I1) +> ndeg sphere (Var "b") 2
@@ -366,7 +366,7 @@ ehSquare = Ty 3 [
 
 
 xdeg :: Term PMap PPMap
-xdeg = App (Var "x") (Map.fromList [([I0], []) , ([I1], [])])
+xdeg = App (Var "x") (PMap (Map.fromList [([I0], []) , ([I1], [])]))
 
 
 switch = Map.fromList [
@@ -383,9 +383,9 @@ dup2 = Map.fromList [
               ]
 
 switchandOrp , andOrpswitch , andOrpdup :: Term PMap PPMap
-switchandOrp = App (App (Var "p") andOrPMap) switch
-andOrpswitch = App (App (Var "p") switch) andOrPMap
-andOrpdup = App (App (Var "p") dup2) andOrPMap
+switchandOrp = App (App (Var "p") (PMap andOrPMap)) (PMap switch)
+andOrpswitch = App (App (Var "p") (PMap switch)) (PMap andOrPMap)
+andOrpdup = App (App (Var "p") (PMap dup2)) (PMap andOrPMap)
 
 -- test :: Term PMap PPMap
 -- test = App pqComp 1

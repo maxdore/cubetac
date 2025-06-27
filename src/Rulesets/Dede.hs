@@ -20,7 +20,7 @@ import Debug.Trace
 type Dede = (IVar , [[[IVar]]])
 
 form2subst :: Dede -> PMap
-form2subst (m , rs) = Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (createPoset m))
+form2subst (m , rs) = PMap $ Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (createTable m))
   where
   evalFormula :: Vert -> [[IVar]] -> Endpoint
   evalFormula (is) ds =
@@ -29,8 +29,8 @@ form2subst (m , rs) = Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (
     fromBool $ [] `elem` result
 
 subst2form :: PMap -> Dede
-subst2form s =
-  (domdim s , reverse $ map (\fi -> constrFormula (map (\(x , is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim s-1])
+subst2form (PMap s) =
+  (domdim (PMap s) , reverse $ map (\fi -> constrFormula (map (\(x , is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim (PMap s)-1])
     where
     constrFormula :: [(Vert , Endpoint)] -> [[IVar]]
     constrFormula ves =
@@ -75,21 +75,21 @@ instance Bs Dede where
 instance Rs Dede PPMap where
   allPConts _ m n = [ createPPMap m n ]
   unfold = (map subst2form) . getPMaps
-  combine = combinePMaps . (map form2subst)
+  combine = PPMap . combineMaps . (map (pmap . form2subst))
 
   constrCont c gty (p , pty) = do
     sigma <- foldM
                   (\sigma (ie , gf) -> do
                     -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
                     theta <- case gf of
-                        App (Var q) rs | q == p -> Just $ injPPMap (form2subst rs)
+                        App (Var q) rs | q == p -> (Just . PPMap . injPotMap . pmap) (form2subst rs)
                         _ -> do
                           let theta = filter (\s -> normalise c (App (Var p) (subst2form s)) == gf)
-                                      (getPMaps (restrPPMap sigma ie))
+                                      (getPMaps (PPMap (restrMap (ppmap sigma) ie)))
                           if null theta
                             then Nothing
-                            else Just (combinePMaps theta)
-                    return $ foldl (\s x -> updatePPMap s (insInd ie x) (theta ! x)) sigma (createPoset (tyDim gty - 1))
+                            else Just ((PPMap . combineMaps . map pmap) theta)
+                    return $ foldl (\s x -> updatePPMap s (insInd ie x) ((ppmap theta) ! x)) sigma (createTable (tyDim gty - 1))
                       )
                   (createPPMap (tyDim gty) (tyDim pty))
                   (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))

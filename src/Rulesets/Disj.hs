@@ -36,7 +36,7 @@ newtype Disj = Disj { rmdisj :: (IVar , [Formula])}
   deriving (Eq, Show)
 
 disj2subst :: Disj -> PMap
-disj2subst (Disj (m , rs)) = Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (create1ConnPoset m))
+disj2subst (Disj (m , rs)) = PMap $ Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (create1ConnTable m))
   where
   evalFormula :: Vert -> Formula -> Endpoint
   evalFormula _ (Endp e) = e
@@ -45,11 +45,13 @@ disj2subst (Disj (m , rs)) = Map.fromList (map (\v -> (v , (map (evalFormula v) 
     Nothing -> I0
 
 subst2disj :: PMap -> Disj
-subst2disj sigma = Disj (domdim sigma , map reconstrForm [1..coddim sigma])
+subst2disj (PMap sigma) = Disj (dom, map reconstrForm [1..cod])
   where
+  dom = domdim (PMap sigma)
+  cod = coddim (PMap sigma)
   reconstrForm :: IVar -> Formula
-  reconstrForm i | (fromJust (Map.lookup ((replicate (domdim sigma) I0)) sigma))!!(i-1) == I1 = Endp I1
-                 | otherwise = Clause [ j | j <- [1..domdim sigma] , (fromJust (Map.lookup (baseVert (domdim sigma) j) sigma))!!(i-1) == I1 ]
+  reconstrForm i | (fromJust (Map.lookup ((replicate (dom) I0)) sigma))!!(i-1) == I1 = Endp I1
+                 | otherwise = Clause [ j | j <- [1..dom] , (fromJust (Map.lookup (baseVert (dom) j) sigma))!!(i-1) == I1 ]
 
 
 instance Bs Disj where
@@ -78,7 +80,7 @@ instance Bs Disj where
 instance Rs Disj PPMap where
   allPConts _ m n = [ create1ConnPPMap m n ]
   unfold = (map subst2disj) . getPMaps
-  combine = combinePMaps . (map disj2subst)
+  combine = PPMap . combineMaps . (map (pmap . disj2subst))
 
   -- constrCont c gty (p , pty) = do
   --   traceM ("TRY TO CONTORT " ++ p)
@@ -116,7 +118,7 @@ newtype Conj = Conj { rmconj :: (IVar , [Formula])}
 
 
 conj2subst :: Conj -> PMap
-conj2subst (Conj (m , rs)) = Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (create1ConnPoset m))
+conj2subst (Conj (m , rs)) = PMap $ Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (create1ConnTable m))
   where
   evalFormula :: Vert -> Formula -> Endpoint
   evalFormula _ (Endp e) = e
@@ -125,12 +127,14 @@ conj2subst (Conj (m , rs)) = Map.fromList (map (\v -> (v , (map (evalFormula v) 
     Nothing -> fromBool (null is)
 
 subst2conj :: PMap -> Conj
-subst2conj sigma = Conj (domdim sigma , map reconstrForm [1..coddim sigma])
+subst2conj (PMap sigma) = Conj (dom, map reconstrForm [1..cod])
   where
+  dom = domdim (PMap sigma)
+  cod = coddim (PMap sigma)
   reconstrForm :: IVar -> Formula
-  reconstrForm i | (fromJust (Map.lookup ((replicate (domdim sigma) I0)) sigma))!!(i-1) == I1 = Clause []
+  reconstrForm i | (fromJust (Map.lookup ((replicate (dom) I0)) sigma))!!(i-1) == I1 = Clause []
                  | and (Map.map (\y -> (y)!!(i-1) == I0) sigma) = Endp I0
-                 | otherwise = Clause [ j | j <- [1..domdim sigma] , (fromJust (Map.lookup (baseVert (domdim sigma) j) sigma))!!(i-1) == I1 ]
+                 | otherwise = Clause [ j | j <- [1..dom] , (fromJust (Map.lookup (baseVert (dom) j) sigma))!!(i-1) == I1 ]
 
 
 
@@ -161,5 +165,4 @@ instance Bs Conj where
 instance Rs Conj PPMap where
   allPConts _ m n = [ create1ConnPPMap m n ]
   unfold = (map subst2conj) . getPMaps
-  combine = combinePMaps . (map conj2subst)
-
+  combine = PPMap . combineMaps . (map (pmap . conj2subst))

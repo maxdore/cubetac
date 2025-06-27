@@ -13,10 +13,12 @@ import Rulesets.Dede
 import Rulesets.PMap
 import Rulesets.Disj
 import Rulesets.DeMo
+import Rulesets.TruthTable
 
 tests :: Rs r w => [(String,Ctxt r w, Ty r w)]
 tests = [
-    ("orsquare", twop, orGoal)
+    ("invert", twop, invGoal)
+  , ("orsquare", twop, orGoal)
   , ("andsquare", twop , andGoal)
   , ("pqpq square", twop , pqpq)
   , ("right unit law", twop , unitr)
@@ -38,11 +40,12 @@ conttests = tests :: [(String,Ctxt PMap PPMap, Ty PMap PPMap)]
 conjtests = tests :: [(String,Ctxt Conj PPMap, Ty Conj PPMap)]
 disjtests = tests :: [(String,Ctxt Disj PPMap, Ty Disj PPMap)]
 demotests = tests :: [(String,Ctxt DeMo DeMo, Ty DeMo DeMo)]
+demotttests = tests :: [(String,Ctxt TruthTable PTruthTable, Ty TruthTable PTruthTable)]
 
 time :: Rs r w => Ctxt r w -> Ty r w -> IO ()
 time c ty = do
   start <- getCPUTime
-  comp <- timeout (10 * 1000000) (do
+  comp <- timeout (10 * 100000) (do
     let !r = findComp c ty
     return ())
   case comp of
@@ -58,10 +61,10 @@ padr x n = replicate (n - length x) ' ' ++ x
 padl x n = x ++ replicate (n - length x) ' '
 padc x n = let m = (n - length x) in replicate (m `div` 2 + m `mod` 2) ' ' ++ x ++ replicate (m `div` 2) ' '
 
-main :: IO ()
-main = do
-  putStrLn $ "                   | " ++ concatMap (\s -> padc s 9 ++ " | ") ["Cartesian","Dedekind","Posetmap","Conj","Disj", "DeMorgan"]
-  putStrLn (replicate (20+6*12) '-')
+runbenchmark :: IO ()
+runbenchmark = do
+  putStrLn $ "                   | " ++ concatMap (\s -> padc s 9 ++ " | ") ["Cartesian","Dedekind","Posetmap","Conj","Disj", "DeMorgan", "DeMo TT"]
+  putStrLn (replicate (20+7*12) '-')
   mapM_ (\i -> do
             let (name , cartc , cartty) = carttests!!i
             putStr (padr name 18 ++ " | ")
@@ -81,6 +84,9 @@ main = do
             putStr " | "
             let (_ , democ , demoty) = demotests!!i
             time democ demoty
+            putStr " | "
+            let (_ , demottc , demottty) = demotttests!!i
+            time demottc demottty
             putStr " | "
             putStrLn ""
           ) [0..length carttests - 1]

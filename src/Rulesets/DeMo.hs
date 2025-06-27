@@ -4,10 +4,12 @@
 module Rulesets.DeMo where
 
 import qualified Data.Map as Map
+import Data.Map ((!), Map)
 import Data.List
 import Control.Monad
 
 import Prel
+import Poset
 import Core
 
 import Debug.Trace
@@ -60,6 +62,30 @@ subst cs i ds =
         [ c | c <- cs , Pos i `notElem` c , Neg i `notElem` c ] in
     redDnf res
 
+-- form2subst :: DeMo -> TruthTable
+-- form2subst (m , rs) = TruthTable $ Map.fromList (map (\v -> (v , (map (evalFormula v) rs))) (createTable m))
+--   where
+--   evalFormula :: Vert -> [[Atom]] -> Endpoint
+--   evalFormula is ds =
+--     let vs1 = map fst $ filter (toBool . snd) (zip [1..] is) in
+--     let result = map (\d -> filter (\i -> i `notElem` vs1) d) ds in
+--     fromBool $ [] `elem` result
+
+
+-- subst2form :: PMap -> DeMo
+-- subst2form (PMap s) =
+--   (domdim (PMap s) , reverse $ map (\fi -> constrFormula (map (\(x , is) -> (x , is !! fi)) (Map.toList s))) [0 .. coddim (PMap s)-1])
+--     where
+--     constrFormula :: [(Vert , Endpoint)] -> [[IVar]]
+--     constrFormula ves =
+--       let truevs = [ v | (v , e) <- ves , toBool e ] in
+--       let cs = [ [ i | (e,i) <- zip vs [1..] , toBool e] | vs <- truevs ] in
+--       let redcs = filter (\c -> not (any (\d -> c /= d && d `isSubsequenceOf` c) cs)) cs in
+--       let normcs = sort redcs in
+--         normcs
+
+
+
 instance Bs DeMo where
   tdim (m , rs) = m
   face (m , rs) (i,e) =
@@ -87,5 +113,32 @@ instance Bs DeMo where
 
   allConts = allForm
 
+
+
+-- instance Rs DeMo PTruthTable where
+--   allPConts _ m n = [ createPTruthTable m n ]
+--   unfold = map subst2form . getTruthTables
+--   combine = PTruthTable . combineMaps . (map (tt . form2subst))
+
+--   constrCont c gty (p , pty) = do
+--     sigma <- foldM
+--                   (\sigma (ie , gf) -> do
+--                     -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
+--                     theta <- case gf of
+--                         App (Var q) tau | q == p -> (Just . PTruthTable . injPotMap . tt) tau
+--                         _ -> do
+--                           let theta = filter (\s -> normalise c (App (Var p) s) == gf)
+--                                       (unfold (PTruthTable (restrMap (ptt sigma) ie)))
+--                           if null theta
+--                             then Nothing
+--                             else Just (combine theta)
+--                     return $ foldl (\s x -> updatePTruthTable s (insInd ie x) ((ptt theta) ! x)) sigma (createTable (tyDim gty - 1))
+--                       )
+--                   (createPTruthTable (tyDim gty) (tyDim pty))
+--                   (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
+--                     [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
+
+--     let sols = (getTruthTables sigma) -- TODO filter
+--     return (App (Var p) (subst2form (head sols)))
 
 
