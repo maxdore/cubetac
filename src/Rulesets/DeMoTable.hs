@@ -91,42 +91,42 @@ updatePDeMoTable :: PDeMoTable -> Vert -> [FourVert] -> PDeMoTable
 updatePDeMoTable (PDeMoTable sigma) x vs = PDeMoTable $ Map.insert x vs sigma
 
 
-instance Bs DeMoTable where
-  tdim sigma = domdim sigma
-  face (DeMoTable sigma) r = DeMoTable (restrMap sigma r)
-  deg d i = DeMoTable $ Map.fromList (map (\x -> (insInd (i , I0) x , map intToFour x) ) (createTable d)
-                       ++ map (\x -> (insInd (i , I1) x , map intToFour x) ) (createTable d))
-  compose (DeMoTable sigma) (DeMoTable tau) = DeMoTable $ Map.compose sigma tau
-  isId = all (\(x,y) -> x == y) . Map.toList . dmt
-  isFace = isFaceSetFour . Map.elems . dmt
-  rmI (DeMoTable sigma) i = DeMoTable $ Map.map (`rmIndFour` i) sigma
+-- instance Bs DeMoTable where
+--   tdim sigma = domdim sigma
+--   face (DeMoTable sigma) r = DeMoTable (restrMap sigma r)
+--   deg d i = DeMoTable $ Map.fromList (map (\x -> (insInd (i , I0) x , map intToFour x) ) (createTable d)
+--                        ++ map (\x -> (insInd (i , I1) x , map intToFour x) ) (createTable d))
+--   compose (DeMoTable sigma) (DeMoTable tau) = DeMoTable $ Map.compose sigma tau
+--   isId = all (\(x,y) -> x == y) . Map.toList . dmt
+--   isFace = isFaceSetFour . Map.elems . dmt
+--   rmI (DeMoTable sigma) i = DeMoTable $ Map.map (`rmIndFour` i) sigma
 
-instance Rs DeMoTable PDeMoTable where
-  allPConts _ m n = [ createPDeMoTable m n ]
-  unfold = getDeMoTables
-  combine = PDeMoTable . combineMaps . (map dmt)
+-- instance Rs DeMoTable PDeMoTable where
+--   allPConts _ m n = [ createPDeMoTable m n ]
+--   unfold = getDeMoTables
+--   combine = PDeMoTable . combineMaps . (map dmt)
 
-  constrCont c gty (p , pty) = do
-    sigma <- foldM
-                  (\sigma (ie , gf) -> do
-                    -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
-                    theta <- case gf of
-                        App (Var q) tau | q == p -> (Just . PDeMoTable . injPotMap . dmt) tau
-                        _ -> do
-                          let theta = filter (\s -> normalise c (App (Var p) s) == gf)
-                                      (unfold (PDeMoTable (restrMap (pdmt sigma) ie)))
-                          if null theta
-                            then Nothing
-                            else Just (combine theta)
-                    return $ foldl (\s x -> updatePDeMoTable s (insIndFour ie x) ((pdmt theta) ! x)) sigma (createTable (tyDim gty - 1))
-                      )
-                  (createPDeMoTable (tyDim gty) (tyDim pty))
-                  (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
-                    [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
+--   constrCont c gty (p , pty) = do
+--     sigma <- foldM
+--                   (\sigma (ie , gf) -> do
+--                     -- traceM $ show ie ++ " : " ++ show sigma ++ " : " ++ q ++ "<" ++ show tau ++ ">"
+--                     theta <- case gf of
+--                         App (Var q) tau | q == p -> (Just . PDeMoTable . injPotMap . dmt) tau
+--                         _ -> do
+--                           let theta = filter (\s -> normalise c (App (Var p) s) == gf)
+--                                       (unfold (PDeMoTable (restrMap (pdmt sigma) ie)))
+--                           if null theta
+--                             then Nothing
+--                             else Just (combine theta)
+--                     return $ foldl (\s x -> updatePDeMoTable s (insIndFour ie x) ((pdmt theta) ! x)) sigma (createTable (tyDim gty - 1))
+--                       )
+--                   (createPDeMoTable (tyDim gty) (tyDim pty))
+--                   (sortBy (\(_, s) (_,t) -> compare (baseDim c t) (baseDim c s))
+--                     [ (ie , getFace gty ie) | ie <- restrictions (tyDim gty) , sideSpec gty ie])
 
-    -- traceShowM (length (getPMaps sigma))
-    let sols = (getDeMoTables sigma) -- TODO filter
-    return (App (Var p) (head sols))
+--     -- traceShowM (length (getPMaps sigma))
+--     let sols = (getDeMoTables sigma) -- TODO filter
+--     return (App (Var p) (head sols))
 
 
 
